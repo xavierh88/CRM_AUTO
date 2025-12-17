@@ -434,19 +434,37 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     </span>
   );
 
+  // Get the most recent record to allow new opportunity
+  const myRecords = records.filter(r => r.salesperson_id === user.id);
+  const latestRecord = myRecords.length > 0 ? myRecords[0] : null;
+
   return (
     <div className="mb-4">
       <div className="flex items-center justify-between mb-3">
         <h4 className="font-semibold text-slate-700">{t('records.title')}</h4>
-        <Button 
-          size="sm" 
-          variant="outline" 
-          onClick={() => setShowAddRecord(true)}
-          data-testid="add-record-btn"
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          {t('records.addNew')}
-        </Button>
+        <div className="flex gap-2">
+          {latestRecord && (
+            <Button 
+              size="sm" 
+              variant="outline"
+              className="text-purple-600 hover:bg-purple-50 border-purple-200"
+              onClick={() => createNewOpportunity(latestRecord.id)}
+              data-testid="new-opportunity-btn"
+            >
+              <RefreshCw className="w-4 h-4 mr-1" />
+              New Opportunity
+            </Button>
+          )}
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => setShowAddRecord(true)}
+            data-testid="add-record-btn"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            {t('records.addNew')}
+          </Button>
+        </div>
       </div>
 
       {/* Records List */}
