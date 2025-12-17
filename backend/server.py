@@ -83,7 +83,7 @@ class ClientResponse(BaseModel):
     apartment: Optional[str] = None
     id_uploaded: bool = False
     income_proof_uploaded: bool = False
-    last_contact: str
+    last_record_date: Optional[str] = None  # Date of last record created (not last_contact)
     created_at: str
     created_by: str
     is_deleted: bool = False
@@ -104,6 +104,7 @@ class UserRecordCreate(BaseModel):
     vehicle_make: Optional[str] = None
     vehicle_year: Optional[str] = None
     sale_date: Optional[str] = None
+    previous_record_id: Optional[str] = None  # For "New Opportunity" - links to previous record
 
 class UserRecordResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -127,6 +128,8 @@ class UserRecordResponse(BaseModel):
     sale_date: Optional[str] = None
     created_at: str
     is_deleted: bool = False
+    previous_record_id: Optional[str] = None  # Reference to previous opportunity
+    opportunity_number: int = 1  # 1 = first, 2 = second opportunity, etc.
 
 class AppointmentCreate(BaseModel):
     user_record_id: str
