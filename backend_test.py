@@ -591,7 +591,7 @@ class CRMAPITester:
             return False
             
         # Create second cosigner
-        timestamp2 = datetime1 = datetime.now().strftime('%H%M%S') + "2"
+        timestamp2 = datetime.now().strftime('%H%M%S') + "2"
         success2, cosigner2_response = self.run_test(
             "Create Second Cosigner Client",
             "POST",
