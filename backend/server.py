@@ -1,15 +1,17 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from typing import List, Optional
 import uuid
-from datetime import datetime, timezone
-
+from datetime import datetime, timezone, timedelta
+import jwt
+import bcrypt
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -19,54 +21,678 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
-app = FastAPI()
+# JWT Settings
+JWT_SECRET = os.environ.get('JWT_SECRET', 'dealercrm-secret-key-2024')
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_HOURS = 24
 
-# Create a router with the /api prefix
+# Create the main app
+app = FastAPI(title="DealerCRM Pro API")
 api_router = APIRouter(prefix="/api")
+security = HTTPBearer()
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
+# ==================== MODELS ====================
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+    role: str = "salesperson"  # salesperson or admin
+    phone: Optional[str] = None
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    email: str
+    name: str
+    role: str
+    phone: Optional[str] = None
+    created_at: str
+
+class ClientCreate(BaseModel):
+    first_name: str
+    last_name: str
+    phone: str
+    email: Optional[str] = None
+    address: Optional[str] = None
+    apartment: Optional[str] = None
+
+class ClientResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    first_name: str
+    last_name: str
+    phone: str
+    email: Optional[str] = None
+    address: Optional[str] = None
+    apartment: Optional[str] = None
+    id_uploaded: bool = False
+    income_proof_uploaded: bool = False
+    last_contact: str
+    created_at: str
+    created_by: str
+    is_deleted: bool = False
+
+class UserRecordCreate(BaseModel):
+    client_id: str
+    dl: bool = False
+    checks: bool = False
+    ssn: bool = False
+    itin: bool = False
+    auto: Optional[str] = None
+    credit: Optional[str] = None
+    bank: Optional[str] = None
+    auto_loan: Optional[str] = None
+    down_payment: Optional[str] = None
+    dealer: Optional[str] = None
+    sold: bool = False
+    vehicle_make: Optional[str] = None
+    vehicle_year: Optional[str] = None
+    sale_date: Optional[str] = None
+
+class UserRecordResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    client_id: str
+    salesperson_id: str
+    salesperson_name: str
+    dl: bool = False
+    checks: bool = False
+    ssn: bool = False
+    itin: bool = False
+    auto: Optional[str] = None
+    credit: Optional[str] = None
+    bank: Optional[str] = None
+    auto_loan: Optional[str] = None
+    down_payment: Optional[str] = None
+    dealer: Optional[str] = None
+    sold: bool = False
+    vehicle_make: Optional[str] = None
+    vehicle_year: Optional[str] = None
+    sale_date: Optional[str] = None
+    created_at: str
+    is_deleted: bool = False
+
+class AppointmentCreate(BaseModel):
+    user_record_id: str
+    client_id: str
+    date: Optional[str] = None
+    time: Optional[str] = None
+    dealer: Optional[str] = None
+    language: str = "en"  # en or es
+    change_time: Optional[str] = None
+
+class AppointmentResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    user_record_id: str
+    client_id: str
+    salesperson_id: str
+    date: Optional[str] = None
+    time: Optional[str] = None
+    dealer: Optional[str] = None
+    language: str = "en"
+    change_time: Optional[str] = None
+    status: str = "sin_configurar"  # agendado, sin_configurar, cambio_hora, tres_semanas, no_show, cumplido
+    link_sent_at: Optional[str] = None
+    reminder_count: int = 0
+    created_at: str
+
+class CoSignerRelationCreate(BaseModel):
+    buyer_client_id: str
+    cosigner_client_id: str
+
+class CoSignerRelationResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    buyer_client_id: str
+    cosigner_client_id: str
+    created_at: str
+
+class SMSLogCreate(BaseModel):
+    client_id: str
+    phone: str
+    message_type: str  # documents, appointment, reminder
+    status: str = "pending"
+
+# ==================== AUTH HELPERS ====================
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+
+def create_token(user_id: str, email: str, role: str) -> str:
+    payload = {
+        "user_id": user_id,
+        "email": email,
+        "role": role,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+# ==================== AUTH ROUTES ====================
+
+@api_router.post("/auth/register", response_model=dict)
+async def register(user: UserCreate):
+    existing = await db.users.find_one({"email": user.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
     
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    user_doc = {
+        "id": str(uuid.uuid4()),
+        "email": user.email,
+        "password": hash_password(user.password),
+        "name": user.name,
+        "role": user.role,
+        "phone": user.phone,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.users.insert_one(user_doc)
+    
+    token = create_token(user_doc["id"], user_doc["email"], user_doc["role"])
+    return {"token": token, "user": {k: v for k, v in user_doc.items() if k != "password" and k != "_id"}}
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+@api_router.post("/auth/login", response_model=dict)
+async def login(credentials: UserLogin):
+    user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
+    if not user or not verify_password(credentials.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = create_token(user["id"], user["email"], user["role"])
+    return {"token": token, "user": {k: v for k, v in user.items() if k != "password"}}
 
-# Add your routes to the router instead of directly to app
+@api_router.get("/auth/me", response_model=UserResponse)
+async def get_me(current_user: dict = Depends(get_current_user)):
+    return current_user
+
+# ==================== USERS ROUTES ====================
+
+@api_router.get("/users", response_model=List[UserResponse])
+async def get_users(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(1000)
+    return users
+
+# ==================== CLIENTS ROUTES ====================
+
+@api_router.post("/clients", response_model=ClientResponse)
+async def create_client(client: ClientCreate, current_user: dict = Depends(get_current_user)):
+    # Check for existing client by phone
+    existing = await db.clients.find_one({"phone": client.phone, "is_deleted": {"$ne": True}})
+    if existing:
+        raise HTTPException(status_code=400, detail="Client with this phone already exists")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    client_doc = {
+        "id": str(uuid.uuid4()),
+        "first_name": client.first_name,
+        "last_name": client.last_name,
+        "phone": client.phone,
+        "email": client.email,
+        "address": client.address,
+        "apartment": client.apartment,
+        "id_uploaded": False,
+        "income_proof_uploaded": False,
+        "last_contact": now,
+        "created_at": now,
+        "created_by": current_user["id"],
+        "is_deleted": False
+    }
+    await db.clients.insert_one(client_doc)
+    del client_doc["_id"]
+    return client_doc
+
+@api_router.get("/clients", response_model=List[ClientResponse])
+async def get_clients(include_deleted: bool = False, current_user: dict = Depends(get_current_user)):
+    query = {} if include_deleted and current_user["role"] == "admin" else {"is_deleted": {"$ne": True}}
+    clients = await db.clients.find(query, {"_id": 0}).sort("last_contact", -1).to_list(1000)
+    return clients
+
+@api_router.get("/clients/{client_id}", response_model=ClientResponse)
+async def get_client(client_id: str, current_user: dict = Depends(get_current_user)):
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return client
+
+@api_router.put("/clients/{client_id}", response_model=ClientResponse)
+async def update_client(client_id: str, client: ClientCreate, current_user: dict = Depends(get_current_user)):
+    update_data = client.model_dump(exclude_unset=True)
+    update_data["last_contact"] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.clients.update_one({"id": client_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    updated = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/clients/{client_id}")
+async def delete_client(client_id: str, permanent: bool = False, current_user: dict = Depends(get_current_user)):
+    if permanent:
+        if current_user["role"] != "admin":
+            raise HTTPException(status_code=403, detail="Admin access required for permanent deletion")
+        await db.clients.delete_one({"id": client_id})
+    else:
+        await db.clients.update_one({"id": client_id}, {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat(), "deleted_by": current_user["id"]}})
+    return {"message": "Client deleted"}
+
+@api_router.post("/clients/{client_id}/restore")
+async def restore_client(client_id: str, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    await db.clients.update_one({"id": client_id}, {"$set": {"is_deleted": False}, "$unset": {"deleted_at": "", "deleted_by": ""}})
+    return {"message": "Client restored"}
+
+@api_router.put("/clients/{client_id}/documents")
+async def update_client_documents(client_id: str, id_uploaded: bool = None, income_proof_uploaded: bool = None, current_user: dict = Depends(get_current_user)):
+    update_data = {}
+    if id_uploaded is not None:
+        update_data["id_uploaded"] = id_uploaded
+    if income_proof_uploaded is not None:
+        update_data["income_proof_uploaded"] = income_proof_uploaded
+    
+    if update_data:
+        await db.clients.update_one({"id": client_id}, {"$set": update_data})
+    
+    updated = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    return updated
+
+# ==================== USER RECORDS (CARTILLAS) ROUTES ====================
+
+@api_router.post("/user-records", response_model=UserRecordResponse)
+async def create_user_record(record: UserRecordCreate, current_user: dict = Depends(get_current_user)):
+    now = datetime.now(timezone.utc).isoformat()
+    record_doc = {
+        "id": str(uuid.uuid4()),
+        "client_id": record.client_id,
+        "salesperson_id": current_user["id"],
+        "salesperson_name": current_user["name"],
+        **record.model_dump(exclude={"client_id"}),
+        "created_at": now,
+        "is_deleted": False
+    }
+    await db.user_records.insert_one(record_doc)
+    
+    # Update client last_contact
+    await db.clients.update_one({"id": record.client_id}, {"$set": {"last_contact": now}})
+    
+    del record_doc["_id"]
+    return record_doc
+
+@api_router.get("/user-records", response_model=List[UserRecordResponse])
+async def get_user_records(client_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    query = {"is_deleted": {"$ne": True}}
+    if client_id:
+        query["client_id"] = client_id
+    records = await db.user_records.find(query, {"_id": 0}).to_list(1000)
+    return records
+
+@api_router.get("/user-records/{record_id}", response_model=UserRecordResponse)
+async def get_user_record(record_id: str, current_user: dict = Depends(get_current_user)):
+    record = await db.user_records.find_one({"id": record_id}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="User record not found")
+    return record
+
+@api_router.put("/user-records/{record_id}", response_model=UserRecordResponse)
+async def update_user_record(record_id: str, record: UserRecordCreate, current_user: dict = Depends(get_current_user)):
+    update_data = record.model_dump(exclude_unset=True)
+    result = await db.user_records.update_one({"id": record_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User record not found")
+    
+    # Update client last_contact
+    await db.clients.update_one({"id": record.client_id}, {"$set": {"last_contact": datetime.now(timezone.utc).isoformat()}})
+    
+    updated = await db.user_records.find_one({"id": record_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/user-records/{record_id}")
+async def delete_user_record(record_id: str, permanent: bool = False, current_user: dict = Depends(get_current_user)):
+    if permanent:
+        if current_user["role"] != "admin":
+            raise HTTPException(status_code=403, detail="Admin access required")
+        await db.user_records.delete_one({"id": record_id})
+    else:
+        await db.user_records.update_one({"id": record_id}, {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat()}})
+    return {"message": "User record deleted"}
+
+# ==================== APPOINTMENTS ROUTES ====================
+
+@api_router.post("/appointments", response_model=AppointmentResponse)
+async def create_appointment(appt: AppointmentCreate, current_user: dict = Depends(get_current_user)):
+    now = datetime.now(timezone.utc).isoformat()
+    status = "agendado" if appt.date and appt.time else "sin_configurar"
+    
+    appt_doc = {
+        "id": str(uuid.uuid4()),
+        "user_record_id": appt.user_record_id,
+        "client_id": appt.client_id,
+        "salesperson_id": current_user["id"],
+        "date": appt.date,
+        "time": appt.time,
+        "dealer": appt.dealer,
+        "language": appt.language,
+        "change_time": appt.change_time,
+        "status": status,
+        "link_sent_at": now,
+        "reminder_count": 0,
+        "created_at": now
+    }
+    await db.appointments.insert_one(appt_doc)
+    del appt_doc["_id"]
+    return appt_doc
+
+@api_router.get("/appointments", response_model=List[AppointmentResponse])
+async def get_appointments(
+    salesperson_id: Optional[str] = None,
+    client_id: Optional[str] = None,
+    status: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    query = {}
+    if salesperson_id:
+        query["salesperson_id"] = salesperson_id
+    if client_id:
+        query["client_id"] = client_id
+    if status:
+        query["status"] = status
+    
+    appointments = await db.appointments.find(query, {"_id": 0}).sort("date", 1).to_list(1000)
+    return appointments
+
+@api_router.get("/appointments/agenda", response_model=List[dict])
+async def get_agenda(current_user: dict = Depends(get_current_user)):
+    """Get appointments for the current salesperson with client info"""
+    pipeline = [
+        {"$match": {"salesperson_id": current_user["id"]}},
+        {"$lookup": {
+            "from": "clients",
+            "localField": "client_id",
+            "foreignField": "id",
+            "as": "client"
+        }},
+        {"$unwind": {"path": "$client", "preserveNullAndEmptyArrays": True}},
+        {"$project": {"_id": 0, "client._id": 0}},
+        {"$sort": {"date": 1, "time": 1}}
+    ]
+    appointments = await db.appointments.aggregate(pipeline).to_list(1000)
+    return appointments
+
+@api_router.put("/appointments/{appt_id}", response_model=AppointmentResponse)
+async def update_appointment(appt_id: str, appt: AppointmentCreate, current_user: dict = Depends(get_current_user)):
+    update_data = appt.model_dump(exclude_unset=True)
+    
+    # Determine status
+    existing = await db.appointments.find_one({"id": appt_id})
+    if appt.change_time and appt.change_time != existing.get("change_time"):
+        update_data["status"] = "cambio_hora"
+    elif appt.date and appt.time:
+        update_data["status"] = "agendado"
+    
+    await db.appointments.update_one({"id": appt_id}, {"$set": update_data})
+    updated = await db.appointments.find_one({"id": appt_id}, {"_id": 0})
+    return updated
+
+@api_router.put("/appointments/{appt_id}/status")
+async def update_appointment_status(appt_id: str, status: str, current_user: dict = Depends(get_current_user)):
+    valid_statuses = ["agendado", "sin_configurar", "cambio_hora", "tres_semanas", "no_show", "cumplido"]
+    if status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+    
+    await db.appointments.update_one({"id": appt_id}, {"$set": {"status": status}})
+    return {"message": "Status updated"}
+
+@api_router.delete("/appointments/{appt_id}")
+async def delete_appointment(appt_id: str, current_user: dict = Depends(get_current_user)):
+    await db.appointments.delete_one({"id": appt_id})
+    return {"message": "Appointment deleted"}
+
+# ==================== CO-SIGNER ROUTES ====================
+
+@api_router.post("/cosigners", response_model=CoSignerRelationResponse)
+async def create_cosigner_relation(relation: CoSignerRelationCreate, current_user: dict = Depends(get_current_user)):
+    # Check if both clients exist
+    buyer = await db.clients.find_one({"id": relation.buyer_client_id})
+    cosigner = await db.clients.find_one({"id": relation.cosigner_client_id})
+    
+    if not buyer or not cosigner:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Check if relation already exists
+    existing = await db.cosigner_relations.find_one({
+        "buyer_client_id": relation.buyer_client_id,
+        "cosigner_client_id": relation.cosigner_client_id
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="Relation already exists")
+    
+    relation_doc = {
+        "id": str(uuid.uuid4()),
+        "buyer_client_id": relation.buyer_client_id,
+        "cosigner_client_id": relation.cosigner_client_id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.cosigner_relations.insert_one(relation_doc)
+    del relation_doc["_id"]
+    return relation_doc
+
+@api_router.get("/cosigners/{buyer_client_id}", response_model=List[dict])
+async def get_cosigners(buyer_client_id: str, current_user: dict = Depends(get_current_user)):
+    """Get all co-signers for a buyer with their client info"""
+    pipeline = [
+        {"$match": {"buyer_client_id": buyer_client_id}},
+        {"$lookup": {
+            "from": "clients",
+            "localField": "cosigner_client_id",
+            "foreignField": "id",
+            "as": "cosigner"
+        }},
+        {"$unwind": {"path": "$cosigner", "preserveNullAndEmptyArrays": True}},
+        {"$project": {"_id": 0, "cosigner._id": 0}}
+    ]
+    relations = await db.cosigner_relations.aggregate(pipeline).to_list(100)
+    return relations
+
+@api_router.delete("/cosigners/{relation_id}")
+async def delete_cosigner_relation(relation_id: str, current_user: dict = Depends(get_current_user)):
+    await db.cosigner_relations.delete_one({"id": relation_id})
+    return {"message": "Co-signer relation removed"}
+
+@api_router.get("/clients/search/phone/{phone}")
+async def search_client_by_phone(phone: str, current_user: dict = Depends(get_current_user)):
+    """Search for a client by phone number (for adding existing co-signer)"""
+    client = await db.clients.find_one({"phone": {"$regex": phone}, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return client
+
+# ==================== DASHBOARD ROUTES ====================
+
+@api_router.get("/dashboard/stats")
+async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
+    # Base query - admin sees all, salesperson sees their own
+    base_query = {} if current_user["role"] == "admin" else {"salesperson_id": current_user["id"]}
+    
+    # Total clients
+    total_clients = await db.clients.count_documents({"is_deleted": {"$ne": True}})
+    
+    # Appointments by status
+    appt_stats = await db.appointments.aggregate([
+        {"$match": base_query},
+        {"$group": {"_id": "$status", "count": {"$sum": 1}}}
+    ]).to_list(100)
+    
+    appointment_counts = {stat["_id"]: stat["count"] for stat in appt_stats}
+    
+    # Documents status
+    docs_complete = await db.clients.count_documents({"id_uploaded": True, "income_proof_uploaded": True, "is_deleted": {"$ne": True}})
+    docs_pending = await db.clients.count_documents({"$or": [{"id_uploaded": False}, {"income_proof_uploaded": False}], "is_deleted": {"$ne": True}})
+    
+    # Sales count
+    sales_count = await db.user_records.count_documents({"sold": True, "is_deleted": {"$ne": True}, **base_query} if base_query else {"sold": True, "is_deleted": {"$ne": True}})
+    
+    # Today's appointments
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today_appointments = await db.appointments.count_documents({"date": today, **base_query})
+    
+    return {
+        "total_clients": total_clients,
+        "appointments": {
+            "agendado": appointment_counts.get("agendado", 0),
+            "sin_configurar": appointment_counts.get("sin_configurar", 0),
+            "cambio_hora": appointment_counts.get("cambio_hora", 0),
+            "tres_semanas": appointment_counts.get("tres_semanas", 0),
+            "no_show": appointment_counts.get("no_show", 0),
+            "cumplido": appointment_counts.get("cumplido", 0)
+        },
+        "documents": {
+            "complete": docs_complete,
+            "pending": docs_pending
+        },
+        "sales": sales_count,
+        "today_appointments": today_appointments
+    }
+
+@api_router.get("/dashboard/salesperson-performance")
+async def get_salesperson_performance(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    pipeline = [
+        {"$group": {
+            "_id": "$salesperson_id",
+            "salesperson_name": {"$first": "$salesperson_name"},
+            "total_records": {"$sum": 1},
+            "sales": {"$sum": {"$cond": ["$sold", 1, 0]}}
+        }},
+        {"$lookup": {
+            "from": "appointments",
+            "localField": "_id",
+            "foreignField": "salesperson_id",
+            "as": "appointments"
+        }},
+        {"$addFields": {
+            "total_appointments": {"$size": "$appointments"},
+            "completed_appointments": {
+                "$size": {
+                    "$filter": {
+                        "input": "$appointments",
+                        "as": "appt",
+                        "cond": {"$eq": ["$$appt.status", "cumplido"]}
+                    }
+                }
+            }
+        }},
+        {"$project": {
+            "_id": 0,
+            "salesperson_id": "$_id",
+            "salesperson_name": 1,
+            "total_records": 1,
+            "sales": 1,
+            "total_appointments": 1,
+            "completed_appointments": 1
+        }}
+    ]
+    
+    performance = await db.user_records.aggregate(pipeline).to_list(100)
+    return performance
+
+# ==================== TRASH ROUTES (ADMIN) ====================
+
+@api_router.get("/trash/clients", response_model=List[ClientResponse])
+async def get_trash_clients(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    clients = await db.clients.find({"is_deleted": True}, {"_id": 0}).to_list(1000)
+    return clients
+
+@api_router.get("/trash/user-records", response_model=List[UserRecordResponse])
+async def get_trash_user_records(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    records = await db.user_records.find({"is_deleted": True}, {"_id": 0}).to_list(1000)
+    return records
+
+# ==================== SMS ROUTES (MOCK) ====================
+
+@api_router.post("/sms/send-documents-link")
+async def send_documents_sms(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Send SMS with documents upload link - MOCKED"""
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Log the SMS (mocked)
+    sms_log = {
+        "id": str(uuid.uuid4()),
+        "client_id": client_id,
+        "phone": client["phone"],
+        "message_type": "documents",
+        "status": "sent",
+        "sent_at": datetime.now(timezone.utc).isoformat(),
+        "sent_by": current_user["id"]
+    }
+    await db.sms_logs.insert_one(sms_log)
+    
+    return {"message": "Documents SMS sent (mocked)", "phone": client["phone"]}
+
+@api_router.post("/sms/send-appointment-link")
+async def send_appointment_sms(client_id: str, appointment_id: str, current_user: dict = Depends(get_current_user)):
+    """Send SMS with appointment scheduling link - MOCKED"""
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Log the SMS (mocked)
+    sms_log = {
+        "id": str(uuid.uuid4()),
+        "client_id": client_id,
+        "appointment_id": appointment_id,
+        "phone": client["phone"],
+        "message_type": "appointment",
+        "status": "sent",
+        "sent_at": datetime.now(timezone.utc).isoformat(),
+        "sent_by": current_user["id"]
+    }
+    await db.sms_logs.insert_one(sms_log)
+    
+    # Update appointment link_sent_at
+    await db.appointments.update_one({"id": appointment_id}, {"$set": {"link_sent_at": datetime.now(timezone.utc).isoformat()}})
+    
+    return {"message": "Appointment SMS sent (mocked)", "phone": client["phone"]}
+
+# ==================== ROOT ====================
+
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "DealerCRM Pro API", "version": "1.0.0"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
-
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
-
-# Include the router in the main app
+# Include router and middleware
 app.include_router(api_router)
 
 app.add_middleware(
@@ -76,13 +702,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
