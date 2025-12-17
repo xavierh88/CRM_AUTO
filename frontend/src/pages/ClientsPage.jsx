@@ -459,16 +459,22 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     </span>
   );
 
-  // Group records by opportunity
+  // Group records by opportunity number
   const myRecords = records.filter(r => r.salesperson_id === user.id);
   
-  // Separate primary records (opportunity 1) and new opportunities
-  const primaryRecords = myRecords.filter(r => !r.previous_record_id);
-  const newOpportunities = myRecords.filter(r => r.previous_record_id);
+  // Group by opportunity_number (1-5)
+  const opportunityGroups = {};
+  myRecords.forEach(record => {
+    const oppNum = record.opportunity_number || 1;
+    if (!opportunityGroups[oppNum]) opportunityGroups[oppNum] = [];
+    opportunityGroups[oppNum].push(record);
+  });
   
-  const latestRecord = myRecords.length > 0 ? myRecords[0] : null;
-  const canCreateNewOpportunity = latestRecord && 
-    (latestRecord.finance_status === 'financiado' || latestRecord.finance_status === 'least');
+  // Get the highest opportunity number and check if we can create more
+  const maxOpportunity = Math.max(...Object.keys(opportunityGroups).map(Number), 0);
+  const latestRecordInLastOpp = opportunityGroups[maxOpportunity]?.[0];
+  const canCreateNewOpportunity = maxOpportunity < 5 && latestRecordInLastOpp && 
+    (latestRecordInLastOpp.finance_status === 'financiado' || latestRecordInLastOpp.finance_status === 'least');
 
   return (
     <div className="mb-4">
