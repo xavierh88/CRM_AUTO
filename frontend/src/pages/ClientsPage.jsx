@@ -549,36 +549,32 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
                     <span className="text-slate-400">Vehicle:</span> {record.vehicle_make} {record.vehicle_year}
                   </div>
                 )}
-                    <Plus className="w-4 h-4 mr-1" />
-                    New Opportunity
+              </div>
+
+              {/* Appointment Actions */}
+              {appointments[record.id] && (
+                <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="text-emerald-600 hover:bg-emerald-50"
+                    onClick={() => updateAppointmentStatus(appointments[record.id].id, 'cumplido')}
+                  >
+                    {t('appointments.markCompleted')}
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="text-slate-600 hover:bg-slate-50"
+                    onClick={() => updateAppointmentStatus(appointments[record.id].id, 'no_show')}
+                  >
+                    {t('appointments.markNoShow')}
                   </Button>
                 </div>
               )}
             </div>
-
-            {/* Appointment Actions */}
-            {appointments[record.id] && (
-              <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  className="text-emerald-600 hover:bg-emerald-50"
-                  onClick={() => updateAppointmentStatus(appointments[record.id].id, 'cumplido')}
-                >
-                  {t('appointments.markCompleted')}
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  className="text-slate-600 hover:bg-slate-50"
-                  onClick={() => updateAppointmentStatus(appointments[record.id].id, 'no_show')}
-                >
-                  {t('appointments.markNoShow')}
-                </Button>
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
 
         {records.filter(r => r.salesperson_id !== user.id).length > 0 && (
           <div className="text-sm text-slate-400 mt-2">
