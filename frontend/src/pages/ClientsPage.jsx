@@ -636,7 +636,9 @@ function CoSignersSection({ clientId, cosigners, onRefresh }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h4 className="font-semibold text-slate-700">{t('cosigner.title')}</h4>
+        <h4 className="font-semibold text-slate-700">
+          {t('cosigner.title')} {cosigners.length > 0 && `(${cosigners.length})`}
+        </h4>
         <Button size="sm" variant="outline" onClick={() => setShowAdd(!showAdd)} data-testid="add-cosigner-btn">
           <UserPlus className="w-4 h-4 mr-1" />
           {t('cosigner.add')}
