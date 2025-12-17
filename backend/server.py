@@ -41,8 +41,15 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     name: str
-    role: str = "salesperson"  # salesperson or admin
     phone: Optional[str] = None
+
+class UserActivate(BaseModel):
+    user_id: str
+    is_active: bool
+
+class UserRoleUpdate(BaseModel):
+    user_id: str
+    role: str
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -205,20 +212,25 @@ async def register(user: UserCreate):
         "email": user.email,
         "password": hash_password(user.password),
         "name": user.name,
-        "role": user.role,
+        "role": "salesperson",  # All new users are salesperson by default
         "phone": user.phone,
+        "is_active": False,  # Users must be activated by admin
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.users.insert_one(user_doc)
     
-    token = create_token(user_doc["id"], user_doc["email"], user_doc["role"])
-    return {"token": token, "user": {k: v for k, v in user_doc.items() if k != "password" and k != "_id"}}
+    # Return success but no token - user needs admin activation
+    return {"message": "Registration successful. Please wait for admin approval.", "user": {k: v for k, v in user_doc.items() if k != "password" and k != "_id"}}
 
 @api_router.post("/auth/login", response_model=dict)
 async def login(credentials: UserLogin):
     user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
     if not user or not verify_password(credentials.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Check if user is active (admin accounts are always active)
+    if not user.get("is_active", False) and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Account not activated. Please wait for admin approval.")
     
     token = create_token(user["id"], user["email"], user["role"])
     return {"token": token, "user": {k: v for k, v in user.items() if k != "password"}}
@@ -229,12 +241,43 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 
 # ==================== USERS ROUTES ====================
 
-@api_router.get("/users", response_model=List[UserResponse])
+@api_router.get("/users", response_model=List[dict])
 async def get_users(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(1000)
     return users
+
+@api_router.put("/users/activate")
+async def activate_user(data: UserActivate, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await db.users.update_one(
+        {"id": data.user_id},
+        {"$set": {"is_active": data.is_active}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": f"User {'activated' if data.is_active else 'deactivated'} successfully"}
+
+@api_router.put("/users/role")
+async def update_user_role(data: UserRoleUpdate, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    if data.role not in ["admin", "salesperson"]:
+        raise HTTPException(status_code=400, detail="Invalid role. Must be 'admin' or 'salesperson'")
+    
+    result = await db.users.update_one(
+        {"id": data.user_id},
+        {"$set": {"role": data.role}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": f"User role updated to {data.role}"}
 
 # ==================== CLIENTS ROUTES ====================
 
@@ -702,6 +745,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def create_default_admin():
+    """Create default admin account if it doesn't exist"""
+    existing_admin = await db.users.find_one({"email": "xadmin"})
+    if not existing_admin:
+        admin_doc = {
+            "id": str(uuid.uuid4()),
+            "email": "xadmin",
+            "password": hash_password("Cali2020"),
+            "name": "Administrator",
+            "role": "admin",
+            "phone": None,
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.users.insert_one(admin_doc)
+        logger.info("Default admin account created: xadmin")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
