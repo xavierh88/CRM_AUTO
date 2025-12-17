@@ -536,15 +536,14 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
         </div>
       )}
 
-        {records.filter(r => r.salesperson_id !== user.id).length > 0 && (
-          <div className="text-sm text-slate-400 mt-2">
-            + {records.filter(r => r.salesperson_id !== user.id).length} records from other salespeople
-          </div>
-        )}
-      </div>
+      {records.filter(r => r.salesperson_id !== user.id).length > 0 && (
+        <div className="text-sm text-slate-400 mt-4 text-center">
+          + {records.filter(r => r.salesperson_id !== user.id).length} records from other salespeople
+        </div>
+      )}
 
       {/* Add Record Form */}
-      {showAddRecord && (
+      {(showAddRecord || showNewOpportunity) && (
         <div className="bg-white rounded-lg border border-blue-200 p-4 mt-3">
           <h5 className="font-medium text-slate-700 mb-3">New Record</h5>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
