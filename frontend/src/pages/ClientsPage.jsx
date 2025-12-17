@@ -593,8 +593,12 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 function CoSignersSection({ clientId, cosigners, onRefresh }) {
   const { t } = useTranslation();
   const [showAdd, setShowAdd] = useState(false);
+  const [addMode, setAddMode] = useState('search'); // 'search' or 'new'
   const [searchPhone, setSearchPhone] = useState('');
   const [foundClient, setFoundClient] = useState(null);
+  const [newCosigner, setNewCosigner] = useState({
+    first_name: '', last_name: '', phone: '', email: '', address: '', apartment: ''
+  });
 
   const searchByPhone = async () => {
     try {
@@ -623,7 +627,30 @@ function CoSignersSection({ clientId, cosigners, onRefresh }) {
     }
   };
 
+  const createAndLinkCosigner = async () => {
+    if (!newCosigner.first_name || !newCosigner.last_name || !newCosigner.phone) {
+      toast.error('Please fill required fields (Name and Phone)');
+      return;
+    }
+    try {
+      // Create new client as co-signer
+      const clientRes = await axios.post(`${API}/clients`, newCosigner);
+      // Link as co-signer
+      await axios.post(`${API}/cosigners`, {
+        buyer_client_id: clientId,
+        cosigner_client_id: clientRes.data.id
+      });
+      setShowAdd(false);
+      setNewCosigner({ first_name: '', last_name: '', phone: '', email: '', address: '', apartment: '' });
+      onRefresh();
+      toast.success('Co-signer created and linked');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to create co-signer');
+    }
+  };
+
   const removeCosigner = async (relationId) => {
+    if (!window.confirm('Are you sure you want to remove this co-signer?')) return;
     try {
       await axios.delete(`${API}/cosigners/${relationId}`);
       onRefresh();
@@ -639,7 +666,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh }) {
         <h4 className="font-semibold text-slate-700">
           {t('cosigner.title')} {cosigners.length > 0 && `(${cosigners.length})`}
         </h4>
-        <Button size="sm" variant="outline" onClick={() => setShowAdd(!showAdd)} data-testid="add-cosigner-btn">
+        <Button size="sm" variant="outline" onClick={() => { setShowAdd(!showAdd); setAddMode('search'); }} data-testid="add-cosigner-btn">
           <UserPlus className="w-4 h-4 mr-1" />
           {t('cosigner.add')}
         </Button>
@@ -652,8 +679,13 @@ function CoSignersSection({ clientId, cosigners, onRefresh }) {
             <div key={relation.id} className="flex items-center justify-between bg-white rounded-lg border border-purple-200 p-3">
               <div className="flex items-center gap-3">
                 <span className="cosigner-badge">CO-SIGNER</span>
-                <span className="font-medium">{relation.cosigner?.first_name} {relation.cosigner?.last_name}</span>
-                <span className="text-sm text-slate-400">{relation.cosigner?.phone}</span>
+                <div>
+                  <span className="font-medium">{relation.cosigner?.first_name} {relation.cosigner?.last_name}</span>
+                  <div className="text-sm text-slate-400">
+                    {relation.cosigner?.phone}
+                    {relation.cosigner?.email && ` • ${relation.cosigner?.email}`}
+                  </div>
+                </div>
               </div>
               <Button size="sm" variant="ghost" onClick={() => removeCosigner(relation.id)}>
                 <Trash2 className="w-4 h-4 text-slate-400" />
@@ -666,25 +698,107 @@ function CoSignersSection({ clientId, cosigners, onRefresh }) {
       {/* Add Co-Signer */}
       {showAdd && (
         <div className="bg-white rounded-lg border border-purple-200 p-4">
-          <h5 className="font-medium text-slate-700 mb-3">{t('cosigner.existing')}</h5>
-          <div className="flex gap-2 mb-3">
-            <Input
-              placeholder={t('cosigner.searchPhone')}
-              value={searchPhone}
-              onChange={(e) => setSearchPhone(e.target.value)}
-              data-testid="cosigner-search-phone"
-            />
-            <Button onClick={searchByPhone} data-testid="search-cosigner-btn">
-              <Search className="w-4 h-4" />
+          {/* Mode Tabs */}
+          <div className="flex gap-2 mb-4">
+            <Button 
+              size="sm" 
+              variant={addMode === 'search' ? 'default' : 'outline'}
+              onClick={() => setAddMode('search')}
+            >
+              {t('cosigner.existing')}
+            </Button>
+            <Button 
+              size="sm" 
+              variant={addMode === 'new' ? 'default' : 'outline'}
+              onClick={() => setAddMode('new')}
+            >
+              {t('cosigner.new')}
             </Button>
           </div>
-          {foundClient && (
-            <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
-              <div>
-                <p className="font-medium">{foundClient.first_name} {foundClient.last_name}</p>
-                <p className="text-sm text-slate-400">{foundClient.phone}</p>
+
+          {addMode === 'search' ? (
+            <>
+              <div className="flex gap-2 mb-3">
+                <Input
+                  placeholder={t('cosigner.searchPhone')}
+                  value={searchPhone}
+                  onChange={(e) => setSearchPhone(e.target.value)}
+                  data-testid="cosigner-search-phone"
+                />
+                <Button onClick={searchByPhone} data-testid="search-cosigner-btn">
+                  <Search className="w-4 h-4" />
+                </Button>
               </div>
-              <Button size="sm" onClick={linkCosigner} data-testid="link-cosigner-btn">Link</Button>
+              {foundClient && (
+                <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
+                  <div>
+                    <p className="font-medium">{foundClient.first_name} {foundClient.last_name}</p>
+                    <p className="text-sm text-slate-400">{foundClient.phone}</p>
+                  </div>
+                  <Button size="sm" onClick={linkCosigner} data-testid="link-cosigner-btn">Link</Button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="form-label">{t('clients.firstName')} *</Label>
+                  <Input
+                    value={newCosigner.first_name}
+                    onChange={(e) => setNewCosigner({ ...newCosigner, first_name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label className="form-label">{t('clients.lastName')} *</Label>
+                  <Input
+                    value={newCosigner.last_name}
+                    onChange={(e) => setNewCosigner({ ...newCosigner, last_name: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="form-label">{t('clients.phone')} *</Label>
+                <Input
+                  type="tel"
+                  value={newCosigner.phone}
+                  onChange={(e) => setNewCosigner({ ...newCosigner, phone: e.target.value })}
+                  placeholder="+1 555 123 4567"
+                  required
+                />
+              </div>
+              <div>
+                <Label className="form-label">{t('clients.email')}</Label>
+                <Input
+                  type="email"
+                  value={newCosigner.email}
+                  onChange={(e) => setNewCosigner({ ...newCosigner, email: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="form-label">{t('clients.address')}</Label>
+                <Input
+                  value={newCosigner.address}
+                  onChange={(e) => setNewCosigner({ ...newCosigner, address: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="form-label">{t('clients.apartment')}</Label>
+                <Input
+                  value={newCosigner.apartment}
+                  onChange={(e) => setNewCosigner({ ...newCosigner, apartment: e.target.value })}
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={() => setShowAdd(false)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button size="sm" onClick={createAndLinkCosigner} data-testid="create-cosigner-btn">
+                  {t('common.save')}
+                </Button>
+              </div>
             </div>
           )}
         </div>
