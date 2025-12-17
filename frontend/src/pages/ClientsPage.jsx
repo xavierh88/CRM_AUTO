@@ -571,12 +571,12 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
             <Input placeholder="Dealer" value={newRecord.dealer} onChange={(e) => setNewRecord({ ...newRecord, dealer: e.target.value })} />
           </div>
 
-          {/* Finance Status */}
+          {/* Sold Status */}
           <div className="mb-3">
-            <Label className="form-label mb-2 block">Status</Label>
+            <Label className="form-label mb-2 block">Sold</Label>
             <Select value={newRecord.finance_status} onValueChange={(value) => setNewRecord({ ...newRecord, finance_status: value })}>
               <SelectTrigger className="w-48">
-                <SelectValue placeholder="Select status" />
+                <SelectValue placeholder="Select option" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="no">No</SelectItem>
