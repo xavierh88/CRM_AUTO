@@ -640,7 +640,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 }
 
 // Record Card Component
-function RecordCard({ record, appointments, getStatusBadge, sendAppointmentSMS, clientId, createAppointment, updateAppointmentStatus, t, isPurple }) {
+function RecordCard({ record, appointments, getStatusBadge, sendAppointmentSMS, clientId, createAppointment, updateAppointmentStatus, t, isPurple, onOpenAppointmentForm }) {
   return (
     <div className={`bg-white rounded-lg border p-4 ${isPurple ? 'border-purple-200' : 'border-slate-200'}`}>
       <div className="flex items-center justify-between mb-3">
@@ -648,9 +648,10 @@ function RecordCard({ record, appointments, getStatusBadge, sendAppointmentSMS, 
           <span className={`text-sm font-medium ${isPurple ? 'text-purple-600' : 'text-blue-600'}`}>
             Record
           </span>
+          <span className="text-xs text-slate-400">by {record.salesperson_name}</span>
           {record.finance_status && record.finance_status !== 'no' && (
             <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-medium uppercase">
-              {record.finance_status}
+              SOLD - {record.finance_status}
             </span>
           )}
         </div>
