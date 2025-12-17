@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Switch } from '../components/ui/switch';
 import { toast } from 'sonner';
-import { Trash2, RotateCcw, Users, FileText, Shield } from 'lucide-react';
+import { Trash2, RotateCcw, Users, FileText, Shield, CheckCircle2, XCircle, UserCog } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -35,6 +37,32 @@ export default function AdminPage() {
       console.error('Failed to fetch admin data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleUserActive = async (userId, currentStatus) => {
+    try {
+      await axios.put(`${API}/users/activate`, {
+        user_id: userId,
+        is_active: !currentStatus
+      });
+      toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'}`);
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to update user status');
+    }
+  };
+
+  const updateUserRole = async (userId, newRole) => {
+    try {
+      await axios.put(`${API}/users/role`, {
+        user_id: userId,
+        role: newRole
+      });
+      toast.success(`Role updated to ${newRole}`);
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to update role');
     }
   };
 
@@ -75,6 +103,9 @@ export default function AdminPage() {
     return new Date(dateStr).toLocaleDateString();
   };
 
+  // Count pending activations
+  const pendingUsers = users.filter(u => !u.is_active && u.role !== 'admin').length;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -94,11 +125,29 @@ export default function AdminPage() {
         <p className="text-slate-500 mt-1">Manage users and recover deleted items</p>
       </div>
 
+      {/* Pending Activations Alert */}
+      {pendingUsers > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3">
+          <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+            <UserCog className="w-5 h-5 text-amber-600" />
+          </div>
+          <div>
+            <p className="font-medium text-amber-800">{pendingUsers} user(s) pending activation</p>
+            <p className="text-sm text-amber-600">Review and activate new user accounts below</p>
+          </div>
+        </div>
+      )}
+
       <Tabs defaultValue="users" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-md">
-          <TabsTrigger value="users" data-testid="users-tab">
+          <TabsTrigger value="users" data-testid="users-tab" className="relative">
             <Users className="w-4 h-4 mr-2" />
             {t('admin.users')}
+            {pendingUsers > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-white text-xs rounded-full flex items-center justify-center">
+                {pendingUsers}
+              </span>
+            )}
           </TabsTrigger>
           <TabsTrigger value="trash-clients" data-testid="trash-clients-tab">
             <Trash2 className="w-4 h-4 mr-2" />
@@ -114,33 +163,83 @@ export default function AdminPage() {
         <TabsContent value="users">
           <Card className="dashboard-card">
             <CardHeader>
-              <CardTitle>{t('admin.users')} ({users.length})</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span>{t('admin.users')} ({users.length})</span>
+                <div className="flex items-center gap-2 text-sm font-normal">
+                  <span className="flex items-center gap-1 text-emerald-600">
+                    <CheckCircle2 className="w-4 h-4" /> Active
+                  </span>
+                  <span className="flex items-center gap-1 text-slate-400">
+                    <XCircle className="w-4 h-4" /> Inactive
+                  </span>
+                </div>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Status</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Created</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {users.map((user) => (
-                    <TableRow key={user.id} data-testid={`user-row-${user.id}`}>
+                    <TableRow 
+                      key={user.id} 
+                      data-testid={`user-row-${user.id}`}
+                      className={!user.is_active && user.role !== 'admin' ? 'bg-amber-50' : ''}
+                    >
+                      <TableCell>
+                        {user.is_active || user.role === 'admin' ? (
+                          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                        ) : (
+                          <XCircle className="w-5 h-5 text-slate-300" />
+                        )}
+                      </TableCell>
                       <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                        }`}>
-                          {user.role}
-                        </span>
+                        {user.email === 'xadmin' ? (
+                          <span className="px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                            admin (system)
+                          </span>
+                        ) : (
+                          <Select 
+                            value={user.role} 
+                            onValueChange={(value) => updateUserRole(user.id, value)}
+                          >
+                            <SelectTrigger className="w-32 h-8" data-testid={`role-select-${user.id}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="salesperson">Salesperson</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
                       </TableCell>
                       <TableCell>{user.phone || '-'}</TableCell>
                       <TableCell>{formatDate(user.created_at)}</TableCell>
+                      <TableCell>
+                        {user.email !== 'xadmin' && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-500">
+                              {user.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                            <Switch
+                              checked={user.is_active || false}
+                              onCheckedChange={() => toggleUserActive(user.id, user.is_active)}
+                              data-testid={`toggle-active-${user.id}`}
+                            />
+                          </div>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
