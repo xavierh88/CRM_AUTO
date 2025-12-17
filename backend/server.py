@@ -100,10 +100,14 @@ class UserRecordCreate(BaseModel):
     auto_loan: Optional[str] = None
     down_payment: Optional[str] = None
     dealer: Optional[str] = None
-    sold: bool = False
+    # Finance status: financiado, least, no
+    finance_status: str = "no"  # financiado, least, no
+    # Vehicle info (only when finance_status is financiado or least)
     vehicle_make: Optional[str] = None
     vehicle_year: Optional[str] = None
-    sale_date: Optional[str] = None
+    sale_month: Optional[int] = None
+    sale_day: Optional[int] = None
+    sale_year: Optional[int] = None
     previous_record_id: Optional[str] = None  # For "New Opportunity" - links to previous record
 
 class UserRecordResponse(BaseModel):
@@ -122,10 +126,14 @@ class UserRecordResponse(BaseModel):
     auto_loan: Optional[str] = None
     down_payment: Optional[str] = None
     dealer: Optional[str] = None
-    sold: bool = False
+    # Finance status
+    finance_status: str = "no"  # financiado, least, no
+    # Vehicle info
     vehicle_make: Optional[str] = None
     vehicle_year: Optional[str] = None
-    sale_date: Optional[str] = None
+    sale_month: Optional[int] = None
+    sale_day: Optional[int] = None
+    sale_year: Optional[int] = None
     created_at: str
     is_deleted: bool = False
     previous_record_id: Optional[str] = None  # Reference to previous opportunity
