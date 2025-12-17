@@ -513,6 +513,10 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     (latestRecordInLastOpp.finance_status === 'financiado' || latestRecordInLastOpp.finance_status === 'least');
 
   const opportunityColors = ['blue', 'purple', 'emerald', 'amber', 'rose'];
+  
+  // Auto-expand the latest opportunity with records, or first if none
+  const defaultExpanded = maxOpportunity > 0 ? maxOpportunity : 1;
+  const currentExpanded = expandedOpportunity ?? defaultExpanded;
 
   return (
     <div className="mb-4">
@@ -521,55 +525,82 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
         const oppRecords = opportunityGroups[oppNum] || [];
         const isFirst = oppNum === 1;
         const shouldShow = isFirst || oppRecords.length > 0 || (showNewOpportunity && oppNum === maxOpportunity + 1);
-        const color = opportunityColors[oppNum - 1];
-        const bgColor = `bg-${color}-600`;
-        const textColor = `text-${color}-700`;
-        const borderColor = `border-${color}-200`;
+        const isExpanded = currentExpanded === oppNum;
         
         if (!shouldShow) return null;
 
         return (
-          <div key={oppNum} className={`mb-4 ${oppNum > 1 ? 'mt-6 pt-4 border-t-2 ' + borderColor : ''}`}>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className={`font-semibold ${isFirst ? 'text-slate-700' : textColor} flex items-center gap-2`}>
+          <div key={oppNum} className={`mb-2 ${oppNum > 1 ? 'mt-4 pt-3 border-t-2 border-slate-100' : ''}`}>
+            {/* Collapsible Header */}
+            <div 
+              className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
+                isExpanded 
+                  ? isFirst ? 'bg-blue-50' : oppNum === 2 ? 'bg-purple-50' : oppNum === 3 ? 'bg-emerald-50' : oppNum === 4 ? 'bg-amber-50' : 'bg-rose-50'
+                  : 'bg-slate-50 hover:bg-slate-100'
+              }`}
+              onClick={() => toggleOpportunity(oppNum)}
+            >
+              <h4 className={`font-semibold ${isFirst ? 'text-slate-700' : oppNum === 2 ? 'text-purple-700' : oppNum === 3 ? 'text-emerald-700' : oppNum === 4 ? 'text-amber-700' : 'text-rose-700'} flex items-center gap-2`}>
                 <span className={`w-6 h-6 ${isFirst ? 'bg-blue-600' : oppNum === 2 ? 'bg-purple-600' : oppNum === 3 ? 'bg-emerald-600' : oppNum === 4 ? 'bg-amber-600' : 'bg-rose-600'} text-white rounded-full flex items-center justify-center text-xs`}>
                   {oppNum}
                 </span>
                 {isFirst ? 'Oportunidad #1' : `Nueva Oportunidad #${oppNum}`}
+                <span className="text-xs text-slate-400 font-normal">
+                  ({oppRecords.length} record{oppRecords.length !== 1 ? 's' : ''})
+                </span>
               </h4>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className={!isFirst ? `${borderColor} ${textColor}` : ''}
-                onClick={() => { setShowAddRecord(true); setAddingToOpportunity(oppNum); }}
-                data-testid={`add-record-btn-${oppNum}`}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Add Record
-              </Button>
+              <div className="flex items-center gap-2">
+                {isExpanded && (
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={(e) => { e.stopPropagation(); setShowAddRecord(true); setAddingToOpportunity(oppNum); }}
+                    data-testid={`add-record-btn-${oppNum}`}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add
+                  </Button>
+                )}
+                {isExpanded ? (
+                  <ChevronDown className="w-5 h-5 text-slate-400" />
+                ) : (
+                  <ChevronRight className="w-5 h-5 text-slate-400" />
+                )}
+              </div>
             </div>
 
-            <div className="space-y-3">
-              {oppRecords.map((record) => (
-                <RecordCard 
-                  key={record.id}
-                  record={record}
-                  appointments={appointments}
-                  getStatusBadge={getStatusBadge}
-                  sendAppointmentSMS={sendAppointmentSMS}
-                  clientId={clientId}
-                  createAppointment={createAppointment}
-                  updateAppointmentStatus={updateAppointmentStatus}
-                  t={t}
-                  isPurple={oppNum > 1}
-                  onOpenAppointmentForm={setShowAppointmentForm}
-                />
-              ))}
-              
-              {oppRecords.length === 0 && isFirst && !showAddRecord && (
-                <p className="text-sm text-slate-400 text-center py-4">No records yet. Click &quot;Add Record&quot; to create one.</p>
-              )}
-            </div>
+            {/* Collapsible Content */}
+            {isExpanded && (
+              <div className="space-y-3 mt-3 pl-2">
+                {oppRecords.map((record) => (
+                  <RecordCard 
+                    key={record.id}
+                    record={record}
+                    appointments={appointments}
+                    getStatusBadge={getStatusBadge}
+                    sendAppointmentSMS={sendAppointmentSMS}
+                    clientId={clientId}
+                    createAppointment={createAppointment}
+                    updateAppointmentStatus={updateAppointmentStatus}
+                    t={t}
+                    isPurple={oppNum > 1}
+                    onOpenAppointmentForm={setShowAppointmentForm}
+                    currentUserId={user.id}
+                    onEdit={handleEditRecord}
+                    onDelete={handleDeleteRecord}
+                    isEditing={editingRecord === record.id}
+                    editData={editRecordData}
+                    setEditData={setEditRecordData}
+                    onSaveEdit={handleSaveEditRecord}
+                    onCancelEdit={() => { setEditingRecord(null); setEditRecordData(null); }}
+                  />
+                ))}
+                
+                {oppRecords.length === 0 && isFirst && !showAddRecord && (
+                  <p className="text-sm text-slate-400 text-center py-4">No records yet. Click &quot;Add&quot; to create one.</p>
+                )}
+              </div>
+            )}
           </div>
         );
       })}
