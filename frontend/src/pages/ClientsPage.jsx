@@ -428,38 +428,36 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     </span>
   );
 
-  // Get the most recent record to allow new opportunity
+  // Group records by opportunity
   const myRecords = records.filter(r => r.salesperson_id === user.id);
+  
+  // Separate primary records (opportunity 1) and new opportunities
+  const primaryRecords = myRecords.filter(r => !r.previous_record_id);
+  const newOpportunities = myRecords.filter(r => r.previous_record_id);
+  
   const latestRecord = myRecords.length > 0 ? myRecords[0] : null;
+  const canCreateNewOpportunity = latestRecord && 
+    (latestRecord.finance_status === 'financiado' || latestRecord.finance_status === 'least');
 
   return (
     <div className="mb-4">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="font-semibold text-slate-700">{t('records.title')}</h4>
-        <div className="flex gap-2">
-          {latestRecord && (
-            <Button 
-              size="sm" 
-              variant="outline"
-              className="text-purple-600 hover:bg-purple-50 border-purple-200"
-              onClick={() => createNewOpportunity(latestRecord.id)}
-              data-testid="new-opportunity-btn"
-            >
-              <RefreshCw className="w-4 h-4 mr-1" />
-              New Opportunity
-            </Button>
-          )}
+      {/* OPORTUNIDAD #1 Section */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="font-semibold text-slate-700 flex items-center gap-2">
+            <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs">1</span>
+            Oportunidad #1
+          </h4>
           <Button 
             size="sm" 
             variant="outline" 
-            onClick={() => setShowAddRecord(true)}
+            onClick={() => { setShowAddRecord(true); setAddingToOpportunity(1); }}
             data-testid="add-record-btn"
           >
             <Plus className="w-4 h-4 mr-1" />
-            {t('records.addNew')}
+            Add Record
           </Button>
         </div>
-      </div>
 
       {/* Records List - Tree Structure */}
       <div className="space-y-3">
