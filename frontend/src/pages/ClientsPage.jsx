@@ -476,100 +476,136 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
   const canCreateNewOpportunity = maxOpportunity < 5 && latestRecordInLastOpp && 
     (latestRecordInLastOpp.finance_status === 'financiado' || latestRecordInLastOpp.finance_status === 'least');
 
+  const opportunityColors = ['blue', 'purple', 'emerald', 'amber', 'rose'];
+
   return (
     <div className="mb-4">
-      {/* OPORTUNIDAD #1 Section */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="font-semibold text-slate-700 flex items-center gap-2">
-            <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs">1</span>
-            Oportunidad #1
-          </h4>
-          <Button 
-            size="sm" 
-            variant="outline" 
-            onClick={() => { setShowAddRecord(true); setAddingToOpportunity(1); }}
-            data-testid="add-record-btn"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Add Record
-          </Button>
-        </div>
-
-        {/* Primary Records (Oportunidad #1) */}
-        <div className="space-y-3">
-        {primaryRecords.map((record) => (
-          <RecordCard 
-            key={record.id}
-            record={record}
-            appointments={appointments}
-            getStatusBadge={getStatusBadge}
-            sendAppointmentSMS={sendAppointmentSMS}
-            clientId={clientId}
-            createAppointment={createAppointment}
-            updateAppointmentStatus={updateAppointmentStatus}
-            t={t}
-          />
-        ))}
+      {/* Render each opportunity (1-5) */}
+      {[1, 2, 3, 4, 5].map((oppNum) => {
+        const oppRecords = opportunityGroups[oppNum] || [];
+        const isFirst = oppNum === 1;
+        const shouldShow = isFirst || oppRecords.length > 0 || (showNewOpportunity && oppNum === maxOpportunity + 1);
+        const color = opportunityColors[oppNum - 1];
+        const bgColor = `bg-${color}-600`;
+        const textColor = `text-${color}-700`;
+        const borderColor = `border-${color}-200`;
         
-          {primaryRecords.length === 0 && !showAddRecord && (
-            <p className="text-sm text-slate-400 text-center py-4">No records yet. Click &quot;Add Record&quot; to create one.</p>
-          )}
-        </div>
-      </div>
+        if (!shouldShow) return null;
 
-      {/* NEW OPPORTUNITY Section */}
-      {(newOpportunities.length > 0 || showNewOpportunity) && (
-        <div className="mt-6 pt-4 border-t-2 border-purple-200">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="font-semibold text-purple-700 flex items-center gap-2">
-              <span className="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-xs">2</span>
-              Nueva Oportunidad
-            </h4>
-            {!showNewOpportunity && (
+        return (
+          <div key={oppNum} className={`mb-4 ${oppNum > 1 ? 'mt-6 pt-4 border-t-2 ' + borderColor : ''}`}>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className={`font-semibold ${isFirst ? 'text-slate-700' : textColor} flex items-center gap-2`}>
+                <span className={`w-6 h-6 ${isFirst ? 'bg-blue-600' : oppNum === 2 ? 'bg-purple-600' : oppNum === 3 ? 'bg-emerald-600' : oppNum === 4 ? 'bg-amber-600' : 'bg-rose-600'} text-white rounded-full flex items-center justify-center text-xs`}>
+                  {oppNum}
+                </span>
+                {isFirst ? 'Oportunidad #1' : `Nueva Oportunidad #${oppNum}`}
+              </h4>
               <Button 
                 size="sm" 
                 variant="outline" 
-                className="border-purple-200 text-purple-600"
-                onClick={() => { setShowNewOpportunity(true); setAddingToOpportunity(2); }}
+                className={!isFirst ? `${borderColor} ${textColor}` : ''}
+                onClick={() => { setShowAddRecord(true); setAddingToOpportunity(oppNum); }}
+                data-testid={`add-record-btn-${oppNum}`}
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Add Record
               </Button>
-            )}
-          </div>
-          
-          <div className="space-y-3">
-            {newOpportunities.map((record) => (
-              <RecordCard 
-                key={record.id}
-                record={record}
-                appointments={appointments}
-                getStatusBadge={getStatusBadge}
-                sendAppointmentSMS={sendAppointmentSMS}
-                clientId={clientId}
-                createAppointment={createAppointment}
-                updateAppointmentStatus={updateAppointmentStatus}
-                t={t}
-                isPurple
-              />
-            ))}
-          </div>
-        </div>
-      )}
+            </div>
 
-      {/* Button to create New Opportunity */}
-      {!showNewOpportunity && canCreateNewOpportunity && newOpportunities.length === 0 && (
+            <div className="space-y-3">
+              {oppRecords.map((record) => (
+                <RecordCard 
+                  key={record.id}
+                  record={record}
+                  appointments={appointments}
+                  getStatusBadge={getStatusBadge}
+                  sendAppointmentSMS={sendAppointmentSMS}
+                  clientId={clientId}
+                  createAppointment={createAppointment}
+                  updateAppointmentStatus={updateAppointmentStatus}
+                  t={t}
+                  isPurple={oppNum > 1}
+                  onOpenAppointmentForm={setShowAppointmentForm}
+                />
+              ))}
+              
+              {oppRecords.length === 0 && isFirst && !showAddRecord && (
+                <p className="text-sm text-slate-400 text-center py-4">No records yet. Click &quot;Add Record&quot; to create one.</p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Button to create New Opportunity (up to 5) */}
+      {canCreateNewOpportunity && !showNewOpportunity && (
         <div className="mt-4 pt-4 border-t border-dashed border-slate-200">
           <Button 
             variant="outline"
             className="w-full text-purple-600 hover:bg-purple-50 border-purple-200 border-dashed"
-            onClick={handleCreateNewOpportunity}
+            onClick={() => { setShowNewOpportunity(true); setAddingToOpportunity(maxOpportunity + 1); }}
             data-testid="new-opportunity-btn"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Crear Nueva Oportunidad
+            Crear Nueva Oportunidad #{maxOpportunity + 1}
           </Button>
+        </div>
+      )}
+
+      {/* Appointment Form Modal */}
+      {showAppointmentForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md m-4">
+            <h3 className="text-lg font-semibold mb-4">Schedule Appointment</h3>
+            <div className="space-y-4">
+              <div>
+                <Label className="form-label">Date *</Label>
+                <Input 
+                  type="date" 
+                  value={appointmentData.date}
+                  onChange={(e) => setAppointmentData({ ...appointmentData, date: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="form-label">Time *</Label>
+                <Input 
+                  type="time" 
+                  value={appointmentData.time}
+                  onChange={(e) => setAppointmentData({ ...appointmentData, time: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="form-label">Dealer</Label>
+                <Input 
+                  placeholder="Dealer location"
+                  value={appointmentData.dealer}
+                  onChange={(e) => setAppointmentData({ ...appointmentData, dealer: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="form-label">Client Language Preference</Label>
+                <Select value={appointmentData.language} onValueChange={(value) => setAppointmentData({ ...appointmentData, language: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="es">Español</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-400 mt-1">The client will receive SMS in this language</p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowAppointmentForm(null)} className="flex-1">
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateAppointment} className="flex-1">
+                  Create & Send SMS
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
