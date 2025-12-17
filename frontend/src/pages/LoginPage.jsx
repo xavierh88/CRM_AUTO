@@ -117,8 +117,8 @@ export default function LoginPage() {
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <Input
                         id="login-email"
-                        type="email"
-                        placeholder="john@dealer.com"
+                        type="text"
+                        placeholder="john@dealer.com or username"
                         className="pl-10"
                         value={loginForm.email}
                         onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
