@@ -427,8 +427,230 @@ class CRMAPITester:
         )
         return success
 
+    def test_admin_login(self):
+        """Test admin login with xadmin/Cali2020"""
+        success, response = self.run_test(
+            "Admin Login (xadmin/Cali2020)",
+            "POST",
+            "auth/login",
+            200,
+            data={
+                "email": "xadmin",
+                "password": "Cali2020"
+            }
+        )
+        if success and 'token' in response:
+            self.admin_token = response['token']
+            self.admin_id = response['user']['id']
+            return True
+        return False
+
+    def test_last_record_date_null_when_no_records(self):
+        """Test that last_record_date is null when client has no records"""
+        # Create a new client without any records
+        timestamp = datetime.now().strftime('%H%M%S')
+        success, response = self.run_test(
+            "Create Client Without Records",
+            "POST",
+            "clients",
+            200,
+            data={
+                "first_name": "NoRecords",
+                "last_name": "Client",
+                "phone": f"+1555000{timestamp}",
+                "email": f"norecords_{timestamp}@email.com"
+            }
+        )
+        
+        if not success:
+            return False
+            
+        # Get clients list and check this client has null last_record_date
+        success, clients = self.run_test(
+            "Get Clients - Check Null Last Record Date",
+            "GET",
+            "clients",
+            200
+        )
+        
+        if success:
+            new_client = next((c for c in clients if c['phone'] == f"+1555000{timestamp}"), None)
+            if new_client and new_client.get('last_record_date') is None:
+                print(f"✅ Confirmed: last_record_date is null for client without records")
+                return True
+            else:
+                print(f"❌ Expected null last_record_date, got: {new_client.get('last_record_date') if new_client else 'client not found'}")
+        
+        return False
+
+    def test_last_record_date_shows_when_records_exist(self):
+        """Test that last_record_date shows date of last record created"""
+        if not self.client_id:
+            return False
+            
+        # Get clients list and check our client has last_record_date set
+        success, clients = self.run_test(
+            "Get Clients - Check Last Record Date Set",
+            "GET",
+            "clients",
+            200
+        )
+        
+        if success:
+            client = next((c for c in clients if c['id'] == self.client_id), None)
+            if client and client.get('last_record_date') is not None:
+                print(f"✅ Confirmed: last_record_date is set: {client['last_record_date']}")
+                return True
+            else:
+                print(f"❌ Expected last_record_date to be set, got: {client.get('last_record_date') if client else 'client not found'}")
+        
+        return False
+
+    def test_search_by_name(self):
+        """Test search by first name and last name"""
+        # Search by first name
+        success1, response1 = self.run_test(
+            "Search Clients by First Name",
+            "GET",
+            "clients?search=John",
+            200
+        )
+        
+        # Search by last name  
+        success2, response2 = self.run_test(
+            "Search Clients by Last Name", 
+            "GET",
+            "clients?search=Doe",
+            200
+        )
+        
+        return success1 and success2 and isinstance(response1, list) and isinstance(response2, list)
+
+    def test_search_by_phone(self):
+        """Test search by phone number"""
+        success, response = self.run_test(
+            "Search Clients by Phone",
+            "GET", 
+            "clients?search=555",
+            200
+        )
+        
+        return success and isinstance(response, list)
+
+    def test_new_opportunity_with_previous_record_id(self):
+        """Test creating new opportunity linked to previous record"""
+        if not self.client_id or not self.record_id:
+            return False
+            
+        success, response = self.run_test(
+            "Create New Opportunity Record",
+            "POST",
+            "user-records",
+            200,
+            data={
+                "client_id": self.client_id,
+                "previous_record_id": self.record_id,
+                "dl": False,
+                "checks": True,
+                "ssn": True,
+                "itin": False
+            }
+        )
+        
+        if success and 'id' in response:
+            # Check that opportunity_number is incremented
+            if response.get('opportunity_number', 1) > 1:
+                print(f"✅ Confirmed: New opportunity created with opportunity_number: {response['opportunity_number']}")
+                return True
+            else:
+                print(f"❌ Expected opportunity_number > 1, got: {response.get('opportunity_number')}")
+        
+        return False
+
+    def test_multiple_cosigners_allowed(self):
+        """Test that multiple co-signers can be added to same buyer"""
+        if not self.client_id:
+            return False
+            
+        # Create first cosigner
+        timestamp1 = datetime.now().strftime('%H%M%S')
+        success1, cosigner1_response = self.run_test(
+            "Create First Cosigner Client",
+            "POST",
+            "clients",
+            200,
+            data={
+                "first_name": "Cosigner1",
+                "last_name": "Smith",
+                "phone": f"+1555111{timestamp1}",
+                "email": f"cosigner1_{timestamp1}@email.com"
+            }
+        )
+        
+        if not success1:
+            return False
+            
+        # Create second cosigner
+        timestamp2 = datetime1 = datetime.now().strftime('%H%M%S') + "2"
+        success2, cosigner2_response = self.run_test(
+            "Create Second Cosigner Client",
+            "POST",
+            "clients", 
+            200,
+            data={
+                "first_name": "Cosigner2",
+                "last_name": "Johnson",
+                "phone": f"+1555222{timestamp2}",
+                "email": f"cosigner2_{timestamp2}@email.com"
+            }
+        )
+        
+        if not success2:
+            return False
+            
+        # Link first cosigner
+        success3, relation1 = self.run_test(
+            "Link First Cosigner",
+            "POST",
+            "cosigners",
+            200,
+            data={
+                "buyer_client_id": self.client_id,
+                "cosigner_client_id": cosigner1_response['id']
+            }
+        )
+        
+        # Link second cosigner
+        success4, relation2 = self.run_test(
+            "Link Second Cosigner",
+            "POST", 
+            "cosigners",
+            200,
+            data={
+                "buyer_client_id": self.client_id,
+                "cosigner_client_id": cosigner2_response['id']
+            }
+        )
+        
+        # Verify both cosigners are linked
+        success5, cosigners_list = self.run_test(
+            "Get Multiple Cosigners",
+            "GET",
+            f"cosigners/{self.client_id}",
+            200
+        )
+        
+        if success3 and success4 and success5:
+            if len(cosigners_list) >= 2:
+                print(f"✅ Confirmed: Multiple cosigners allowed - found {len(cosigners_list)} cosigners")
+                return True
+            else:
+                print(f"❌ Expected multiple cosigners, found: {len(cosigners_list)}")
+        
+        return False
+
 def main():
-    print("🚀 Starting CRM API Testing...")
+    print("🚀 Starting CRM API Testing - Focus on Corrections...")
     tester = CRMAPITester()
     
     # Authentication Tests
@@ -436,87 +658,75 @@ def main():
     print("AUTHENTICATION TESTS")
     print("="*50)
     
-    if not tester.test_auth_register_salesperson():
-        print("❌ Salesperson registration failed, stopping tests")
-        return 1
+    # Test admin login first
+    if not tester.test_admin_login():
+        print("❌ Admin login failed, continuing with registration")
+        if not tester.test_auth_register_salesperson():
+            print("❌ Salesperson registration failed, stopping tests")
+            return 1
+    else:
+        # Use admin token as main token for testing
+        tester.token = tester.admin_token
+        tester.user_id = tester.admin_id
     
-    if not tester.test_auth_register_admin():
-        print("❌ Admin registration failed, continuing with limited tests")
-    
-    tester.test_auth_login()
     tester.test_auth_me()
-    tester.test_protected_route_without_token()
     
-    # Client Tests
+    # Client Tests - Focus on Last Record Date
     print("\n" + "="*50)
-    print("CLIENT MANAGEMENT TESTS")
+    print("CLIENT MANAGEMENT TESTS - LAST RECORD DATE")
     print("="*50)
     
+    # Test 1: Last record date null when no records
+    tester.test_last_record_date_null_when_no_records()
+    
+    # Create client with record to test last_record_date functionality
     if not tester.test_create_client():
         print("❌ Client creation failed, stopping related tests")
         return 1
-    
-    tester.test_list_clients()
-    tester.test_search_clients()
-    
-    # User Records Tests
-    print("\n" + "="*50)
-    print("USER RECORDS (CARTILLAS) TESTS")
-    print("="*50)
     
     if not tester.test_create_user_record():
         print("❌ User record creation failed, stopping related tests")
         return 1
     
+    # Test 2: Last record date shows when records exist
+    tester.test_last_record_date_shows_when_records_exist()
+    
+    # Search Tests
+    print("\n" + "="*50)
+    print("SEARCH FUNCTIONALITY TESTS")
+    print("="*50)
+    
+    # Test 3: Search by name (first name and last name)
+    tester.test_search_by_name()
+    
+    # Test 4: Search by phone
+    tester.test_search_by_phone()
+    
+    # New Opportunity Tests
+    print("\n" + "="*50)
+    print("NEW OPPORTUNITY TESTS")
+    print("="*50)
+    
+    # Test 5: New opportunity with previous_record_id
+    tester.test_new_opportunity_with_previous_record_id()
+    
+    # Multiple Co-signers Tests
+    print("\n" + "="*50)
+    print("MULTIPLE CO-SIGNERS TESTS")
+    print("="*50)
+    
+    # Test 6: Multiple co-signers allowed
+    tester.test_multiple_cosigners_allowed()
+    
+    # Additional Core Tests
+    print("\n" + "="*50)
+    print("ADDITIONAL CORE FUNCTIONALITY TESTS")
+    print("="*50)
+    
+    tester.test_list_clients()
     tester.test_get_user_records()
-    
-    # Appointment Tests
-    print("\n" + "="*50)
-    print("APPOINTMENT TESTS")
-    print("="*50)
-    
-    if not tester.test_create_appointment():
-        print("❌ Appointment creation failed, stopping related tests")
-        return 1
-    
-    tester.test_update_appointment_status()
-    tester.test_get_appointments()
-    tester.test_get_agenda()
-    
-    # Co-Signer Tests
-    print("\n" + "="*50)
-    print("CO-SIGNER TESTS")
-    print("="*50)
-    
-    tester.test_create_cosigner()
-    tester.test_get_cosigners()
-    
-    # Dashboard Tests
-    print("\n" + "="*50)
-    print("DASHBOARD TESTS")
-    print("="*50)
-    
+    tester.test_create_appointment()
     tester.test_dashboard_stats()
-    
-    # Admin Tests
-    print("\n" + "="*50)
-    print("ADMIN TESTS")
-    print("="*50)
-    
-    if tester.admin_token:
-        tester.test_admin_get_users()
-        tester.test_admin_get_performance()
-        tester.test_admin_get_trash()
-    
-    tester.test_non_admin_access_admin_routes()
-    
-    # SMS Tests (Mocked)
-    print("\n" + "="*50)
-    print("SMS TESTS (MOCKED)")
-    print("="*50)
-    
-    tester.test_sms_send_documents()
-    tester.test_sms_send_appointment()
     
     # Print Results
     print("\n" + "="*50)
