@@ -154,6 +154,7 @@ export default function ClientsPage() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>{t('clients.addNew')}</DialogTitle>
+              <p className="text-sm text-slate-500">Enter client information below</p>
             </DialogHeader>
             <form onSubmit={handleAddClient} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -249,8 +250,8 @@ export default function ClientsPage() {
           filteredClients.map((client) => (
             <Card key={client.id} className="dashboard-card overflow-hidden" data-testid={`client-card-${client.id}`}>
               <Collapsible open={expandedClients[client.id]} onOpenChange={() => toggleClientExpand(client.id)}>
-                <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer">
+                <CollapsibleTrigger asChild>
+                  <div className="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer w-full" role="button" tabIndex={0}>
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
                         {client.first_name.charAt(0)}
@@ -642,6 +643,7 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onRefresh }) {
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t('clients.info')}</DialogTitle>
+          <p className="text-sm text-slate-500">View and manage client details</p>
         </DialogHeader>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
