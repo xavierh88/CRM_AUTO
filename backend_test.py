@@ -1,0 +1,538 @@
+import requests
+import sys
+import json
+from datetime import datetime
+
+class CRMAPITester:
+    def __init__(self, base_url="https://auto-sales-hub-10.preview.emergentagent.com/api"):
+        self.base_url = base_url
+        self.token = None
+        self.admin_token = None
+        self.user_id = None
+        self.admin_id = None
+        self.client_id = None
+        self.record_id = None
+        self.appointment_id = None
+        self.cosigner_id = None
+        self.tests_run = 0
+        self.tests_passed = 0
+        self.failed_tests = []
+
+    def run_test(self, name, method, endpoint, expected_status, data=None, use_admin=False):
+        """Run a single API test"""
+        url = f"{self.base_url}/{endpoint}"
+        headers = {'Content-Type': 'application/json'}
+        
+        # Use admin token if specified and available
+        token = self.admin_token if use_admin and self.admin_token else self.token
+        if token:
+            headers['Authorization'] = f'Bearer {token}'
+
+        self.tests_run += 1
+        print(f"\n🔍 Testing {name}...")
+        
+        try:
+            if method == 'GET':
+                response = requests.get(url, headers=headers)
+            elif method == 'POST':
+                response = requests.post(url, json=data, headers=headers)
+            elif method == 'PUT':
+                response = requests.put(url, json=data, headers=headers)
+            elif method == 'DELETE':
+                response = requests.delete(url, headers=headers)
+
+            success = response.status_code == expected_status
+            if success:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                try:
+                    return True, response.json() if response.content else {}
+                except:
+                    return True, {}
+            else:
+                print(f"❌ Failed - Expected {expected_status}, got {response.status_code}")
+                print(f"   Response: {response.text[:200]}")
+                self.failed_tests.append({
+                    "test": name,
+                    "expected": expected_status,
+                    "actual": response.status_code,
+                    "response": response.text[:200]
+                })
+                return False, {}
+
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            self.failed_tests.append({
+                "test": name,
+                "error": str(e)
+            })
+            return False, {}
+
+    def test_auth_register_salesperson(self):
+        """Test salesperson registration"""
+        timestamp = datetime.now().strftime('%H%M%S')
+        success, response = self.run_test(
+            "Register Salesperson",
+            "POST",
+            "auth/register",
+            200,
+            data={
+                "email": f"salesperson_{timestamp}@dealer.com",
+                "password": "TestPass123!",
+                "name": f"Test Salesperson {timestamp}",
+                "role": "salesperson",
+                "phone": f"+1555{timestamp}"
+            }
+        )
+        if success and 'token' in response:
+            self.token = response['token']
+            self.user_id = response['user']['id']
+            return True
+        return False
+
+    def test_auth_register_admin(self):
+        """Test admin registration"""
+        timestamp = datetime.now().strftime('%H%M%S')
+        success, response = self.run_test(
+            "Register Admin",
+            "POST",
+            "auth/register",
+            200,
+            data={
+                "email": f"admin_{timestamp}@dealer.com",
+                "password": "AdminPass123!",
+                "name": f"Test Admin {timestamp}",
+                "role": "admin",
+                "phone": f"+1666{timestamp}"
+            }
+        )
+        if success and 'token' in response:
+            self.admin_token = response['token']
+            self.admin_id = response['user']['id']
+            return True
+        return False
+
+    def test_auth_login(self):
+        """Test login with registered user"""
+        if not self.token:
+            return False
+        
+        # Extract email from token payload (simplified)
+        timestamp = datetime.now().strftime('%H%M%S')
+        success, response = self.run_test(
+            "Login",
+            "POST",
+            "auth/login",
+            200,
+            data={
+                "email": f"salesperson_{timestamp}@dealer.com",
+                "password": "TestPass123!"
+            }
+        )
+        return success
+
+    def test_auth_me(self):
+        """Test get current user"""
+        success, response = self.run_test(
+            "Get Current User",
+            "GET",
+            "auth/me",
+            200
+        )
+        return success
+
+    def test_protected_route_without_token(self):
+        """Test protected route without token"""
+        old_token = self.token
+        self.token = None
+        success, _ = self.run_test(
+            "Protected Route Without Token",
+            "GET",
+            "auth/me",
+            401
+        )
+        self.token = old_token
+        return success
+
+    def test_create_client(self):
+        """Test client creation"""
+        timestamp = datetime.now().strftime('%H%M%S')
+        success, response = self.run_test(
+            "Create Client",
+            "POST",
+            "clients",
+            200,
+            data={
+                "first_name": "John",
+                "last_name": "Doe",
+                "phone": f"+1555123{timestamp}",
+                "email": f"john.doe_{timestamp}@email.com",
+                "address": "123 Main St",
+                "apartment": "Apt 1"
+            }
+        )
+        if success and 'id' in response:
+            self.client_id = response['id']
+            return True
+        return False
+
+    def test_list_clients(self):
+        """Test listing clients"""
+        success, response = self.run_test(
+            "List Clients",
+            "GET",
+            "clients",
+            200
+        )
+        return success and isinstance(response, list)
+
+    def test_search_clients(self):
+        """Test client search by phone"""
+        if not self.client_id:
+            return False
+        
+        success, response = self.run_test(
+            "Search Client by Phone",
+            "GET",
+            f"clients/search/phone/555123",
+            200
+        )
+        return success
+
+    def test_create_user_record(self):
+        """Test user record (cartilla) creation"""
+        if not self.client_id:
+            return False
+            
+        success, response = self.run_test(
+            "Create User Record",
+            "POST",
+            "user-records",
+            200,
+            data={
+                "client_id": self.client_id,
+                "dl": True,
+                "checks": True,
+                "ssn": False,
+                "itin": True,
+                "auto": "Honda Civic",
+                "credit": "Good",
+                "bank": "Chase Bank",
+                "auto_loan": "15000",
+                "down_payment": "3000",
+                "dealer": "ABC Motors"
+            }
+        )
+        if success and 'id' in response:
+            self.record_id = response['id']
+            return True
+        return False
+
+    def test_get_user_records(self):
+        """Test getting user records"""
+        success, response = self.run_test(
+            "Get User Records",
+            "GET",
+            "user-records",
+            200
+        )
+        return success and isinstance(response, list)
+
+    def test_create_appointment(self):
+        """Test appointment creation"""
+        if not self.record_id or not self.client_id:
+            return False
+            
+        success, response = self.run_test(
+            "Create Appointment",
+            "POST",
+            "appointments",
+            200,
+            data={
+                "user_record_id": self.record_id,
+                "client_id": self.client_id,
+                "date": "2024-12-20",
+                "time": "10:00",
+                "dealer": "ABC Motors",
+                "language": "en"
+            }
+        )
+        if success and 'id' in response:
+            self.appointment_id = response['id']
+            return True
+        return False
+
+    def test_update_appointment_status(self):
+        """Test appointment status update"""
+        if not self.appointment_id:
+            return False
+            
+        success, _ = self.run_test(
+            "Update Appointment Status",
+            "PUT",
+            f"appointments/{self.appointment_id}/status?status=cumplido",
+            200
+        )
+        return success
+
+    def test_get_appointments(self):
+        """Test getting appointments"""
+        success, response = self.run_test(
+            "Get Appointments",
+            "GET",
+            "appointments",
+            200
+        )
+        return success and isinstance(response, list)
+
+    def test_get_agenda(self):
+        """Test getting agenda"""
+        success, response = self.run_test(
+            "Get Agenda",
+            "GET",
+            "appointments/agenda",
+            200
+        )
+        return success and isinstance(response, list)
+
+    def test_create_cosigner(self):
+        """Test co-signer creation"""
+        if not self.client_id:
+            return False
+            
+        # First create another client to be cosigner
+        timestamp = datetime.now().strftime('%H%M%S')
+        success, cosigner_response = self.run_test(
+            "Create Cosigner Client",
+            "POST",
+            "clients",
+            200,
+            data={
+                "first_name": "Jane",
+                "last_name": "Smith",
+                "phone": f"+1555999{timestamp}",
+                "email": f"jane.smith_{timestamp}@email.com"
+            }
+        )
+        
+        if not success:
+            return False
+            
+        cosigner_client_id = cosigner_response['id']
+        
+        success, response = self.run_test(
+            "Create Cosigner Relation",
+            "POST",
+            "cosigners",
+            200,
+            data={
+                "buyer_client_id": self.client_id,
+                "cosigner_client_id": cosigner_client_id
+            }
+        )
+        if success and 'id' in response:
+            self.cosigner_id = response['id']
+            return True
+        return False
+
+    def test_get_cosigners(self):
+        """Test getting cosigners"""
+        if not self.client_id:
+            return False
+            
+        success, response = self.run_test(
+            "Get Cosigners",
+            "GET",
+            f"cosigners/{self.client_id}",
+            200
+        )
+        return success and isinstance(response, list)
+
+    def test_dashboard_stats(self):
+        """Test dashboard statistics"""
+        success, response = self.run_test(
+            "Get Dashboard Stats",
+            "GET",
+            "dashboard/stats",
+            200
+        )
+        return success and 'total_clients' in response
+
+    def test_admin_get_users(self):
+        """Test admin get users list"""
+        success, response = self.run_test(
+            "Admin Get Users",
+            "GET",
+            "users",
+            200,
+            use_admin=True
+        )
+        return success and isinstance(response, list)
+
+    def test_admin_get_performance(self):
+        """Test admin get salesperson performance"""
+        success, response = self.run_test(
+            "Admin Get Performance",
+            "GET",
+            "dashboard/salesperson-performance",
+            200,
+            use_admin=True
+        )
+        return success and isinstance(response, list)
+
+    def test_admin_get_trash(self):
+        """Test admin access to trash"""
+        success, response = self.run_test(
+            "Admin Get Trash Clients",
+            "GET",
+            "trash/clients",
+            200,
+            use_admin=True
+        )
+        return success and isinstance(response, list)
+
+    def test_sms_send_documents(self):
+        """Test SMS send documents link (mocked)"""
+        if not self.client_id:
+            return False
+            
+        success, response = self.run_test(
+            "Send Documents SMS",
+            "POST",
+            f"sms/send-documents-link?client_id={self.client_id}",
+            200
+        )
+        return success and 'message' in response
+
+    def test_sms_send_appointment(self):
+        """Test SMS send appointment link (mocked)"""
+        if not self.client_id or not self.appointment_id:
+            return False
+            
+        success, response = self.run_test(
+            "Send Appointment SMS",
+            "POST",
+            f"sms/send-appointment-link?client_id={self.client_id}&appointment_id={self.appointment_id}",
+            200
+        )
+        return success and 'message' in response
+
+    def test_non_admin_access_admin_routes(self):
+        """Test non-admin user accessing admin routes"""
+        success, _ = self.run_test(
+            "Non-Admin Access Admin Route",
+            "GET",
+            "users",
+            403
+        )
+        return success
+
+def main():
+    print("🚀 Starting CRM API Testing...")
+    tester = CRMAPITester()
+    
+    # Authentication Tests
+    print("\n" + "="*50)
+    print("AUTHENTICATION TESTS")
+    print("="*50)
+    
+    if not tester.test_auth_register_salesperson():
+        print("❌ Salesperson registration failed, stopping tests")
+        return 1
+    
+    if not tester.test_auth_register_admin():
+        print("❌ Admin registration failed, continuing with limited tests")
+    
+    tester.test_auth_login()
+    tester.test_auth_me()
+    tester.test_protected_route_without_token()
+    
+    # Client Tests
+    print("\n" + "="*50)
+    print("CLIENT MANAGEMENT TESTS")
+    print("="*50)
+    
+    if not tester.test_create_client():
+        print("❌ Client creation failed, stopping related tests")
+        return 1
+    
+    tester.test_list_clients()
+    tester.test_search_clients()
+    
+    # User Records Tests
+    print("\n" + "="*50)
+    print("USER RECORDS (CARTILLAS) TESTS")
+    print("="*50)
+    
+    if not tester.test_create_user_record():
+        print("❌ User record creation failed, stopping related tests")
+        return 1
+    
+    tester.test_get_user_records()
+    
+    # Appointment Tests
+    print("\n" + "="*50)
+    print("APPOINTMENT TESTS")
+    print("="*50)
+    
+    if not tester.test_create_appointment():
+        print("❌ Appointment creation failed, stopping related tests")
+        return 1
+    
+    tester.test_update_appointment_status()
+    tester.test_get_appointments()
+    tester.test_get_agenda()
+    
+    # Co-Signer Tests
+    print("\n" + "="*50)
+    print("CO-SIGNER TESTS")
+    print("="*50)
+    
+    tester.test_create_cosigner()
+    tester.test_get_cosigners()
+    
+    # Dashboard Tests
+    print("\n" + "="*50)
+    print("DASHBOARD TESTS")
+    print("="*50)
+    
+    tester.test_dashboard_stats()
+    
+    # Admin Tests
+    print("\n" + "="*50)
+    print("ADMIN TESTS")
+    print("="*50)
+    
+    if tester.admin_token:
+        tester.test_admin_get_users()
+        tester.test_admin_get_performance()
+        tester.test_admin_get_trash()
+    
+    tester.test_non_admin_access_admin_routes()
+    
+    # SMS Tests (Mocked)
+    print("\n" + "="*50)
+    print("SMS TESTS (MOCKED)")
+    print("="*50)
+    
+    tester.test_sms_send_documents()
+    tester.test_sms_send_appointment()
+    
+    # Print Results
+    print("\n" + "="*50)
+    print("TEST RESULTS")
+    print("="*50)
+    print(f"📊 Tests passed: {tester.tests_passed}/{tester.tests_run}")
+    
+    if tester.failed_tests:
+        print(f"\n❌ Failed tests ({len(tester.failed_tests)}):")
+        for test in tester.failed_tests:
+            print(f"  - {test['test']}: {test.get('error', f'Expected {test.get(\"expected\")}, got {test.get(\"actual\")}')}")
+    
+    success_rate = (tester.tests_passed / tester.tests_run) * 100 if tester.tests_run > 0 else 0
+    print(f"\n🎯 Success Rate: {success_rate:.1f}%")
+    
+    return 0 if success_rate >= 80 else 1
+
+if __name__ == "__main__":
+    sys.exit(main())
