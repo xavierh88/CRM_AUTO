@@ -358,14 +358,15 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
   const [newRecord, setNewRecord] = useState({
     dl: false, checks: false, ssn: false, itin: false,
     auto: '', credit: '', bank: '', auto_loan: '', down_payment: '', dealer: '',
-    sold: false, vehicle_make: '', vehicle_year: '', sale_date: ''
+    sold: false, vehicle_make: '', vehicle_year: '', sale_date: '',
+    previous_record_id: null
   });
 
-  const handleAddRecord = async () => {
+  const handleAddRecord = async (previousRecordId = null) => {
     // Don't save empty records
     const hasData = newRecord.dl || newRecord.checks || newRecord.ssn || newRecord.itin ||
       newRecord.auto || newRecord.credit || newRecord.bank || newRecord.auto_loan ||
-      newRecord.down_payment || newRecord.dealer;
+      newRecord.down_payment || newRecord.dealer || previousRecordId;
     
     if (!hasData) {
       toast.error('Please fill at least one field');
@@ -373,15 +374,34 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     }
 
     try {
-      await axios.post(`${API}/user-records`, { client_id: clientId, ...newRecord });
+      await axios.post(`${API}/user-records`, { 
+        client_id: clientId, 
+        ...newRecord,
+        previous_record_id: previousRecordId 
+      });
       setShowAddRecord(false);
       setNewRecord({
         dl: false, checks: false, ssn: false, itin: false,
         auto: '', credit: '', bank: '', auto_loan: '', down_payment: '', dealer: '',
-        sold: false, vehicle_make: '', vehicle_year: '', sale_date: ''
+        sold: false, vehicle_make: '', vehicle_year: '', sale_date: '',
+        previous_record_id: null
       });
       onRefresh();
       toast.success(t('common.success'));
+    } catch (error) {
+      toast.error(t('common.error'));
+    }
+  };
+
+  const createNewOpportunity = async (previousRecordId) => {
+    try {
+      await axios.post(`${API}/user-records`, { 
+        client_id: clientId, 
+        previous_record_id: previousRecordId,
+        dl: false, checks: false, ssn: false, itin: false
+      });
+      onRefresh();
+      toast.success('New opportunity created!');
     } catch (error) {
       toast.error(t('common.error'));
     }
