@@ -684,12 +684,6 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
         </div>
       )}
 
-      {records.filter(r => r.salesperson_id !== user.id).length > 0 && (
-        <div className="text-sm text-slate-400 mt-4 text-center">
-          + {records.filter(r => r.salesperson_id !== user.id).length} records from other salespeople
-        </div>
-      )}
-
       {/* Add Record Form */}
       {(showAddRecord || showNewOpportunity) && (
         <div className="bg-white rounded-lg border border-blue-200 p-4 mt-3">
