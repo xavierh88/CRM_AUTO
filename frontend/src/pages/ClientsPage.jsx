@@ -780,7 +780,103 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 }
 
 // Record Card Component
-function RecordCard({ record, appointments, getStatusBadge, sendAppointmentSMS, clientId, createAppointment, updateAppointmentStatus, t, isPurple, onOpenAppointmentForm }) {
+function RecordCard({ 
+  record, appointments, getStatusBadge, sendAppointmentSMS, clientId, createAppointment, 
+  updateAppointmentStatus, t, isPurple, onOpenAppointmentForm, currentUserId,
+  onEdit, onDelete, isEditing, editData, setEditData, onSaveEdit, onCancelEdit 
+}) {
+  const isOwner = record.salesperson_id === currentUserId;
+
+  if (isEditing) {
+    return (
+      <div className={`bg-white rounded-lg border p-4 ${isPurple ? 'border-purple-200' : 'border-blue-200'}`}>
+        <h5 className="font-medium text-slate-700 mb-3">Edit Record</h5>
+        
+        {/* Checklist */}
+        <div className="flex gap-4 mb-3 flex-wrap">
+          {['dl', 'checks', 'ssn', 'itin'].map((field) => (
+            <div key={field} className="flex items-center gap-2">
+              <Checkbox
+                checked={editData[field]}
+                onCheckedChange={(checked) => setEditData({ ...editData, [field]: checked })}
+              />
+              <Label className="text-sm uppercase">{field}</Label>
+            </div>
+          ))}
+        </div>
+        
+        {/* Info fields */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+          <Input placeholder="Auto" value={editData.auto} onChange={(e) => setEditData({ ...editData, auto: e.target.value })} />
+          <Input placeholder="Credit" value={editData.credit} onChange={(e) => setEditData({ ...editData, credit: e.target.value })} />
+          <Input placeholder="Bank" value={editData.bank} onChange={(e) => setEditData({ ...editData, bank: e.target.value })} />
+          <Input placeholder="Auto Loan" value={editData.auto_loan} onChange={(e) => setEditData({ ...editData, auto_loan: e.target.value })} />
+        </div>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <Input placeholder="Down Payment" value={editData.down_payment} onChange={(e) => setEditData({ ...editData, down_payment: e.target.value })} />
+          <Input placeholder="Dealer" value={editData.dealer} onChange={(e) => setEditData({ ...editData, dealer: e.target.value })} />
+        </div>
+
+        {/* Sold Status */}
+        <div className="mb-3">
+          <Label className="form-label mb-2 block">Sold</Label>
+          <Select value={editData.finance_status} onValueChange={(value) => setEditData({ ...editData, finance_status: value })}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="no">No</SelectItem>
+              <SelectItem value="financiado">Financiado</SelectItem>
+              <SelectItem value="least">Least</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Vehicle Info */}
+        {(editData.finance_status === 'financiado' || editData.finance_status === 'least') && (
+          <div className="bg-amber-50 rounded-lg p-3 mb-3 border border-amber-200">
+            <Label className="form-label mb-2 block text-amber-700">Vehicle Information</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <Input placeholder="Make" value={editData.vehicle_make} onChange={(e) => setEditData({ ...editData, vehicle_make: e.target.value })} />
+              <Input placeholder="Year" value={editData.vehicle_year} onChange={(e) => setEditData({ ...editData, vehicle_year: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-3 gap-3 mt-3">
+              <Select value={editData.sale_month} onValueChange={(value) => setEditData({ ...editData, sale_month: value })}>
+                <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+                <SelectContent>
+                  {[...Array(12)].map((_, i) => (
+                    <SelectItem key={i+1} value={String(i+1)}>{new Date(2000, i).toLocaleString('default', { month: 'short' })}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={editData.sale_day} onValueChange={(value) => setEditData({ ...editData, sale_day: value })}>
+                <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
+                <SelectContent>
+                  {[...Array(31)].map((_, i) => (
+                    <SelectItem key={i+1} value={String(i+1)}>{i+1}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={editData.sale_year} onValueChange={(value) => setEditData({ ...editData, sale_year: value })}>
+                <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+                <SelectContent>
+                  {[2024, 2025, 2026].map((year) => (
+                    <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={onCancelEdit}>Cancel</Button>
+          <Button size="sm" onClick={onSaveEdit}>Save Changes</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`bg-white rounded-lg border p-4 ${isPurple ? 'border-purple-200' : 'border-slate-200'}`}>
       <div className="flex items-center justify-between mb-3">
@@ -795,27 +891,28 @@ function RecordCard({ record, appointments, getStatusBadge, sendAppointmentSMS, 
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          {/* Edit button - available to all */}
+          <Button size="sm" variant="ghost" onClick={() => onEdit(record)} title="Edit">
+            <RefreshCw className="w-4 h-4 text-slate-400" />
+          </Button>
+          {/* Delete button - only for owner */}
+          {isOwner && (
+            <Button size="sm" variant="ghost" onClick={() => onDelete(record.id)} title="Delete">
+              <Trash2 className="w-4 h-4 text-red-400" />
+            </Button>
+          )}
           {appointments[record.id] ? (
             <>
               {getStatusBadge(appointments[record.id].status)}
-              <Button 
-                size="sm" 
-                variant="ghost"
-                onClick={() => sendAppointmentSMS(clientId, appointments[record.id].id)}
-                title="Resend SMS"
-              >
+              <Button size="sm" variant="ghost" onClick={() => sendAppointmentSMS(clientId, appointments[record.id].id)} title="Resend SMS">
                 <Send className="w-4 h-4" />
               </Button>
             </>
           ) : (
-            <Button 
-              size="sm" 
-              variant="outline"
-              onClick={() => onOpenAppointmentForm(record.id)}
-            >
+            <Button size="sm" variant="outline" onClick={() => onOpenAppointmentForm(record.id)}>
               <Calendar className="w-4 h-4 mr-1" />
-              Appointment
+              Appt
             </Button>
           )}
         </div>
@@ -864,20 +961,12 @@ function RecordCard({ record, appointments, getStatusBadge, sendAppointmentSMS, 
       {/* Appointment Actions */}
       {appointments[record.id] && (
         <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-          <Button 
-            size="sm" 
-            variant="outline"
-            className="text-emerald-600 hover:bg-emerald-50"
-            onClick={() => updateAppointmentStatus(appointments[record.id].id, 'cumplido')}
-          >
+          <Button size="sm" variant="outline" className="text-emerald-600 hover:bg-emerald-50"
+            onClick={() => updateAppointmentStatus(appointments[record.id].id, 'cumplido')}>
             {t('appointments.markCompleted')}
           </Button>
-          <Button 
-            size="sm" 
-            variant="outline"
-            className="text-slate-600 hover:bg-slate-50"
-            onClick={() => updateAppointmentStatus(appointments[record.id].id, 'no_show')}
-          >
+          <Button size="sm" variant="outline" className="text-slate-600 hover:bg-slate-50"
+            onClick={() => updateAppointmentStatus(appointments[record.id].id, 'no_show')}>
             {t('appointments.markNoShow')}
           </Button>
         </div>
