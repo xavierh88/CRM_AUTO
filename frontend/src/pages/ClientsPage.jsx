@@ -663,6 +663,7 @@ function RecordCard({ record, appointments, getStatusBadge, sendAppointmentSMS, 
                 size="sm" 
                 variant="ghost"
                 onClick={() => sendAppointmentSMS(clientId, appointments[record.id].id)}
+                title="Resend SMS"
               >
                 <Send className="w-4 h-4" />
               </Button>
@@ -671,7 +672,7 @@ function RecordCard({ record, appointments, getStatusBadge, sendAppointmentSMS, 
             <Button 
               size="sm" 
               variant="outline"
-              onClick={() => createAppointment(record.id)}
+              onClick={() => onOpenAppointmentForm(record.id)}
             >
               <Calendar className="w-4 h-4 mr-1" />
               Appointment
