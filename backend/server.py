@@ -389,32 +389,42 @@ async def update_client_documents(client_id: str, id_uploaded: bool = None, inco
 
 # ==================== USER RECORDS (CARTILLAS) ROUTES ====================
 
-@api_router.post("/user-records", response_model=UserRecordResponse)
+@api_router.post("/user-records", response_model=dict)
 async def create_user_record(record: UserRecordCreate, current_user: dict = Depends(get_current_user)):
     now = datetime.now(timezone.utc).isoformat()
+    
+    # Calculate opportunity number
+    opportunity_number = 1
+    if record.previous_record_id:
+        # This is a "New Opportunity" - count previous opportunities
+        prev_record = await db.user_records.find_one({"id": record.previous_record_id})
+        if prev_record:
+            opportunity_number = prev_record.get("opportunity_number", 1) + 1
+    
     record_doc = {
         "id": str(uuid.uuid4()),
         "client_id": record.client_id,
         "salesperson_id": current_user["id"],
         "salesperson_name": current_user["name"],
         **record.model_dump(exclude={"client_id"}),
+        "opportunity_number": opportunity_number,
         "created_at": now,
         "is_deleted": False
     }
     await db.user_records.insert_one(record_doc)
     
-    # Update client last_contact
-    await db.clients.update_one({"id": record.client_id}, {"$set": {"last_contact": now}})
+    # Update client last_record_date
+    await db.clients.update_one({"id": record.client_id}, {"$set": {"last_record_date": now}})
     
     del record_doc["_id"]
     return record_doc
 
-@api_router.get("/user-records", response_model=List[UserRecordResponse])
+@api_router.get("/user-records", response_model=List[dict])
 async def get_user_records(client_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     query = {"is_deleted": {"$ne": True}}
     if client_id:
         query["client_id"] = client_id
-    records = await db.user_records.find(query, {"_id": 0}).to_list(1000)
+    records = await db.user_records.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     return records
 
 @api_router.get("/user-records/{record_id}", response_model=UserRecordResponse)
