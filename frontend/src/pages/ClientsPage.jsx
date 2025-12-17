@@ -39,9 +39,10 @@ export default function ClientsPage() {
     fetchClients();
   }, []);
 
-  const fetchClients = async () => {
+  const fetchClients = async (search = '') => {
     try {
-      const response = await axios.get(`${API}/clients`);
+      const url = search ? `${API}/clients?search=${encodeURIComponent(search)}` : `${API}/clients`;
+      const response = await axios.get(url);
       setClients(response.data);
     } catch (error) {
       toast.error('Failed to fetch clients');
@@ -109,10 +110,19 @@ export default function ClientsPage() {
     }
   };
 
-  const filteredClients = clients.filter(client => 
-    `${client.first_name} ${client.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.phone.includes(searchTerm)
-  );
+  // Search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm) {
+        fetchClients(searchTerm);
+      } else {
+        fetchClients();
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const filteredClients = clients; // Search is now done server-side
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
