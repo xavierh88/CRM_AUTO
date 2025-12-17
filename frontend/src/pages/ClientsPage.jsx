@@ -459,114 +459,82 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
           </Button>
         </div>
 
-      {/* Records List - Tree Structure */}
+      {/* Primary Records (Oportunidad #1) */}
       <div className="space-y-3">
-        {myRecords.map((record, index) => {
-          const isChild = record.previous_record_id !== null;
-          const hasChild = myRecords.some(r => r.previous_record_id === record.id);
+        {primaryRecords.map((record) => (
+          <RecordCard 
+            key={record.id}
+            record={record}
+            appointments={appointments}
+            getStatusBadge={getStatusBadge}
+            sendAppointmentSMS={sendAppointmentSMS}
+            clientId={clientId}
+            createAppointment={createAppointment}
+            updateAppointmentStatus={updateAppointmentStatus}
+            t={t}
+          />
+        ))}
+        
+        {primaryRecords.length === 0 && !showAddRecord && (
+          <p className="text-sm text-slate-400 text-center py-4">No records yet. Click "Add Record" to create one.</p>
+        )}
+      </div>
+      </div>
+
+      {/* NEW OPPORTUNITY Section */}
+      {(newOpportunities.length > 0 || showNewOpportunity) && (
+        <div className="mt-6 pt-4 border-t-2 border-purple-200">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-semibold text-purple-700 flex items-center gap-2">
+              <span className="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-xs">2</span>
+              Nueva Oportunidad
+            </h4>
+            {!showNewOpportunity && (
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="border-purple-200 text-purple-600"
+                onClick={() => { setShowNewOpportunity(true); setAddingToOpportunity(2); }}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add Record
+              </Button>
+            )}
+          </div>
           
-          return (
-            <div 
-              key={record.id} 
-              className={`bg-white rounded-lg border p-4 ${
-                isChild 
-                  ? 'ml-6 border-purple-200 border-l-4 border-l-purple-400' 
-                  : 'border-slate-200'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  {isChild && (
-                    <span className="text-purple-500 text-lg">↳</span>
-                  )}
-                  <span className={`text-sm font-medium ${isChild ? 'text-purple-600' : 'text-blue-600'}`}>
-                    {record.opportunity_number > 1 
-                      ? `Opportunity #${record.opportunity_number}` 
-                      : 'Record #1'}
-                  </span>
-                  {record.sold && (
-                    <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-medium">
-                      SOLD
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  {appointments[record.id] ? (
-                    <>
-                      {getStatusBadge(appointments[record.id].status)}
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={() => sendAppointmentSMS(clientId, appointments[record.id].id)}
-                        data-testid={`send-appt-sms-${record.id}`}
-                      >
-                        <Send className="w-4 h-4" />
-                      </Button>
-                    </>
-                  ) : (
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => createAppointment(record.id)}
-                      data-testid={`create-appt-${record.id}`}
-                    >
-                      <Calendar className="w-4 h-4 mr-1" />
-                      Create Appointment
-                    </Button>
-                  )}
-                </div>
-              </div>
+          <div className="space-y-3">
+            {newOpportunities.map((record) => (
+              <RecordCard 
+                key={record.id}
+                record={record}
+                appointments={appointments}
+                getStatusBadge={getStatusBadge}
+                sendAppointmentSMS={sendAppointmentSMS}
+                clientId={clientId}
+                createAppointment={createAppointment}
+                updateAppointmentStatus={updateAppointmentStatus}
+                t={t}
+                isPurple
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
-              {/* Checklist */}
-              <div className="flex gap-4 mb-3 flex-wrap">
-                {['dl', 'checks', 'ssn', 'itin'].map((field) => (
-                  <div key={field} className="flex items-center gap-2">
-                    <span className={`w-5 h-5 rounded flex items-center justify-center ${
-                      record[field] ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'
-                    }`}>
-                      {record[field] ? '✓' : '×'}
-                    </span>
-                    <span className="text-sm text-slate-600 uppercase">{t(`records.${field}`)}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Details */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                {record.auto && <div><span className="text-slate-400">Auto:</span> {record.auto}</div>}
-                {record.dealer && <div><span className="text-slate-400">Dealer:</span> {record.dealer}</div>}
-                {record.down_payment && <div><span className="text-slate-400">Down:</span> ${record.down_payment}</div>}
-                {record.sold && record.vehicle_make && (
-                  <div className="col-span-full">
-                    <span className="text-slate-400">Vehicle:</span> {record.vehicle_make} {record.vehicle_year}
-                  </div>
-                )}
-              </div>
-
-              {/* Appointment Actions */}
-              {appointments[record.id] && (
-                <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    className="text-emerald-600 hover:bg-emerald-50"
-                    onClick={() => updateAppointmentStatus(appointments[record.id].id, 'cumplido')}
-                  >
-                    {t('appointments.markCompleted')}
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    className="text-slate-600 hover:bg-slate-50"
-                    onClick={() => updateAppointmentStatus(appointments[record.id].id, 'no_show')}
-                  >
-                    {t('appointments.markNoShow')}
-                  </Button>
-                </div>
-              )}
-            </div>
-          );
-        })}
+      {/* Button to create New Opportunity */}
+      {!showNewOpportunity && canCreateNewOpportunity && newOpportunities.length === 0 && (
+        <div className="mt-4 pt-4 border-t border-dashed border-slate-200">
+          <Button 
+            variant="outline"
+            className="w-full text-purple-600 hover:bg-purple-50 border-purple-200 border-dashed"
+            onClick={handleCreateNewOpportunity}
+            data-testid="new-opportunity-btn"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Crear Nueva Oportunidad
+          </Button>
+        </div>
+      )}
 
         {records.filter(r => r.salesperson_id !== user.id).length > 0 && (
           <div className="text-sm text-slate-400 mt-2">
