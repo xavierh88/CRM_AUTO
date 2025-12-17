@@ -810,57 +810,205 @@ function CoSignersSection({ clientId, cosigners, onRefresh }) {
 // Client Info Modal Component
 function ClientInfoModal({ client, onClose, onSendDocsSMS, onRefresh }) {
   const { t } = useTranslation();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({
+    first_name: client.first_name,
+    last_name: client.last_name,
+    phone: client.phone,
+    email: client.email || '',
+    address: client.address || '',
+    apartment: client.apartment || ''
+  });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null); // 'id' or 'income'
+
+  const handleSave = async () => {
+    try {
+      await axios.put(`${API}/clients/${client.id}`, editData);
+      toast.success('Client updated');
+      setIsEditing(false);
+      onRefresh();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update');
+    }
+  };
+
+  const handleDeleteDocument = async (docType) => {
+    try {
+      const updateData = docType === 'id' 
+        ? { id_uploaded: false }
+        : { income_proof_uploaded: false };
+      
+      await axios.put(`${API}/clients/${client.id}/documents`, null, {
+        params: updateData
+      });
+      toast.success(`${docType === 'id' ? 'ID' : 'Income proof'} document removed`);
+      setShowDeleteConfirm(null);
+      onRefresh();
+    } catch (error) {
+      toast.error('Failed to remove document');
+    }
+  };
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{t('clients.info')}</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>{t('clients.info')}</DialogTitle>
+            {!isEditing && (
+              <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
+                <RefreshCw className="w-4 h-4 mr-1" />
+                Edit
+              </Button>
+            )}
+          </div>
           <p className="text-sm text-slate-500">View and manage client details</p>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="form-label">{t('clients.firstName')}</Label>
-              <p className="font-medium">{client.first_name}</p>
+          {isEditing ? (
+            // Edit Mode
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="form-label">{t('clients.firstName')}</Label>
+                  <Input
+                    value={editData.first_name}
+                    onChange={(e) => setEditData({ ...editData, first_name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label className="form-label">{t('clients.lastName')}</Label>
+                  <Input
+                    value={editData.last_name}
+                    onChange={(e) => setEditData({ ...editData, last_name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label className="form-label">{t('clients.phone')}</Label>
+                  <Input
+                    type="tel"
+                    value={editData.phone}
+                    onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label className="form-label">{t('clients.email')}</Label>
+                  <Input
+                    type="email"
+                    value={editData.email}
+                    onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label className="form-label">{t('clients.address')}</Label>
+                  <Input
+                    value={editData.address}
+                    onChange={(e) => setEditData({ ...editData, address: e.target.value })}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label className="form-label">{t('clients.apartment')}</Label>
+                  <Input
+                    value={editData.apartment}
+                    onChange={(e) => setEditData({ ...editData, apartment: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" onClick={() => setIsEditing(false)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button onClick={handleSave} data-testid="save-client-edit">
+                  {t('common.save')}
+                </Button>
+              </div>
+            </>
+          ) : (
+            // View Mode
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="form-label">{t('clients.firstName')}</Label>
+                <p className="font-medium">{client.first_name}</p>
+              </div>
+              <div>
+                <Label className="form-label">{t('clients.lastName')}</Label>
+                <p className="font-medium">{client.last_name}</p>
+              </div>
+              <div>
+                <Label className="form-label">{t('clients.phone')}</Label>
+                <p className="font-medium">{client.phone}</p>
+              </div>
+              <div>
+                <Label className="form-label">{t('clients.email')}</Label>
+                <p className="font-medium">{client.email || '-'}</p>
+              </div>
+              <div className="col-span-2">
+                <Label className="form-label">{t('clients.address')}</Label>
+                <p className="font-medium">{client.address || '-'} {client.apartment && `Apt ${client.apartment}`}</p>
+              </div>
             </div>
-            <div>
-              <Label className="form-label">{t('clients.lastName')}</Label>
-              <p className="font-medium">{client.last_name}</p>
-            </div>
-            <div>
-              <Label className="form-label">{t('clients.phone')}</Label>
-              <p className="font-medium">{client.phone}</p>
-            </div>
-            <div>
-              <Label className="form-label">{t('clients.email')}</Label>
-              <p className="font-medium">{client.email || '-'}</p>
-            </div>
-            <div className="col-span-2">
-              <Label className="form-label">{t('clients.address')}</Label>
-              <p className="font-medium">{client.address || '-'} {client.apartment && `Apt ${client.apartment}`}</p>
-            </div>
-          </div>
+          )}
 
           {/* Document Status */}
           <div>
             <Label className="form-label">{t('clients.documents')}</Label>
-            <div className="flex gap-4 mt-2">
-              <div className="flex items-center gap-2">
-                {client.id_uploaded ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                ) : (
-                  <XCircle className="w-5 h-5 text-slate-300" />
+            <div className="space-y-2 mt-2">
+              {/* ID Document */}
+              <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  {client.id_uploaded ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-slate-300" />
+                  )}
+                  <span className="text-sm">{t('clients.idUploaded')}</span>
+                </div>
+                {client.id_uploaded && (
+                  showDeleteConfirm === 'id' ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-red-600">Confirm delete?</span>
+                      <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument('id')}>
+                        Yes
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
+                        No
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm('id')}>
+                      <Trash2 className="w-4 h-4 text-red-400" />
+                    </Button>
+                  )
                 )}
-                <span className="text-sm">{t('clients.idUploaded')}</span>
               </div>
-              <div className="flex items-center gap-2">
-                {client.income_proof_uploaded ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                ) : (
-                  <XCircle className="w-5 h-5 text-slate-300" />
+              
+              {/* Income Proof */}
+              <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  {client.income_proof_uploaded ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-slate-300" />
+                  )}
+                  <span className="text-sm">{t('clients.incomeProof')}</span>
+                </div>
+                {client.income_proof_uploaded && (
+                  showDeleteConfirm === 'income' ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-red-600">Confirm delete?</span>
+                      <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument('income')}>
+                        Yes
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
+                        No
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm('income')}>
+                      <Trash2 className="w-4 h-4 text-red-400" />
+                    </Button>
+                  )
                 )}
-                <span className="text-sm">{t('clients.incomeProof')}</span>
               </div>
             </div>
           </div>
