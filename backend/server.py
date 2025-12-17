@@ -52,7 +52,7 @@ class UserRoleUpdate(BaseModel):
     role: str
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: str  # Can be email or username
     password: str
 
 class UserResponse(BaseModel):
