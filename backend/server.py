@@ -311,13 +311,16 @@ async def create_client(client: ClientCreate, current_user: dict = Depends(get_c
     del client_doc["_id"]
     return client_doc
 
+import re as regex_module
+
 @api_router.get("/clients", response_model=List[dict])
 async def get_clients(include_deleted: bool = False, search: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     query = {} if include_deleted and current_user["role"] == "admin" else {"is_deleted": {"$ne": True}}
     
-    # Add search filter for name and phone
+    # Add search filter for name and phone (escape special regex characters)
     if search:
-        search_regex = {"$regex": search, "$options": "i"}
+        escaped_search = regex_module.escape(search)
+        search_regex = {"$regex": escaped_search, "$options": "i"}
         query["$or"] = [
             {"first_name": search_regex},
             {"last_name": search_regex},
