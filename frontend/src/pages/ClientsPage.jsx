@@ -274,10 +274,12 @@ export default function ClientsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <div className="text-right hidden sm:block">
-                        <p className="text-xs text-slate-400">{t('clients.lastContact')}</p>
-                        <p className="text-sm font-medium text-slate-600">{formatDate(client.last_contact)}</p>
-                      </div>
+                      {client.last_record_date && (
+                        <div className="text-right hidden sm:block">
+                          <p className="text-xs text-slate-400">{t('clients.lastContact')}</p>
+                          <p className="text-sm font-medium text-slate-600">{formatDate(client.last_record_date)}</p>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2">
                         {client.id_uploaded ? (
                           <CheckCircle2 className="w-5 h-5 text-emerald-500" />
