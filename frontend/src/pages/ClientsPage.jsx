@@ -495,22 +495,30 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     </span>
   );
 
-  // Group records by opportunity number
-  const myRecords = records.filter(r => r.salesperson_id === user.id);
-  
-  // Group by opportunity_number (1-5)
+  // Group ALL records by opportunity number (show all records, not just user's)
+  // All users can see all records, but can only delete their own
   const opportunityGroups = {};
-  myRecords.forEach(record => {
+  records.forEach(record => {
     const oppNum = record.opportunity_number || 1;
     if (!opportunityGroups[oppNum]) opportunityGroups[oppNum] = [];
     opportunityGroups[oppNum].push(record);
   });
   
-  // Get the highest opportunity number and check if we can create more
+  // Get my records for checking if I can create new opportunity
+  const myRecords = records.filter(r => r.salesperson_id === user.id);
+  const myOpportunityGroups = {};
+  myRecords.forEach(record => {
+    const oppNum = record.opportunity_number || 1;
+    if (!myOpportunityGroups[oppNum]) myOpportunityGroups[oppNum] = [];
+    myOpportunityGroups[oppNum].push(record);
+  });
+  
+  // Get the highest opportunity number and check if current user can create more
   const maxOpportunity = Math.max(...Object.keys(opportunityGroups).map(Number), 0);
-  const latestRecordInLastOpp = opportunityGroups[maxOpportunity]?.[0];
-  const canCreateNewOpportunity = maxOpportunity < 5 && latestRecordInLastOpp && 
-    (latestRecordInLastOpp.finance_status === 'financiado' || latestRecordInLastOpp.finance_status === 'least');
+  const myMaxOpportunity = Math.max(...Object.keys(myOpportunityGroups).map(Number), 0);
+  const latestRecordInMyLastOpp = myOpportunityGroups[myMaxOpportunity]?.[0];
+  const canCreateNewOpportunity = myMaxOpportunity < 5 && latestRecordInMyLastOpp && 
+    (latestRecordInMyLastOpp.finance_status === 'financiado' || latestRecordInMyLastOpp.finance_status === 'least');
 
   const opportunityColors = ['blue', 'purple', 'emerald', 'amber', 'rose'];
   
