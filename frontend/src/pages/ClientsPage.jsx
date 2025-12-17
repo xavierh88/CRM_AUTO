@@ -476,9 +476,8 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
         ))}
         
         {primaryRecords.length === 0 && !showAddRecord && (
-          <p className="text-sm text-slate-400 text-center py-4">No records yet. Click "Add Record" to create one.</p>
+          <p className="text-sm text-slate-400 text-center py-4">No records yet. Click &quot;Add Record&quot; to create one.</p>
         )}
-      </div>
       </div>
 
       {/* NEW OPPORTUNITY Section */}
