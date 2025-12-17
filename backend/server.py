@@ -284,7 +284,7 @@ async def update_user_role(data: UserRoleUpdate, current_user: dict = Depends(ge
 
 # ==================== CLIENTS ROUTES ====================
 
-@api_router.post("/clients", response_model=ClientResponse)
+@api_router.post("/clients", response_model=dict)
 async def create_client(client: ClientCreate, current_user: dict = Depends(get_current_user)):
     # Check for existing client by phone
     existing = await db.clients.find_one({"phone": client.phone, "is_deleted": {"$ne": True}})
@@ -302,7 +302,7 @@ async def create_client(client: ClientCreate, current_user: dict = Depends(get_c
         "apartment": client.apartment,
         "id_uploaded": False,
         "income_proof_uploaded": False,
-        "last_contact": now,
+        "last_record_date": None,  # No records yet
         "created_at": now,
         "created_by": current_user["id"],
         "is_deleted": False
@@ -311,10 +311,30 @@ async def create_client(client: ClientCreate, current_user: dict = Depends(get_c
     del client_doc["_id"]
     return client_doc
 
-@api_router.get("/clients", response_model=List[ClientResponse])
-async def get_clients(include_deleted: bool = False, current_user: dict = Depends(get_current_user)):
+@api_router.get("/clients", response_model=List[dict])
+async def get_clients(include_deleted: bool = False, search: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     query = {} if include_deleted and current_user["role"] == "admin" else {"is_deleted": {"$ne": True}}
-    clients = await db.clients.find(query, {"_id": 0}).sort("last_contact", -1).to_list(1000)
+    
+    # Add search filter for name and phone
+    if search:
+        search_regex = {"$regex": search, "$options": "i"}
+        query["$or"] = [
+            {"first_name": search_regex},
+            {"last_name": search_regex},
+            {"phone": search_regex}
+        ]
+    
+    clients = await db.clients.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    # For each client, get the last record date
+    for client in clients:
+        last_record = await db.user_records.find_one(
+            {"client_id": client["id"], "is_deleted": {"$ne": True}},
+            {"_id": 0, "created_at": 1},
+            sort=[("created_at", -1)]
+        )
+        client["last_record_date"] = last_record["created_at"] if last_record else None
+    
     return clients
 
 @api_router.get("/clients/{client_id}", response_model=ClientResponse)
