@@ -361,6 +361,9 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
   const [appointmentData, setAppointmentData] = useState({
     date: '', time: '', dealer: '', language: 'en'
   });
+  const [expandedOpportunity, setExpandedOpportunity] = useState(null); // which opportunity is expanded
+  const [editingRecord, setEditingRecord] = useState(null); // record being edited
+  const [editRecordData, setEditRecordData] = useState(null);
 
   const emptyRecord = {
     dl: false, checks: false, ssn: false, itin: false,
