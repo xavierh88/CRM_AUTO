@@ -355,55 +355,49 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
   const { t } = useTranslation();
   const { user } = useAuth();
   const [showAddRecord, setShowAddRecord] = useState(false);
-  const [newRecord, setNewRecord] = useState({
+  const [showNewOpportunity, setShowNewOpportunity] = useState(false);
+  const [addingToOpportunity, setAddingToOpportunity] = useState(null); // opportunity number being added to
+
+  const emptyRecord = {
     dl: false, checks: false, ssn: false, itin: false,
     auto: '', credit: '', bank: '', auto_loan: '', down_payment: '', dealer: '',
-    sold: false, vehicle_make: '', vehicle_year: '', sale_date: '',
-    previous_record_id: null
-  });
+    finance_status: 'no', vehicle_make: '', vehicle_year: '',
+    sale_month: '', sale_day: '', sale_year: ''
+  };
+
+  const [newRecord, setNewRecord] = useState({ ...emptyRecord });
 
   const handleAddRecord = async (previousRecordId = null) => {
-    // Don't save empty records
-    const hasData = newRecord.dl || newRecord.checks || newRecord.ssn || newRecord.itin ||
-      newRecord.auto || newRecord.credit || newRecord.bank || newRecord.auto_loan ||
-      newRecord.down_payment || newRecord.dealer || previousRecordId;
-    
-    if (!hasData) {
-      toast.error('Please fill at least one field');
-      return;
-    }
-
     try {
       await axios.post(`${API}/user-records`, { 
         client_id: clientId, 
         ...newRecord,
-        previous_record_id: previousRecordId 
+        previous_record_id: previousRecordId,
+        sale_month: newRecord.sale_month ? parseInt(newRecord.sale_month) : null,
+        sale_day: newRecord.sale_day ? parseInt(newRecord.sale_day) : null,
+        sale_year: newRecord.sale_year ? parseInt(newRecord.sale_year) : null
       });
       setShowAddRecord(false);
-      setNewRecord({
-        dl: false, checks: false, ssn: false, itin: false,
-        auto: '', credit: '', bank: '', auto_loan: '', down_payment: '', dealer: '',
-        sold: false, vehicle_make: '', vehicle_year: '', sale_date: '',
-        previous_record_id: null
-      });
+      setShowNewOpportunity(false);
+      setAddingToOpportunity(null);
+      setNewRecord({ ...emptyRecord });
       onRefresh();
       toast.success(t('common.success'));
     } catch (error) {
-      toast.error(t('common.error'));
+      toast.error(error.response?.data?.detail || t('common.error'));
     }
   };
 
-  const createNewOpportunity = async (previousRecordId) => {
-    try {
-      await axios.post(`${API}/user-records`, { 
-        client_id: clientId, 
-        previous_record_id: previousRecordId,
-        dl: false, checks: false, ssn: false, itin: false
-      });
-      onRefresh();
-      toast.success('New opportunity created!');
-    } catch (error) {
-      toast.error(t('common.error'));
+  const handleCreateNewOpportunity = () => {
+    // Check if latest record has finance_status of financiado or least
+    const myRecords = records.filter(r => r.salesperson_id === user.id);
+    const latestRecord = myRecords.length > 0 ? myRecords[0] : null;
+    
+    if (latestRecord && (latestRecord.finance_status === 'financiado' || latestRecord.finance_status === 'least')) {
+      setShowNewOpportunity(true);
+      setNewRecord({ ...emptyRecord });
+    } else {
+      toast.error('You can only create a new opportunity when the current record is marked as "Financiado" or "Least"');
     }
   };
 
