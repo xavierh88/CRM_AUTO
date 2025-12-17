@@ -401,6 +401,52 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     }
   };
 
+  const handleEditRecord = (record) => {
+    setEditingRecord(record.id);
+    setEditRecordData({
+      dl: record.dl, checks: record.checks, ssn: record.ssn, itin: record.itin,
+      auto: record.auto || '', credit: record.credit || '', bank: record.bank || '',
+      auto_loan: record.auto_loan || '', down_payment: record.down_payment || '',
+      dealer: record.dealer || '', finance_status: record.finance_status || 'no',
+      vehicle_make: record.vehicle_make || '', vehicle_year: record.vehicle_year || '',
+      sale_month: record.sale_month?.toString() || '', sale_day: record.sale_day?.toString() || '',
+      sale_year: record.sale_year?.toString() || ''
+    });
+  };
+
+  const handleSaveEditRecord = async () => {
+    try {
+      await axios.put(`${API}/user-records/${editingRecord}`, {
+        client_id: clientId,
+        ...editRecordData,
+        sale_month: editRecordData.sale_month ? parseInt(editRecordData.sale_month) : null,
+        sale_day: editRecordData.sale_day ? parseInt(editRecordData.sale_day) : null,
+        sale_year: editRecordData.sale_year ? parseInt(editRecordData.sale_year) : null
+      });
+      setEditingRecord(null);
+      setEditRecordData(null);
+      onRefresh();
+      toast.success('Record updated');
+    } catch (error) {
+      toast.error('Failed to update record');
+    }
+  };
+
+  const handleDeleteRecord = async (recordId) => {
+    if (!window.confirm('Are you sure you want to delete this record?')) return;
+    try {
+      await axios.delete(`${API}/user-records/${recordId}`);
+      onRefresh();
+      toast.success('Record deleted');
+    } catch (error) {
+      toast.error('Failed to delete record');
+    }
+  };
+
+  const toggleOpportunity = (oppNum) => {
+    setExpandedOpportunity(expandedOpportunity === oppNum ? null : oppNum);
+  };
+
   const handleAddRecord = async (previousRecordId = null) => {
     try {
       await axios.post(`${API}/user-records`, { 
