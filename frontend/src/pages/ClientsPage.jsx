@@ -1057,6 +1057,7 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onRefresh }) {
       toast.success('Client updated');
       setIsEditing(false);
       onRefresh();
+      onClose(); // Close modal to show updated data in list
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to update');
     }
