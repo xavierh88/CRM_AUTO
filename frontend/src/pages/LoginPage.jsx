@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
-import { Car, Mail, Lock, User, Phone } from 'lucide-react';
+import { Car, Mail, Lock, User, Phone, CheckCircle2 } from 'lucide-react';
+import axios from 'axios';
 
 export default function LoginPage() {
   const { t, i18n } = useTranslation();
@@ -22,9 +23,9 @@ export default function LoginPage() {
     email: '', 
     password: '', 
     name: '', 
-    phone: '',
-    role: 'salesperson' 
+    phone: ''
   });
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -44,9 +45,9 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await register(registerForm);
-      toast.success(t('common.success'));
-      navigate('/dashboard');
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/auth/register`, registerForm);
+      toast.success(response.data.message || 'Registration successful!');
+      setRegistrationSuccess(true);
     } catch (error) {
       toast.error(error.response?.data?.detail || t('common.error'));
     } finally {
@@ -154,94 +155,101 @@ export default function LoginPage() {
               </TabsContent>
 
               <TabsContent value="register">
-                <form onSubmit={handleRegister} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="register-name" className="form-label">{t('auth.name')}</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input
-                        id="register-name"
-                        type="text"
-                        placeholder="John Smith"
-                        className="pl-10"
-                        value={registerForm.name}
-                        onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
-                        required
-                        data-testid="register-name"
-                      />
+                {registrationSuccess ? (
+                  <div className="text-center py-6 space-y-4">
+                    <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
+                      <CheckCircle2 className="w-8 h-8 text-emerald-600" />
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-email" className="form-label">{t('auth.email')}</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input
-                        id="register-email"
-                        type="email"
-                        placeholder="john@dealer.com"
-                        className="pl-10"
-                        value={registerForm.email}
-                        onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-                        required
-                        data-testid="register-email"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-phone" className="form-label">{t('auth.phone')}</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input
-                        id="register-phone"
-                        type="tel"
-                        placeholder="+1 555 123 4567"
-                        className="pl-10"
-                        value={registerForm.phone}
-                        onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
-                        data-testid="register-phone"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-password" className="form-label">{t('auth.password')}</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input
-                        id="register-password"
-                        type="password"
-                        placeholder="••••••••"
-                        className="pl-10"
-                        value={registerForm.password}
-                        onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
-                        required
-                        data-testid="register-password"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="form-label">Role</Label>
-                    <Select 
-                      value={registerForm.role} 
-                      onValueChange={(value) => setRegisterForm({ ...registerForm, role: value })}
+                    <h3 className="text-lg font-semibold text-slate-800">Registration Successful!</h3>
+                    <p className="text-slate-500 text-sm">
+                      Your account has been created. Please wait for an administrator to activate your account before you can log in.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setRegistrationSuccess(false)}
+                      className="mt-4"
                     >
-                      <SelectTrigger data-testid="register-role">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="salesperson">Salesperson</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      Register Another Account
+                    </Button>
                   </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-slate-900 hover:bg-slate-800" 
-                    disabled={loading}
-                    data-testid="register-submit"
-                  >
-                    {loading ? t('common.loading') : t('auth.register')}
-                  </Button>
-                </form>
+                ) : (
+                  <form onSubmit={handleRegister} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="register-name" className="form-label">{t('auth.name')}</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                          id="register-name"
+                          type="text"
+                          placeholder="John Smith"
+                          className="pl-10"
+                          value={registerForm.name}
+                          onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
+                          required
+                          data-testid="register-name"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="register-email" className="form-label">{t('auth.email')}</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                          id="register-email"
+                          type="email"
+                          placeholder="john@dealer.com"
+                          className="pl-10"
+                          value={registerForm.email}
+                          onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+                          required
+                          data-testid="register-email"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="register-phone" className="form-label">{t('auth.phone')}</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                          id="register-phone"
+                          type="tel"
+                          placeholder="+1 555 123 4567"
+                          className="pl-10"
+                          value={registerForm.phone}
+                          onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
+                          data-testid="register-phone"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="register-password" className="form-label">{t('auth.password')}</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                          id="register-password"
+                          type="password"
+                          placeholder="••••••••"
+                          className="pl-10"
+                          value={registerForm.password}
+                          onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
+                          required
+                          data-testid="register-password"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-400 text-center">
+                      All new accounts require admin approval before activation
+                    </p>
+                    <Button 
+                      type="submit" 
+                      className="w-full bg-slate-900 hover:bg-slate-800" 
+                      disabled={loading}
+                      data-testid="register-submit"
+                    >
+                      {loading ? t('common.loading') : t('auth.register')}
+                    </Button>
+                  </form>
+                )}
               </TabsContent>
             </Tabs>
           </CardContent>
