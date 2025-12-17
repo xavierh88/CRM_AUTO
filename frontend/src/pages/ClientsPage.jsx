@@ -454,30 +454,39 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
         {records.filter(r => r.salesperson_id === user.id).map((record) => (
           <div key={record.id} className="bg-white rounded-lg border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-blue-600">Your Record</span>
-              {appointments[record.id] ? (
-                <div className="flex items-center gap-2">
-                  {getStatusBadge(appointments[record.id].status)}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-blue-600">
+                  {record.opportunity_number > 1 ? `Opportunity #${record.opportunity_number}` : 'Your Record'}
+                </span>
+                {record.previous_record_id && (
+                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">NEW OPP</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {appointments[record.id] ? (
+                  <>
+                    {getStatusBadge(appointments[record.id].status)}
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      onClick={() => sendAppointmentSMS(clientId, appointments[record.id].id)}
+                      data-testid={`send-appt-sms-${record.id}`}
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </>
+                ) : (
                   <Button 
                     size="sm" 
-                    variant="ghost"
-                    onClick={() => sendAppointmentSMS(clientId, appointments[record.id].id)}
-                    data-testid={`send-appt-sms-${record.id}`}
+                    variant="outline"
+                    onClick={() => createAppointment(record.id)}
+                    data-testid={`create-appt-${record.id}`}
                   >
-                    <Send className="w-4 h-4" />
+                    <Calendar className="w-4 h-4 mr-1" />
+                    Create Appointment
                   </Button>
-                </div>
-              ) : (
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => createAppointment(record.id)}
-                  data-testid={`create-appt-${record.id}`}
-                >
-                  <Calendar className="w-4 h-4 mr-1" />
-                  Create Appointment
-                </Button>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Checklist */}
@@ -499,7 +508,23 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
               {record.auto && <div><span className="text-slate-400">Auto:</span> {record.auto}</div>}
               {record.dealer && <div><span className="text-slate-400">Dealer:</span> {record.dealer}</div>}
               {record.down_payment && <div><span className="text-slate-400">Down:</span> ${record.down_payment}</div>}
-              {record.sold && <div className="col-span-full"><span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-medium">SOLD - {record.vehicle_make} {record.vehicle_year}</span></div>}
+              {record.sold && (
+                <div className="col-span-full flex items-center gap-2">
+                  <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-medium">
+                    SOLD - {record.vehicle_make} {record.vehicle_year}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-purple-600 hover:bg-purple-50 border-purple-200"
+                    onClick={() => createNewOpportunity(record.id)}
+                    data-testid={`new-opportunity-${record.id}`}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    New Opportunity
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Appointment Actions */}
