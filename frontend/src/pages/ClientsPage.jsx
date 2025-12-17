@@ -356,7 +356,11 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
   const { user } = useAuth();
   const [showAddRecord, setShowAddRecord] = useState(false);
   const [showNewOpportunity, setShowNewOpportunity] = useState(false);
-  const [addingToOpportunity, setAddingToOpportunity] = useState(null); // opportunity number being added to
+  const [addingToOpportunity, setAddingToOpportunity] = useState(null);
+  const [showAppointmentForm, setShowAppointmentForm] = useState(null); // record_id to show form for
+  const [appointmentData, setAppointmentData] = useState({
+    date: '', time: '', dealer: '', language: 'en'
+  });
 
   const emptyRecord = {
     dl: false, checks: false, ssn: false, itin: false,
@@ -366,6 +370,33 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
   };
 
   const [newRecord, setNewRecord] = useState({ ...emptyRecord });
+
+  const handleCreateAppointment = async () => {
+    if (!appointmentData.date || !appointmentData.time) {
+      toast.error('Please fill date and time');
+      return;
+    }
+    try {
+      const response = await axios.post(`${API}/appointments`, {
+        user_record_id: showAppointmentForm,
+        client_id: clientId,
+        date: appointmentData.date,
+        time: appointmentData.time,
+        dealer: appointmentData.dealer,
+        language: appointmentData.language
+      });
+      
+      // Send SMS automatically
+      await axios.post(`${API}/sms/send-appointment-link?client_id=${clientId}&appointment_id=${response.data.id}`);
+      
+      setShowAppointmentForm(null);
+      setAppointmentData({ date: '', time: '', dealer: '', language: 'en' });
+      onRefresh();
+      toast.success('Appointment created and SMS sent to client');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to create appointment');
+    }
+  };
 
   const handleAddRecord = async (previousRecordId = null) => {
     try {
