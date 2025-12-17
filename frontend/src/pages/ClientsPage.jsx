@@ -773,7 +773,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => { setShowAddRecord(false); setShowNewOpportunity(false); setAddingToOpportunity(null); }}>{t('common.cancel')}</Button>
-            <Button size="sm" onClick={() => handleAddRecord(addingToOpportunity > 1 ? latestRecordInLastOpp?.id : null)} data-testid="save-record-btn">{t('common.save')}</Button>
+            <Button size="sm" onClick={() => handleAddRecord(addingToOpportunity > 1 ? latestRecordInMyLastOpp?.id : null)} data-testid="save-record-btn">{t('common.save')}</Button>
           </div>
         </div>
       )}
