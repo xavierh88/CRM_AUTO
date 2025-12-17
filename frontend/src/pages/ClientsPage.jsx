@@ -419,19 +419,6 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     }
   };
 
-  const handleCreateNewOpportunity = () => {
-    // Check if latest record has finance_status of financiado or least
-    const myRecords = records.filter(r => r.salesperson_id === user.id);
-    const latestRecord = myRecords.length > 0 ? myRecords[0] : null;
-    
-    if (latestRecord && (latestRecord.finance_status === 'financiado' || latestRecord.finance_status === 'least')) {
-      setShowNewOpportunity(true);
-      setNewRecord({ ...emptyRecord });
-    } else {
-      toast.error('You can only create a new opportunity when the current record is marked as "Financiado" or "Least"');
-    }
-  };
-
   const createAppointment = async (recordId) => {
     try {
       await axios.post(`${API}/appointments`, { user_record_id: recordId, client_id: clientId });
