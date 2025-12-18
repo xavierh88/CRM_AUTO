@@ -1109,24 +1109,26 @@ async def get_public_document_info(token: str):
     """Get client info for document upload (public, no auth)"""
     link = await db.public_links.find_one({"token": token, "link_type": "documents"}, {"_id": 0})
     if not link:
-        raise HTTPException(status_code=404, detail="Link inválido o expirado")
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
     
     # Check expiration
     if datetime.fromisoformat(link["expires_at"].replace('Z', '+00:00')) < datetime.now(timezone.utc):
-        raise HTTPException(status_code=410, detail="Este link ha expirado")
+        raise HTTPException(status_code=410, detail="This link has expired")
     
     client = await db.clients.find_one({"id": link["client_id"]}, {"_id": 0})
     if not client:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+        raise HTTPException(status_code=404, detail="Client not found")
     
-    # Check if documents already submitted
+    # Check if documents already submitted and get language preference
     record = await db.user_records.find_one({"id": link["record_id"]}, {"_id": 0})
     documents_submitted = record.get("documents_submitted", False) if record else False
+    preferred_language = link.get("preferred_language") or (record.get("preferred_language") if record else None)
     
     return {
         "first_name": client["first_name"],
         "last_name": client["last_name"],
-        "documents_submitted": documents_submitted
+        "documents_submitted": documents_submitted,
+        "preferred_language": preferred_language
     }
 
 @api_router.put("/public/documents/{token}/language")
