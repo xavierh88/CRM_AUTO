@@ -5,10 +5,91 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast, Toaster } from 'sonner';
-import { Upload, FileText, CheckCircle2, AlertCircle, Car, Loader2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, Car, Loader2, Globe, Image, File } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// Translations
+const translations = {
+  en: {
+    title: "DealerCRM",
+    subtitle: "Upload your documents",
+    requiredDocuments: "Required Documents",
+    hello: "Hello",
+    uploadInstructions: "please upload the following documents to continue with your process.",
+    required: "Required",
+    optional: "Optional",
+    idLabel: "ID / Driver's License",
+    incomeLabel: "Proof of Income (Pay Stub / Tax Return)",
+    clickToUpload: "Click to upload your",
+    id: "ID",
+    incomeProof: "income proof",
+    allowedFormats: "JPG, PNG, WEBP or PDF (max. 10MB)",
+    clickToChange: "Click to change",
+    submitDocuments: "Submit Documents",
+    submitting: "Submitting...",
+    // Messages
+    invalidLink: "Invalid Link",
+    invalidLinkDesc: "Invalid or expired link",
+    contactSalesperson: "Please contact your salesperson to get a new link.",
+    documentsReceived: "Documents Received!",
+    thankYou: "Thank you",
+    documentsReceivedDesc: "we have received your documents successfully.",
+    teamWillReview: "Our team will review the information and contact you soon.",
+    privacyNote: "Your documents are protected and will only be used for your purchase process.",
+    // Errors
+    fileTooLarge: "File is too large. Maximum 10MB",
+    invalidFileType: "Invalid file type. Use JPG, PNG, WEBP or PDF",
+    pleaseUploadId: "Please upload your ID",
+    errorSubmitting: "Error submitting documents",
+    successSubmit: "Documents submitted successfully!",
+    // Language
+    languagePreference: "Language Preference",
+    languageNote: "This also indicates your preferred language",
+    english: "English",
+    spanish: "Spanish"
+  },
+  es: {
+    title: "DealerCRM",
+    subtitle: "Suba sus documentos",
+    requiredDocuments: "Documentos Requeridos",
+    hello: "Hola",
+    uploadInstructions: "por favor suba los siguientes documentos para continuar con su proceso.",
+    required: "Requerido",
+    optional: "Opcional",
+    idLabel: "Identificación (ID / Licencia de Conducir)",
+    incomeLabel: "Comprobante de Ingresos (Pay Stub / Tax Return)",
+    clickToUpload: "Click para subir su",
+    id: "ID",
+    incomeProof: "comprobante de ingresos",
+    allowedFormats: "JPG, PNG, WEBP o PDF (máx. 10MB)",
+    clickToChange: "Click para cambiar",
+    submitDocuments: "Enviar Documentos",
+    submitting: "Enviando...",
+    // Messages
+    invalidLink: "Link Inválido",
+    invalidLinkDesc: "Link inválido o expirado",
+    contactSalesperson: "Por favor contacte a su vendedor para obtener un nuevo link.",
+    documentsReceived: "¡Documentos Recibidos!",
+    thankYou: "Gracias",
+    documentsReceivedDesc: "hemos recibido sus documentos correctamente.",
+    teamWillReview: "Nuestro equipo revisará la información y le contactaremos pronto.",
+    privacyNote: "Sus documentos están protegidos y solo serán utilizados para su proceso de compra.",
+    // Errors
+    fileTooLarge: "El archivo es muy grande. Máximo 10MB",
+    invalidFileType: "Tipo de archivo no permitido. Use JPG, PNG, WEBP o PDF",
+    pleaseUploadId: "Por favor suba su identificación (ID)",
+    errorSubmitting: "Error al enviar documentos",
+    successSubmit: "¡Documentos enviados exitosamente!",
+    // Language
+    languagePreference: "Preferencia de Idioma",
+    languageNote: "Esto también indica su idioma preferido",
+    english: "Inglés",
+    spanish: "Español"
+  }
+};
 
 export default function PublicDocumentsPage() {
   const { token } = useParams();
@@ -17,6 +98,10 @@ export default function PublicDocumentsPage() {
   const [clientInfo, setClientInfo] = useState(null);
   const [error, setError] = useState(null);
   const [submitted, setSubmitted] = useState(false);
+  
+  // Language - default English
+  const [language, setLanguage] = useState('en');
+  const t = translations[language];
   
   // File states
   const [idFile, setIdFile] = useState(null);
@@ -32,13 +117,32 @@ export default function PublicDocumentsPage() {
     try {
       const response = await axios.get(`${API}/public/documents/${token}`);
       setClientInfo(response.data);
+      
+      // Set language from saved preference if available
+      if (response.data.preferred_language) {
+        setLanguage(response.data.preferred_language);
+      }
+      
       if (response.data.documents_submitted) {
         setSubmitted(true);
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Link inválido o expirado');
+      setError(err.response?.data?.detail || 'Invalid or expired link');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLanguageChange = async (newLang) => {
+    setLanguage(newLang);
+    
+    // Save language preference to backend
+    try {
+      await axios.put(`${API}/public/documents/${token}/language`, {
+        language: newLang
+      });
+    } catch (err) {
+      console.error('Failed to save language preference:', err);
     }
   };
 
@@ -48,14 +152,14 @@ export default function PublicDocumentsPage() {
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('El archivo es muy grande. Máximo 10MB');
+      toast.error(t.fileTooLarge);
       return;
     }
 
-    // Validate file type
+    // Validate file type - images and PDF only
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Tipo de archivo no permitido. Use JPG, PNG, WEBP o PDF');
+      toast.error(t.invalidFileType);
       return;
     }
 
@@ -64,23 +168,31 @@ export default function PublicDocumentsPage() {
       if (file.type.startsWith('image/')) {
         setIdPreview(URL.createObjectURL(file));
       } else {
-        setIdPreview(null);
+        setIdPreview(null); // PDF - no preview
       }
     } else {
       setIncomeFile(file);
       if (file.type.startsWith('image/')) {
         setIncomePreview(URL.createObjectURL(file));
       } else {
-        setIncomePreview(null);
+        setIncomePreview(null); // PDF - no preview
       }
     }
+  };
+
+  const getFileIcon = (file) => {
+    if (!file) return null;
+    if (file.type === 'application/pdf') {
+      return <File className="w-10 h-10 text-red-500" />;
+    }
+    return <Image className="w-10 h-10 text-blue-500" />;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!idFile) {
-      toast.error('Por favor suba su identificación (ID)');
+      toast.error(t.pleaseUploadId);
       return;
     }
 
@@ -92,15 +204,16 @@ export default function PublicDocumentsPage() {
       if (incomeFile) {
         formData.append('income_proof', incomeFile);
       }
+      formData.append('language', language);
 
       await axios.post(`${API}/public/documents/${token}/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
       setSubmitted(true);
-      toast.success('¡Documentos enviados exitosamente!');
+      toast.success(t.successSubmit);
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Error al enviar documentos');
+      toast.error(err.response?.data?.detail || t.errorSubmitting);
     } finally {
       setSubmitting(false);
     }
@@ -120,11 +233,9 @@ export default function PublicDocumentsPage() {
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-slate-800 mb-2">Link Inválido</h2>
-            <p className="text-slate-600">{error}</p>
-            <p className="text-sm text-slate-400 mt-4">
-              Por favor contacte a su vendedor para obtener un nuevo link.
-            </p>
+            <h2 className="text-xl font-semibold text-slate-800 mb-2">{t.invalidLink}</h2>
+            <p className="text-slate-600">{t.invalidLinkDesc}</p>
+            <p className="text-sm text-slate-400 mt-4">{t.contactSalesperson}</p>
           </CardContent>
         </Card>
       </div>
@@ -137,13 +248,11 @@ export default function PublicDocumentsPage() {
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center">
             <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-slate-800 mb-2">¡Documentos Recibidos!</h2>
+            <h2 className="text-xl font-semibold text-slate-800 mb-2">{t.documentsReceived}</h2>
             <p className="text-slate-600">
-              Gracias {clientInfo?.first_name}, hemos recibido sus documentos correctamente.
+              {t.thankYou} {clientInfo?.first_name}, {t.documentsReceivedDesc}
             </p>
-            <p className="text-sm text-slate-400 mt-4">
-              Nuestro equipo revisará la información y le contactaremos pronto.
-            </p>
+            <p className="text-sm text-slate-400 mt-4">{t.teamWillReview}</p>
           </CardContent>
         </Card>
       </div>
@@ -160,18 +269,42 @@ export default function PublicDocumentsPage() {
           <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <Car className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">DealerCRM</h1>
-          <p className="text-slate-500">Suba sus documentos</p>
+          <h1 className="text-2xl font-bold text-slate-800">{t.title}</h1>
+          <p className="text-slate-500">{t.subtitle}</p>
         </div>
+
+        {/* Language Selector */}
+        <Card className="mb-4">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Globe className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="font-medium text-sm text-slate-700">{t.languagePreference}</p>
+                  <p className="text-xs text-slate-400">{t.languageNote}</p>
+                </div>
+              </div>
+              <Select value={language} onValueChange={handleLanguageChange}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">🇺🇸 {t.english}</SelectItem>
+                  <SelectItem value="es">🇲🇽 {t.spanish}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-blue-600" />
-              Documentos Requeridos
+              {t.requiredDocuments}
             </CardTitle>
             <CardDescription>
-              Hola <strong>{clientInfo?.first_name}</strong>, por favor suba los siguientes documentos para continuar con su proceso.
+              {t.hello} <strong>{clientInfo?.first_name}</strong>, {t.uploadInstructions}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -179,34 +312,36 @@ export default function PublicDocumentsPage() {
               {/* ID Document */}
               <div className="space-y-2">
                 <Label htmlFor="id-upload" className="flex items-center gap-2">
-                  <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-xs font-medium">Requerido</span>
-                  Identificación (ID / Licencia de Conducir)
+                  <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-xs font-medium">{t.required}</span>
+                  {t.idLabel}
                 </Label>
                 <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 hover:border-blue-400 transition-colors">
                   <Input
                     id="id-upload"
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
                     onChange={(e) => handleFileChange(e, 'id')}
                     className="hidden"
                   />
                   <label htmlFor="id-upload" className="cursor-pointer block text-center">
                     {idFile ? (
                       <div className="space-y-2">
-                        {idPreview && (
+                        {idPreview ? (
                           <img src={idPreview} alt="ID Preview" className="max-h-32 mx-auto rounded" />
+                        ) : (
+                          <div className="flex justify-center">{getFileIcon(idFile)}</div>
                         )}
                         <p className="text-sm text-green-600 font-medium flex items-center justify-center gap-1">
                           <CheckCircle2 className="w-4 h-4" />
                           {idFile.name}
                         </p>
-                        <p className="text-xs text-slate-400">Click para cambiar</p>
+                        <p className="text-xs text-slate-400">{t.clickToChange}</p>
                       </div>
                     ) : (
                       <div className="py-4">
                         <Upload className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                        <p className="text-sm text-slate-500">Click para subir su ID</p>
-                        <p className="text-xs text-slate-400">JPG, PNG, WEBP o PDF (máx. 10MB)</p>
+                        <p className="text-sm text-slate-500">{t.clickToUpload} {t.id}</p>
+                        <p className="text-xs text-slate-400">{t.allowedFormats}</p>
                       </div>
                     )}
                   </label>
@@ -216,34 +351,36 @@ export default function PublicDocumentsPage() {
               {/* Income Proof */}
               <div className="space-y-2">
                 <Label htmlFor="income-upload" className="flex items-center gap-2">
-                  <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-medium">Opcional</span>
-                  Comprobante de Ingresos (Pay Stub / Tax Return)
+                  <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-medium">{t.optional}</span>
+                  {t.incomeLabel}
                 </Label>
                 <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 hover:border-blue-400 transition-colors">
                   <Input
                     id="income-upload"
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
                     onChange={(e) => handleFileChange(e, 'income')}
                     className="hidden"
                   />
                   <label htmlFor="income-upload" className="cursor-pointer block text-center">
                     {incomeFile ? (
                       <div className="space-y-2">
-                        {incomePreview && (
+                        {incomePreview ? (
                           <img src={incomePreview} alt="Income Preview" className="max-h-32 mx-auto rounded" />
+                        ) : (
+                          <div className="flex justify-center">{getFileIcon(incomeFile)}</div>
                         )}
                         <p className="text-sm text-green-600 font-medium flex items-center justify-center gap-1">
                           <CheckCircle2 className="w-4 h-4" />
                           {incomeFile.name}
                         </p>
-                        <p className="text-xs text-slate-400">Click para cambiar</p>
+                        <p className="text-xs text-slate-400">{t.clickToChange}</p>
                       </div>
                     ) : (
                       <div className="py-4">
                         <Upload className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                        <p className="text-sm text-slate-500">Click para subir comprobante</p>
-                        <p className="text-xs text-slate-400">JPG, PNG, WEBP o PDF (máx. 10MB)</p>
+                        <p className="text-sm text-slate-500">{t.clickToUpload} {t.incomeProof}</p>
+                        <p className="text-xs text-slate-400">{t.allowedFormats}</p>
                       </div>
                     )}
                   </label>
@@ -260,12 +397,12 @@ export default function PublicDocumentsPage() {
                 {submitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Enviando...
+                    {t.submitting}
                   </>
                 ) : (
                   <>
                     <Upload className="w-4 h-4 mr-2" />
-                    Enviar Documentos
+                    {t.submitDocuments}
                   </>
                 )}
               </Button>
@@ -274,9 +411,7 @@ export default function PublicDocumentsPage() {
         </Card>
 
         {/* Footer */}
-        <p className="text-center text-xs text-slate-400 mt-6">
-          Sus documentos están protegidos y solo serán utilizados para su proceso de compra.
-        </p>
+        <p className="text-center text-xs text-slate-400 mt-6">{t.privacyNote}</p>
       </div>
     </div>
   );
