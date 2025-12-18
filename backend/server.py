@@ -856,6 +856,16 @@ async def send_appointment_sms(client_id: str, appointment_id: str, current_user
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
+    # Generate public link token
+    token = await create_public_link(client_id, appointment_id, "appointment")
+    
+    # Update appointment with the token
+    await db.appointments.update_one({"id": appointment_id}, {"$set": {"public_token": token}})
+    
+    # Get base URL from environment or use default
+    base_url = os.environ.get('FRONTEND_URL', 'https://work-1-hxroqbnbaygfdbdd.prod-runtime.all-hands.dev')
+    appointment_link = f"{base_url}/c/appointment/{token}"
+    
     # Create the message
     client_name = f"{client['first_name']} {client['last_name']}"
     date_str = appointment.get("date", "pendiente")
@@ -863,9 +873,9 @@ async def send_appointment_sms(client_id: str, appointment_id: str, current_user
     dealer_str = appointment.get("dealer", "")
     
     if appointment.get("language") == "es":
-        message = f"Hola {client_name}, tiene una cita programada para el {date_str} a las {time_str} en {dealer_str}. Para reprogramar o cancelar su cita, visite: [LINK_CITA]. - DealerCRM"
+        message = f"Hola {client_name}, tiene una cita para el {date_str} a las {time_str} en {dealer_str}. Para ver, reprogramar o cancelar: {appointment_link} - DealerCRM"
     else:
-        message = f"Hi {client_name}, you have an appointment scheduled for {date_str} at {time_str} at {dealer_str}. To reschedule or cancel, visit: [LINK_APPOINTMENT]. - DealerCRM"
+        message = f"Hi {client_name}, you have an appointment for {date_str} at {time_str} at {dealer_str}. To view, reschedule or cancel: {appointment_link} - DealerCRM"
     
     # Send SMS via Twilio
     result = await send_sms_twilio(client["phone"], message)
