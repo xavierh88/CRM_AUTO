@@ -316,6 +316,21 @@ export default function ClientsPage() {
                       >
                         <Info className="w-4 h-4" />
                       </Button>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteClient(client.id);
+                          }}
+                          className="text-red-400 hover:text-red-600 hover:bg-red-50"
+                          data-testid={`delete-client-btn-${client.id}`}
+                          title="Delete client"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                       {expandedClients[client.id] ? (
                         <ChevronDown className="w-5 h-5 text-slate-400" />
                       ) : (
