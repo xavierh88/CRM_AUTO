@@ -58,6 +58,10 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Public routes for clients (no auth required) */}
+          <Route path="/c/docs/:token" element={<PublicDocumentsPage />} />
+          <Route path="/c/appointment/:token" element={<PublicAppointmentPage />} />
+          
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route
