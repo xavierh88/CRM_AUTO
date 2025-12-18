@@ -1131,8 +1131,11 @@ async def get_public_document_info(token: str):
         "preferred_language": preferred_language
     }
 
+class DocumentLanguageRequest(BaseModel):
+    language: str  # 'en' or 'es'
+
 @api_router.put("/public/documents/{token}/language")
-async def update_document_language_preference(token: str, data: LanguagePreferenceRequest):
+async def update_document_language_preference(token: str, data: DocumentLanguageRequest):
     """Update client's language preference for documents (public, no auth)"""
     if data.language not in ['en', 'es']:
         raise HTTPException(status_code=400, detail="Invalid language. Must be 'en' or 'es'")
