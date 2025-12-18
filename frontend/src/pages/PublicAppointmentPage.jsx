@@ -301,35 +301,48 @@ export default function PublicAppointmentPage() {
 
             {/* Action Buttons */}
             {mode === 'view' && (
-              <div className="flex gap-2 mt-4">
-                <Button 
-                  onClick={handleConfirm}
-                  className="flex-1"
-                  disabled={submitting}
-                >
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-                    <>
-                      <CheckCircle2 className="w-4 h-4 mr-1" />
-                      Confirmar
-                    </>
-                  )}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setMode('reschedule')}
-                  className="flex-1"
-                >
-                  <RefreshCw className="w-4 h-4 mr-1" />
-                  Reprogramar
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={handleCancel}
-                  className="text-red-600 hover:bg-red-50"
-                  disabled={submitting}
-                >
-                  <CalendarX className="w-4 h-4" />
-                </Button>
+              <div className="space-y-2 mt-4">
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleConfirm}
+                    className="flex-1"
+                    disabled={submitting}
+                  >
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 mr-1" />
+                        Confirmar
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setMode('late')}
+                    className="flex-1 text-amber-600 hover:bg-amber-50 border-amber-200"
+                  >
+                    <Clock className="w-4 h-4 mr-1" />
+                    Llegaré Tarde
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setMode('reschedule')}
+                    className="flex-1"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-1" />
+                    Reprogramar
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleCancel}
+                    className="text-red-600 hover:bg-red-50"
+                    disabled={submitting}
+                  >
+                    <CalendarX className="w-4 h-4 mr-1" />
+                    Cancelar
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
