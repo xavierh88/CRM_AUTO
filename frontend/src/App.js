@@ -13,6 +13,10 @@ import AdminPage from "./pages/AdminPage";
 import SettingsPage from "./pages/SettingsPage";
 import Layout from "./components/Layout";
 
+// Public Pages (for clients)
+import PublicDocumentsPage from "./pages/PublicDocumentsPage";
+import PublicAppointmentPage from "./pages/PublicAppointmentPage";
+
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   
