@@ -864,7 +864,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 function RecordCard({ 
   record, appointments, getStatusBadge, sendAppointmentSMS, clientId, createAppointment, 
   updateAppointmentStatus, t, isPurple, onOpenAppointmentForm, currentUserId,
-  onEdit, onDelete, isEditing, editData, setEditData, onSaveEdit, onCancelEdit 
+  onEdit, onDelete, isEditing, editData, setEditData, onSaveEdit, onCancelEdit, configLists 
 }) {
   const isOwner = record.salesperson_id === currentUserId;
 
@@ -886,16 +886,43 @@ function RecordCard({
           ))}
         </div>
         
-        {/* Info fields */}
+        {/* Info fields with dropdowns */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-          <Input placeholder="Auto" value={editData.auto} onChange={(e) => setEditData({ ...editData, auto: e.target.value })} />
+          <Select value={editData.auto || ''} onValueChange={(value) => setEditData({ ...editData, auto: value })}>
+            <SelectTrigger>
+              <SelectValue placeholder="Auto" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              {configLists?.cars?.map((car) => (
+                <SelectItem key={car.id} value={car.name}>{car.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input placeholder="Credit" value={editData.credit} onChange={(e) => setEditData({ ...editData, credit: e.target.value })} />
-          <Input placeholder="Bank" value={editData.bank} onChange={(e) => setEditData({ ...editData, bank: e.target.value })} />
+          <Select value={editData.bank || ''} onValueChange={(value) => setEditData({ ...editData, bank: value })}>
+            <SelectTrigger>
+              <SelectValue placeholder="Bank" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              {configLists?.banks?.map((bank) => (
+                <SelectItem key={bank.id} value={bank.name}>{bank.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input placeholder="Auto Loan" value={editData.auto_loan} onChange={(e) => setEditData({ ...editData, auto_loan: e.target.value })} />
         </div>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <Input placeholder="Down Payment" value={editData.down_payment} onChange={(e) => setEditData({ ...editData, down_payment: e.target.value })} />
-          <Input placeholder="Dealer" value={editData.dealer} onChange={(e) => setEditData({ ...editData, dealer: e.target.value })} />
+          <Select value={editData.dealer || ''} onValueChange={(value) => setEditData({ ...editData, dealer: value })}>
+            <SelectTrigger>
+              <SelectValue placeholder="Dealer" />
+            </SelectTrigger>
+            <SelectContent>
+              {configLists?.dealers?.map((dealer) => (
+                <SelectItem key={dealer.id} value={dealer.name}>{dealer.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Sold Status */}
