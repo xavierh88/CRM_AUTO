@@ -116,6 +116,35 @@ export default function PublicAppointmentPage() {
     }
   };
 
+  const handleLateArrival = async (e) => {
+    e.preventDefault();
+    
+    if (!lateTime) {
+      toast.error('Por favor seleccione la nueva hora de llegada');
+      return;
+    }
+
+    setSubmitting(true);
+    
+    try {
+      await axios.put(`${API}/public/appointment/${token}/late`, {
+        new_time: lateTime
+      });
+
+      toast.success('¡Notificación enviada! El vendedor ha sido informado.');
+      setMode('confirmed');
+      setAppointmentInfo(prev => ({
+        ...prev,
+        time: lateTime,
+        status: 'llegará tarde'
+      }));
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Error al notificar');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return 'Por definir';
     const date = new Date(dateStr + 'T00:00:00');
