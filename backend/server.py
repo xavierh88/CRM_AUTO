@@ -907,6 +907,60 @@ async def create_default_admin():
         }
         await db.users.insert_one(admin_doc)
         logger.info("Default admin account created: xadmin")
+    
+    # Initialize default config lists if empty
+    await initialize_default_config_lists()
+
+async def initialize_default_config_lists():
+    """Initialize default banks, dealers, and cars if lists are empty"""
+    now = datetime.now(timezone.utc).isoformat()
+    
+    # Default US Banks
+    default_banks = [
+        "Chase", "Bank of America", "Wells Fargo", "Citibank", "US Bank",
+        "Capital One", "PNC Bank", "TD Bank", "Truist", "Ally Bank",
+        "Discover Bank", "Fifth Third Bank", "KeyBank", "Huntington Bank",
+        "Santander", "BMO Harris", "Regions Bank", "Citizens Bank", "M&T Bank",
+        "First Republic", "USAA", "Navy Federal", "Charles Schwab", "Goldman Sachs",
+        "American Express", "Synchrony Bank", "Marcus by Goldman Sachs", "SoFi",
+        "Chime", "Varo Bank", "Current", "Simple", "Aspiration"
+    ]
+    
+    # Default Dealers
+    default_dealers = ["Downey", "Long Beach"]
+    
+    # Default Car Makes/Models
+    default_cars = [
+        "Silverado", "Ram 1500", "F-150", "Tacoma", "Tundra", "Sierra",
+        "Colorado", "Ranger", "Frontier", "Titan", "Gladiator",
+        "Camry", "Accord", "Civic", "Corolla", "Altima", "Sentra",
+        "Malibu", "Impala", "Fusion", "Sonata", "Elantra", "Optima",
+        "CR-V", "RAV4", "Rogue", "Escape", "Explorer", "Highlander",
+        "Pilot", "4Runner", "Pathfinder", "Tahoe", "Suburban", "Expedition",
+        "Wrangler", "Grand Cherokee", "Cherokee", "Compass", "Durango",
+        "Mustang", "Camaro", "Challenger", "Charger", "Corvette",
+        "Model 3", "Model Y", "Model S", "Model X", "Mach-E",
+        "BMW 3 Series", "BMW 5 Series", "Mercedes C-Class", "Mercedes E-Class",
+        "Audi A4", "Audi Q5", "Lexus ES", "Lexus RX", "Acura TLX", "Acura MDX"
+    ]
+    
+    # Check if lists are empty and populate
+    for category, items in [('bank', default_banks), ('dealer', default_dealers), ('car', default_cars)]:
+        count = await db.config_lists.count_documents({"category": category})
+        if count == 0:
+            docs = [
+                {
+                    "id": str(uuid.uuid4()),
+                    "name": item,
+                    "category": category,
+                    "created_at": now,
+                    "created_by": "system"
+                }
+                for item in items
+            ]
+            if docs:
+                await db.config_lists.insert_many(docs)
+                logger.info(f"Initialized {len(docs)} default {category}s")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
