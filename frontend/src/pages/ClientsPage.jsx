@@ -726,14 +726,41 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
           
           {/* Info fields */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-            <Input placeholder="Auto" value={newRecord.auto} onChange={(e) => setNewRecord({ ...newRecord, auto: e.target.value })} />
+            <Select value={newRecord.auto} onValueChange={(value) => setNewRecord({ ...newRecord, auto: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Auto" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                {configLists.cars.map((car) => (
+                  <SelectItem key={car.id} value={car.name}>{car.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Input placeholder="Credit" value={newRecord.credit} onChange={(e) => setNewRecord({ ...newRecord, credit: e.target.value })} />
-            <Input placeholder="Bank" value={newRecord.bank} onChange={(e) => setNewRecord({ ...newRecord, bank: e.target.value })} />
+            <Select value={newRecord.bank} onValueChange={(value) => setNewRecord({ ...newRecord, bank: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Bank" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                {configLists.banks.map((bank) => (
+                  <SelectItem key={bank.id} value={bank.name}>{bank.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Input placeholder="Auto Loan" value={newRecord.auto_loan} onChange={(e) => setNewRecord({ ...newRecord, auto_loan: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
             <Input placeholder="Down Payment" value={newRecord.down_payment} onChange={(e) => setNewRecord({ ...newRecord, down_payment: e.target.value })} />
-            <Input placeholder="Dealer" value={newRecord.dealer} onChange={(e) => setNewRecord({ ...newRecord, dealer: e.target.value })} />
+            <Select value={newRecord.dealer} onValueChange={(value) => setNewRecord({ ...newRecord, dealer: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Dealer" />
+              </SelectTrigger>
+              <SelectContent>
+                {configLists.dealers.map((dealer) => (
+                  <SelectItem key={dealer.id} value={dealer.name}>{dealer.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Sold Status */}
