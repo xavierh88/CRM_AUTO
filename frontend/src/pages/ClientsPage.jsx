@@ -140,6 +140,17 @@ export default function ClientsPage() {
   }, [searchTerm]);
 
   const filteredClients = clients; // Search is now done server-side
+  
+  // Pagination logic
+  const totalPages = Math.ceil(filteredClients.length / clientsPerPage);
+  const indexOfLastClient = currentPage * clientsPerPage;
+  const indexOfFirstClient = indexOfLastClient - clientsPerPage;
+  const currentClients = filteredClients.slice(indexOfFirstClient, indexOfLastClient);
+  
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
