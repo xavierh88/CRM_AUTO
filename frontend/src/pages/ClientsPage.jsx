@@ -380,6 +380,46 @@ export default function ClientsPage() {
         )}
       </div>
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-4 border-t">
+          <p className="text-sm text-slate-500">
+            Mostrando {indexOfFirstClient + 1}-{Math.min(indexOfLastClient, filteredClients.length)} de {filteredClients.length} clientes
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              Anterior
+            </Button>
+            <div className="flex items-center gap-1">
+              {[...Array(totalPages)].map((_, i) => (
+                <Button
+                  key={i + 1}
+                  variant={currentPage === i + 1 ? "default" : "outline"}
+                  size="sm"
+                  className="w-8 h-8 p-0"
+                  onClick={() => setCurrentPage(i + 1)}
+                >
+                  {i + 1}
+                </Button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              Siguiente
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Client Info Modal */}
       {selectedClient && (
         <ClientInfoModal 
