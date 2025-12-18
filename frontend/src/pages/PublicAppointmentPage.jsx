@@ -7,9 +7,111 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast, Toaster } from 'sonner';
-import { Calendar, Clock, MapPin, CheckCircle2, AlertCircle, Car, Loader2, CalendarX, RefreshCw } from 'lucide-react';
+import { Calendar, Clock, MapPin, CheckCircle2, AlertCircle, Car, Loader2, CalendarX, RefreshCw, Globe } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// Translations
+const translations = {
+  en: {
+    title: "DealerCRM",
+    subtitle: "Manage your appointment",
+    yourAppointment: "Your Appointment",
+    hello: "Hello",
+    appointmentDetails: "here are your appointment details.",
+    date: "DATE",
+    time: "TIME",
+    location: "LOCATION",
+    toBeConfirmed: "To be confirmed",
+    confirm: "Confirm",
+    runningLate: "Running Late",
+    reschedule: "Reschedule",
+    cancel: "Cancel",
+    // Late form
+    lateTitle: "Running Late",
+    lateDescription: "Select your new arrival time. The salesperson will be notified automatically.",
+    originalAppointment: "Your original appointment:",
+    at: "at",
+    whatTimeArrive: "What time will you arrive?",
+    selectNewTime: "Select new time",
+    notifySalesperson: "Notify Salesperson",
+    // Reschedule form
+    rescheduleTitle: "Reschedule Appointment",
+    rescheduleDescription: "Select a new date and time for your appointment.",
+    newDate: "New Date",
+    newTime: "New Time",
+    selectTime: "Select time",
+    locationOptional: "Location (optional)",
+    keepCurrentLocation: "Keep current location",
+    confirmNewDate: "Confirm New Date",
+    // Messages
+    invalidLink: "Invalid Link",
+    invalidLinkDesc: "Invalid or expired link",
+    contactSalesperson: "Please contact your salesperson to get a new link.",
+    appointmentCancelled: "Appointment Cancelled",
+    appointmentCancelledDesc: "This appointment has been cancelled.",
+    toScheduleNew: "If you want to schedule a new appointment, please contact your salesperson.",
+    appointmentConfirmed: "Appointment Confirmed!",
+    thankYou: "Thank you",
+    yourAppointmentConfirmed: "your appointment is confirmed.",
+    seeYouThere: "We'll see you there!",
+    questions: "If you have questions, contact your salesperson.",
+    // Language
+    languagePreference: "Language Preference",
+    languageNote: "This also indicates your preferred language for the appointment",
+    english: "English",
+    spanish: "Spanish"
+  },
+  es: {
+    title: "DealerCRM",
+    subtitle: "Gestione su cita",
+    yourAppointment: "Su Cita",
+    hello: "Hola",
+    appointmentDetails: "aquí están los detalles de su cita.",
+    date: "FECHA",
+    time: "HORA",
+    location: "UBICACIÓN",
+    toBeConfirmed: "Por confirmar",
+    confirm: "Confirmar",
+    runningLate: "Llegaré Tarde",
+    reschedule: "Reprogramar",
+    cancel: "Cancelar",
+    // Late form
+    lateTitle: "Llegaré Tarde",
+    lateDescription: "Seleccione su nueva hora de llegada. El vendedor será notificado automáticamente.",
+    originalAppointment: "Su cita original:",
+    at: "a las",
+    whatTimeArrive: "¿A qué hora llegará?",
+    selectNewTime: "Seleccione nueva hora",
+    notifySalesperson: "Notificar al Vendedor",
+    // Reschedule form
+    rescheduleTitle: "Reprogramar Cita",
+    rescheduleDescription: "Seleccione una nueva fecha y hora para su cita.",
+    newDate: "Nueva Fecha",
+    newTime: "Nueva Hora",
+    selectTime: "Seleccione hora",
+    locationOptional: "Ubicación (opcional)",
+    keepCurrentLocation: "Mantener ubicación actual",
+    confirmNewDate: "Confirmar Nueva Fecha",
+    // Messages
+    invalidLink: "Link Inválido",
+    invalidLinkDesc: "Link inválido o expirado",
+    contactSalesperson: "Por favor contacte a su vendedor para obtener un nuevo link.",
+    appointmentCancelled: "Cita Cancelada",
+    appointmentCancelledDesc: "Esta cita ha sido cancelada.",
+    toScheduleNew: "Si desea programar una nueva cita, por favor contacte a su vendedor.",
+    appointmentConfirmed: "¡Cita Confirmada!",
+    thankYou: "Gracias",
+    yourAppointmentConfirmed: "su cita está confirmada.",
+    seeYouThere: "¡Lo esperamos!",
+    questions: "Si tiene preguntas, contacte a su vendedor.",
+    // Language
+    languagePreference: "Preferencia de Idioma",
+    languageNote: "Esto también indica su idioma preferido para la cita",
+    english: "Inglés",
+    spanish: "Español"
+  }
+};
 
 export default function PublicAppointmentPage() {
   const { token } = useParams();
@@ -20,6 +122,10 @@ export default function PublicAppointmentPage() {
   const [dealers, setDealers] = useState([]);
   const [error, setError] = useState(null);
   const [mode, setMode] = useState('view'); // 'view', 'reschedule', 'late', 'cancelled', 'confirmed'
+  
+  // Language - default English
+  const [language, setLanguage] = useState('en');
+  const t = translations[language];
   
   // Reschedule form
   const [newDate, setNewDate] = useState('');
@@ -40,13 +146,31 @@ export default function PublicAppointmentPage() {
       setClientInfo(response.data.client);
       setDealers(response.data.dealers || []);
       
+      // Set language from appointment if available
+      if (response.data.appointment?.preferred_language) {
+        setLanguage(response.data.appointment.preferred_language);
+      }
+      
       if (response.data.appointment.status === 'cancelado') {
         setMode('cancelled');
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Link inválido o expirado');
+      setError(err.response?.data?.detail || 'Invalid or expired link');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLanguageChange = async (newLang) => {
+    setLanguage(newLang);
+    
+    // Save language preference to backend
+    try {
+      await axios.put(`${API}/public/appointment/${token}/language`, {
+        language: newLang
+      });
+    } catch (err) {
+      console.error('Failed to save language preference:', err);
     }
   };
 
@@ -54,7 +178,7 @@ export default function PublicAppointmentPage() {
     e.preventDefault();
     
     if (!newDate || !newTime) {
-      toast.error('Por favor seleccione fecha y hora');
+      toast.error(language === 'es' ? 'Por favor seleccione fecha y hora' : 'Please select date and time');
       return;
     }
 
@@ -67,10 +191,9 @@ export default function PublicAppointmentPage() {
         dealer: newDealer || appointmentInfo.dealer
       });
 
-      toast.success('¡Cita reprogramada exitosamente!');
+      toast.success(language === 'es' ? '¡Cita reprogramada exitosamente!' : 'Appointment rescheduled successfully!');
       setMode('confirmed');
       
-      // Update local state
       setAppointmentInfo(prev => ({
         ...prev,
         date: newDate,
@@ -79,23 +202,24 @@ export default function PublicAppointmentPage() {
         status: 'reagendado'
       }));
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Error al reprogramar la cita');
+      toast.error(err.response?.data?.detail || (language === 'es' ? 'Error al reprogramar la cita' : 'Error rescheduling appointment'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleCancel = async () => {
-    if (!window.confirm('¿Está seguro que desea cancelar su cita?')) return;
+    const confirmMsg = language === 'es' ? '¿Está seguro que desea cancelar su cita?' : 'Are you sure you want to cancel your appointment?';
+    if (!window.confirm(confirmMsg)) return;
 
     setSubmitting(true);
     
     try {
       await axios.put(`${API}/public/appointment/${token}/cancel`);
-      toast.success('Cita cancelada');
+      toast.success(language === 'es' ? 'Cita cancelada' : 'Appointment cancelled');
       setMode('cancelled');
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Error al cancelar la cita');
+      toast.error(err.response?.data?.detail || (language === 'es' ? 'Error al cancelar la cita' : 'Error cancelling appointment'));
     } finally {
       setSubmitting(false);
     }
@@ -106,11 +230,11 @@ export default function PublicAppointmentPage() {
     
     try {
       await axios.put(`${API}/public/appointment/${token}/confirm`);
-      toast.success('¡Cita confirmada!');
+      toast.success(language === 'es' ? '¡Cita confirmada!' : 'Appointment confirmed!');
       setMode('confirmed');
       setAppointmentInfo(prev => ({ ...prev, status: 'confirmado' }));
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Error al confirmar la cita');
+      toast.error(err.response?.data?.detail || (language === 'es' ? 'Error al confirmar la cita' : 'Error confirming appointment'));
     } finally {
       setSubmitting(false);
     }
@@ -120,7 +244,7 @@ export default function PublicAppointmentPage() {
     e.preventDefault();
     
     if (!lateTime) {
-      toast.error('Por favor seleccione la nueva hora de llegada');
+      toast.error(language === 'es' ? 'Por favor seleccione la nueva hora de llegada' : 'Please select your new arrival time');
       return;
     }
 
@@ -131,7 +255,7 @@ export default function PublicAppointmentPage() {
         new_time: lateTime
       });
 
-      toast.success('¡Notificación enviada! El vendedor ha sido informado.');
+      toast.success(language === 'es' ? '¡Notificación enviada! El vendedor ha sido informado.' : 'Notification sent! The salesperson has been informed.');
       setMode('confirmed');
       setAppointmentInfo(prev => ({
         ...prev,
@@ -139,21 +263,17 @@ export default function PublicAppointmentPage() {
         status: 'llegará tarde'
       }));
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Error al notificar');
+      toast.error(err.response?.data?.detail || (language === 'es' ? 'Error al notificar' : 'Error sending notification'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return 'Por definir';
+    if (!dateStr) return t.toBeConfirmed;
     const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('es-ES', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', options);
   };
 
   const getMinDate = () => {
@@ -176,11 +296,9 @@ export default function PublicAppointmentPage() {
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-slate-800 mb-2">Link Inválido</h2>
-            <p className="text-slate-600">{error}</p>
-            <p className="text-sm text-slate-400 mt-4">
-              Por favor contacte a su vendedor para obtener un nuevo link.
-            </p>
+            <h2 className="text-xl font-semibold text-slate-800 mb-2">{t.invalidLink}</h2>
+            <p className="text-slate-600">{t.invalidLinkDesc}</p>
+            <p className="text-sm text-slate-400 mt-4">{t.contactSalesperson}</p>
           </CardContent>
         </Card>
       </div>
@@ -193,13 +311,9 @@ export default function PublicAppointmentPage() {
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center">
             <CalendarX className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-slate-800 mb-2">Cita Cancelada</h2>
-            <p className="text-slate-600">
-              Esta cita ha sido cancelada.
-            </p>
-            <p className="text-sm text-slate-400 mt-4">
-              Si desea programar una nueva cita, por favor contacte a su vendedor.
-            </p>
+            <h2 className="text-xl font-semibold text-slate-800 mb-2">{t.appointmentCancelled}</h2>
+            <p className="text-slate-600">{t.appointmentCancelledDesc}</p>
+            <p className="text-sm text-slate-400 mt-4">{t.toScheduleNew}</p>
           </CardContent>
         </Card>
       </div>
@@ -212,9 +326,9 @@ export default function PublicAppointmentPage() {
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center">
             <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-slate-800 mb-2">¡Cita Confirmada!</h2>
+            <h2 className="text-xl font-semibold text-slate-800 mb-2">{t.appointmentConfirmed}</h2>
             <p className="text-slate-600 mb-4">
-              Gracias {clientInfo?.first_name}, su cita está confirmada.
+              {t.thankYou} {clientInfo?.first_name}, {t.yourAppointmentConfirmed}
             </p>
             
             <div className="bg-green-50 rounded-lg p-4 text-left space-y-2">
@@ -224,17 +338,15 @@ export default function PublicAppointmentPage() {
               </div>
               <div className="flex items-center gap-2 text-slate-700">
                 <Clock className="w-4 h-4 text-green-600" />
-                <span>{appointmentInfo?.time || 'Por definir'}</span>
+                <span>{appointmentInfo?.time || t.toBeConfirmed}</span>
               </div>
               <div className="flex items-center gap-2 text-slate-700">
                 <MapPin className="w-4 h-4 text-green-600" />
-                <span>{appointmentInfo?.dealer || 'Por definir'}</span>
+                <span>{appointmentInfo?.dealer || t.toBeConfirmed}</span>
               </div>
             </div>
 
-            <p className="text-sm text-slate-400 mt-4">
-              ¡Lo esperamos!
-            </p>
+            <p className="text-sm text-slate-400 mt-4">{t.seeYouThere}</p>
           </CardContent>
         </Card>
       </div>
@@ -251,19 +363,43 @@ export default function PublicAppointmentPage() {
           <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <Car className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">DealerCRM</h1>
-          <p className="text-slate-500">Gestione su cita</p>
+          <h1 className="text-2xl font-bold text-slate-800">{t.title}</h1>
+          <p className="text-slate-500">{t.subtitle}</p>
         </div>
+
+        {/* Language Selector */}
+        <Card className="mb-4">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Globe className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="font-medium text-sm text-slate-700">{t.languagePreference}</p>
+                  <p className="text-xs text-slate-400">{t.languageNote}</p>
+                </div>
+              </div>
+              <Select value={language} onValueChange={handleLanguageChange}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">🇺🇸 {t.english}</SelectItem>
+                  <SelectItem value="es">🇲🇽 {t.spanish}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Current Appointment Card */}
         <Card className="mb-4">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-blue-600" />
-              Su Cita Actual
+              {t.yourAppointment}
             </CardTitle>
             <CardDescription>
-              Hola <strong>{clientInfo?.first_name}</strong>, aquí están los detalles de su cita.
+              {t.hello} <strong>{clientInfo?.first_name}</strong>, {t.appointmentDetails}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -273,7 +409,7 @@ export default function PublicAppointmentPage() {
                   <Calendar className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 uppercase">Fecha</p>
+                  <p className="text-xs text-slate-500 uppercase">{t.date}</p>
                   <p className="font-medium text-slate-800">{formatDate(appointmentInfo?.date)}</p>
                 </div>
               </div>
@@ -283,8 +419,8 @@ export default function PublicAppointmentPage() {
                   <Clock className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 uppercase">Hora</p>
-                  <p className="font-medium text-slate-800">{appointmentInfo?.time || 'Por definir'}</p>
+                  <p className="text-xs text-slate-500 uppercase">{t.time}</p>
+                  <p className="font-medium text-slate-800">{appointmentInfo?.time || t.toBeConfirmed}</p>
                 </div>
               </div>
               
@@ -293,8 +429,8 @@ export default function PublicAppointmentPage() {
                   <MapPin className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 uppercase">Ubicación</p>
-                  <p className="font-medium text-slate-800">{appointmentInfo?.dealer || 'Por definir'}</p>
+                  <p className="text-xs text-slate-500 uppercase">{t.location}</p>
+                  <p className="font-medium text-slate-800">{appointmentInfo?.dealer || t.toBeConfirmed}</p>
                 </div>
               </div>
             </div>
@@ -311,7 +447,7 @@ export default function PublicAppointmentPage() {
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (
                       <>
                         <CheckCircle2 className="w-4 h-4 mr-1" />
-                        Confirmar
+                        {t.confirm}
                       </>
                     )}
                   </Button>
@@ -321,7 +457,7 @@ export default function PublicAppointmentPage() {
                     className="flex-1 text-amber-600 hover:bg-amber-50 border-amber-200"
                   >
                     <Clock className="w-4 h-4 mr-1" />
-                    Llegaré Tarde
+                    {t.runningLate}
                   </Button>
                 </div>
                 <div className="flex gap-2">
@@ -331,7 +467,7 @@ export default function PublicAppointmentPage() {
                     className="flex-1"
                   >
                     <RefreshCw className="w-4 h-4 mr-1" />
-                    Reprogramar
+                    {t.reschedule}
                   </Button>
                   <Button 
                     variant="outline" 
@@ -340,7 +476,7 @@ export default function PublicAppointmentPage() {
                     disabled={submitting}
                   >
                     <CalendarX className="w-4 h-4 mr-1" />
-                    Cancelar
+                    {t.cancel}
                   </Button>
                 </div>
               </div>
@@ -354,24 +490,22 @@ export default function PublicAppointmentPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-amber-600" />
-                Llegaré Tarde
+                {t.lateTitle}
               </CardTitle>
-              <CardDescription>
-                Seleccione su nueva hora de llegada. El vendedor será notificado automáticamente.
-              </CardDescription>
+              <CardDescription>{t.lateDescription}</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLateArrival} className="space-y-4">
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-                  <p className="font-medium">Su cita original:</p>
-                  <p>{appointmentInfo?.date} a las {appointmentInfo?.time}</p>
+                  <p className="font-medium">{t.originalAppointment}</p>
+                  <p>{appointmentInfo?.date} {t.at} {appointmentInfo?.time}</p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="late-time">¿A qué hora llegará?</Label>
+                  <Label htmlFor="late-time">{t.whatTimeArrive}</Label>
                   <Select value={lateTime} onValueChange={setLateTime}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccione nueva hora" />
+                      <SelectValue placeholder={t.selectNewTime} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="09:30">9:30 AM</SelectItem>
@@ -405,7 +539,7 @@ export default function PublicAppointmentPage() {
                     {submitting ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      'Notificar al Vendedor'
+                      t.notifySalesperson
                     )}
                   </Button>
                   <Button 
@@ -413,7 +547,7 @@ export default function PublicAppointmentPage() {
                     variant="outline" 
                     onClick={() => setMode('view')}
                   >
-                    Cancelar
+                    {t.cancel}
                   </Button>
                 </div>
               </form>
@@ -427,16 +561,14 @@ export default function PublicAppointmentPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <RefreshCw className="w-5 h-5 text-blue-600" />
-                Reprogramar Cita
+                {t.rescheduleTitle}
               </CardTitle>
-              <CardDescription>
-                Seleccione una nueva fecha y hora para su cita.
-              </CardDescription>
+              <CardDescription>{t.rescheduleDescription}</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleReschedule} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="new-date">Nueva Fecha</Label>
+                  <Label htmlFor="new-date">{t.newDate}</Label>
                   <Input
                     id="new-date"
                     type="date"
@@ -448,10 +580,10 @@ export default function PublicAppointmentPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="new-time">Nueva Hora</Label>
+                  <Label htmlFor="new-time">{t.newTime}</Label>
                   <Select value={newTime} onValueChange={setNewTime}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccione hora" />
+                      <SelectValue placeholder={t.selectTime} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="09:00">9:00 AM</SelectItem>
@@ -470,10 +602,10 @@ export default function PublicAppointmentPage() {
 
                 {dealers.length > 0 && (
                   <div className="space-y-2">
-                    <Label htmlFor="new-dealer">Ubicación (opcional)</Label>
+                    <Label htmlFor="new-dealer">{t.locationOptional}</Label>
                     <Select value={newDealer} onValueChange={setNewDealer}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Mantener ubicación actual" />
+                        <SelectValue placeholder={t.keepCurrentLocation} />
                       </SelectTrigger>
                       <SelectContent>
                         {dealers.map((dealer) => (
@@ -495,7 +627,7 @@ export default function PublicAppointmentPage() {
                     {submitting ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      'Confirmar Nueva Fecha'
+                      t.confirmNewDate
                     )}
                   </Button>
                   <Button 
@@ -503,7 +635,7 @@ export default function PublicAppointmentPage() {
                     variant="outline" 
                     onClick={() => setMode('view')}
                   >
-                    Cancelar
+                    {t.cancel}
                   </Button>
                 </div>
               </form>
@@ -512,9 +644,7 @@ export default function PublicAppointmentPage() {
         )}
 
         {/* Footer */}
-        <p className="text-center text-xs text-slate-400 mt-6">
-          Si tiene preguntas, contacte a su vendedor.
-        </p>
+        <p className="text-center text-xs text-slate-400 mt-6">{t.questions}</p>
       </div>
     </div>
   );
