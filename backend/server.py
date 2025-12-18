@@ -940,6 +940,98 @@ async def send_reminder_sms(client_id: str, record_id: str, current_user: dict =
     
     return {"message": "Reminder SMS sent successfully", "phone": client["phone"], "twilio_sid": result.get("sid")}
 
+@api_router.post("/sms/process-weekly-reminders")
+async def process_weekly_reminders(current_user: dict = Depends(get_current_user)):
+    """Process and send weekly reminders for all pending records (admin only or scheduled task)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    if not twilio_client:
+        return {"message": "Twilio not configured", "sent": 0, "skipped": 0}
+    
+    now = datetime.now(timezone.utc)
+    one_week_ago = (now - timedelta(days=7)).isoformat()
+    
+    # Find records that:
+    # - Are NOT sold (finance_status != 'financiado' and != 'least')
+    # - Haven't received a reminder in the last week
+    # - Are not deleted
+    query = {
+        "is_deleted": {"$ne": True},
+        "finance_status": {"$nin": ["financiado", "least"]},
+        "$or": [
+            {"last_reminder_sent": {"$lt": one_week_ago}},
+            {"last_reminder_sent": None},
+            {"last_reminder_sent": {"$exists": False}}
+        ]
+    }
+    
+    records = await db.user_records.find(query, {"_id": 0}).to_list(500)
+    
+    sent_count = 0
+    skipped_count = 0
+    errors = []
+    
+    for record in records:
+        try:
+            client = await db.clients.find_one({"id": record["client_id"], "is_deleted": {"$ne": True}}, {"_id": 0})
+            if not client or not client.get("phone"):
+                skipped_count += 1
+                continue
+            
+            client_name = f"{client['first_name']} {client['last_name']}"
+            message = f"Hola {client_name}, le recordamos que tiene una oportunidad pendiente con nosotros. Visite nuestro concesionario o contáctenos para más información. - DealerCRM"
+            
+            result = await send_sms_twilio(client["phone"], message)
+            
+            # Log the SMS
+            sms_log = {
+                "id": str(uuid.uuid4()),
+                "client_id": record["client_id"],
+                "record_id": record["id"],
+                "phone": client["phone"],
+                "message_type": "weekly_reminder",
+                "message": message,
+                "status": "sent" if result["success"] else "failed",
+                "twilio_sid": result.get("sid"),
+                "error": result.get("error"),
+                "sent_at": now.isoformat(),
+                "sent_by": "system_scheduler",
+                "automatic": True
+            }
+            await db.sms_logs.insert_one(sms_log)
+            
+            if result["success"]:
+                sent_count += 1
+                await db.user_records.update_one(
+                    {"id": record["id"]},
+                    {"$set": {"last_reminder_sent": now.isoformat()}}
+                )
+            else:
+                errors.append({"record_id": record["id"], "error": result.get("error")})
+                
+        except Exception as e:
+            errors.append({"record_id": record["id"], "error": str(e)})
+            skipped_count += 1
+    
+    return {
+        "message": f"Weekly reminders processed",
+        "sent": sent_count,
+        "skipped": skipped_count,
+        "total_processed": len(records),
+        "errors": errors[:10]  # Return first 10 errors only
+    }
+
+@api_router.get("/sms/logs")
+async def get_sms_logs(client_id: Optional[str] = None, limit: int = 50, current_user: dict = Depends(get_current_user)):
+    """Get SMS logs for auditing"""
+    query = {}
+    if client_id:
+        query["client_id"] = client_id
+    
+    logs = await db.sms_logs.find(query, {"_id": 0}).sort("sent_at", -1).limit(limit).to_list(limit)
+    return logs
+
 # ==================== CONFIGURABLE LISTS (Banks, Dealers, Cars) ====================
 
 class ConfigListItem(BaseModel):
