@@ -773,6 +773,106 @@ async def send_appointment_sms(client_id: str, appointment_id: str, current_user
     
     return {"message": "Appointment SMS sent (mocked)", "phone": client["phone"]}
 
+# ==================== CONFIGURABLE LISTS (Banks, Dealers, Cars) ====================
+
+class ConfigListItem(BaseModel):
+    name: str
+    category: str  # 'bank', 'dealer', 'car'
+
+class ConfigListItemResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    name: str
+    category: str
+    created_at: str
+    created_by: str
+
+@api_router.get("/config-lists/{category}", response_model=List[ConfigListItemResponse])
+async def get_config_list(category: str, current_user: dict = Depends(get_current_user)):
+    """Get all items in a configurable list (bank, dealer, car)"""
+    if category not in ['bank', 'dealer', 'car']:
+        raise HTTPException(status_code=400, detail="Invalid category. Must be 'bank', 'dealer', or 'car'")
+    items = await db.config_lists.find({"category": category}, {"_id": 0}).sort("name", 1).to_list(1000)
+    return items
+
+@api_router.post("/config-lists", response_model=ConfigListItemResponse)
+async def create_config_list_item(item: ConfigListItem, current_user: dict = Depends(get_current_user)):
+    """Add a new item to a configurable list (admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    if item.category not in ['bank', 'dealer', 'car']:
+        raise HTTPException(status_code=400, detail="Invalid category")
+    
+    # Check for duplicate
+    existing = await db.config_lists.find_one({"name": {"$regex": f"^{item.name}$", "$options": "i"}, "category": item.category})
+    if existing:
+        raise HTTPException(status_code=400, detail=f"{item.name} already exists in {item.category} list")
+    
+    item_doc = {
+        "id": str(uuid.uuid4()),
+        "name": item.name,
+        "category": item.category,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": current_user["id"]
+    }
+    await db.config_lists.insert_one(item_doc)
+    del item_doc["_id"]
+    return item_doc
+
+@api_router.delete("/config-lists/{item_id}")
+async def delete_config_list_item(item_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete an item from a configurable list (admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await db.config_lists.delete_one({"id": item_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"message": "Item deleted"}
+
+# ==================== CLIENT DELETE (Admin) ====================
+
+@api_router.delete("/clients/{client_id}")
+async def delete_client(client_id: str, permanent: bool = False, current_user: dict = Depends(get_current_user)):
+    """Delete a client (soft delete by default, permanent if specified). Admin only."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required to delete clients")
+    
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    if permanent:
+        # Permanent delete
+        await db.clients.delete_one({"id": client_id})
+        # Also delete related records and appointments
+        await db.user_records.delete_many({"client_id": client_id})
+        await db.appointments.delete_many({"client_id": client_id})
+        await db.cosigner_relations.delete_many({"$or": [{"buyer_client_id": client_id}, {"cosigner_client_id": client_id}]})
+        return {"message": "Client permanently deleted"}
+    else:
+        # Soft delete
+        await db.clients.update_one(
+            {"id": client_id},
+            {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        return {"message": "Client moved to trash"}
+
+@api_router.post("/clients/{client_id}/restore")
+async def restore_client(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Restore a deleted client (admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await db.clients.update_one(
+        {"id": client_id, "is_deleted": True},
+        {"$set": {"is_deleted": False}, "$unset": {"deleted_at": ""}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Deleted client not found")
+    return {"message": "Client restored"}
+
 # ==================== ROOT ====================
 
 @api_router.get("/")
