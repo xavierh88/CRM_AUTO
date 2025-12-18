@@ -364,6 +364,29 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
   const [expandedOpportunity, setExpandedOpportunity] = useState(null); // which opportunity is expanded
   const [editingRecord, setEditingRecord] = useState(null); // record being edited
   const [editRecordData, setEditRecordData] = useState(null);
+  
+  // Config lists for dropdowns
+  const [configLists, setConfigLists] = useState({ banks: [], dealers: [], cars: [] });
+  
+  useEffect(() => {
+    const fetchConfigLists = async () => {
+      try {
+        const [banksRes, dealersRes, carsRes] = await Promise.all([
+          axios.get(`${API}/config-lists/bank`),
+          axios.get(`${API}/config-lists/dealer`),
+          axios.get(`${API}/config-lists/car`)
+        ]);
+        setConfigLists({
+          banks: banksRes.data,
+          dealers: dealersRes.data,
+          cars: carsRes.data
+        });
+      } catch (error) {
+        console.error('Failed to fetch config lists:', error);
+      }
+    };
+    fetchConfigLists();
+  }, []);
 
   const emptyRecord = {
     dl: false, checks: false, ssn: false, itin: false,
