@@ -739,53 +739,167 @@ async def get_trash_user_records(current_user: dict = Depends(get_current_user))
     records = await db.user_records.find({"is_deleted": True}, {"_id": 0}).to_list(1000)
     return records
 
-# ==================== SMS ROUTES (MOCK) ====================
+# ==================== SMS ROUTES (TWILIO) ====================
+
+async def send_sms_twilio(to_phone: str, message: str) -> dict:
+    """Send SMS using Twilio. Returns status dict."""
+    if not twilio_client:
+        logger.warning("Twilio client not configured - SMS not sent")
+        return {"success": False, "error": "Twilio not configured"}
+    
+    try:
+        # Ensure phone number is in E.164 format
+        if not to_phone.startswith('+'):
+            to_phone = '+1' + to_phone.replace('-', '').replace(' ', '').replace('(', '').replace(')', '')
+        
+        message_obj = twilio_client.messages.create(
+            body=message,
+            from_=TWILIO_PHONE_NUMBER,
+            to=to_phone
+        )
+        logger.info(f"SMS sent to {to_phone}: SID={message_obj.sid}")
+        return {"success": True, "sid": message_obj.sid, "status": message_obj.status}
+    except Exception as e:
+        logger.error(f"Failed to send SMS to {to_phone}: {str(e)}")
+        return {"success": False, "error": str(e)}
 
 @api_router.post("/sms/send-documents-link")
 async def send_documents_sms(client_id: str, current_user: dict = Depends(get_current_user)):
-    """Send SMS with documents upload link - MOCKED"""
+    """Send SMS with documents upload link"""
     client = await db.clients.find_one({"id": client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    # Log the SMS (mocked)
+    # Create the message
+    client_name = f"{client['first_name']} {client['last_name']}"
+    message = f"Hola {client_name}, por favor suba sus documentos (ID y comprobante de ingresos) en el siguiente enlace: [LINK_DOCUMENTOS]. Gracias - DealerCRM"
+    
+    # Send SMS via Twilio
+    result = await send_sms_twilio(client["phone"], message)
+    
+    # Log the SMS
     sms_log = {
         "id": str(uuid.uuid4()),
         "client_id": client_id,
         "phone": client["phone"],
         "message_type": "documents",
-        "status": "sent",
+        "message": message,
+        "status": "sent" if result["success"] else "failed",
+        "twilio_sid": result.get("sid"),
+        "error": result.get("error"),
         "sent_at": datetime.now(timezone.utc).isoformat(),
         "sent_by": current_user["id"]
     }
     await db.sms_logs.insert_one(sms_log)
     
-    return {"message": "Documents SMS sent (mocked)", "phone": client["phone"]}
+    if not result["success"]:
+        raise HTTPException(status_code=500, detail=f"Failed to send SMS: {result.get('error')}")
+    
+    return {"message": "Documents SMS sent successfully", "phone": client["phone"], "twilio_sid": result.get("sid")}
 
 @api_router.post("/sms/send-appointment-link")
 async def send_appointment_sms(client_id: str, appointment_id: str, current_user: dict = Depends(get_current_user)):
-    """Send SMS with appointment scheduling link - MOCKED"""
+    """Send SMS with appointment scheduling/management link"""
     client = await db.clients.find_one({"id": client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    # Log the SMS (mocked)
+    appointment = await db.appointments.find_one({"id": appointment_id}, {"_id": 0})
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    # Create the message
+    client_name = f"{client['first_name']} {client['last_name']}"
+    date_str = appointment.get("date", "pendiente")
+    time_str = appointment.get("time", "")
+    dealer_str = appointment.get("dealer", "")
+    
+    if appointment.get("language") == "es":
+        message = f"Hola {client_name}, tiene una cita programada para el {date_str} a las {time_str} en {dealer_str}. Para reprogramar o cancelar su cita, visite: [LINK_CITA]. - DealerCRM"
+    else:
+        message = f"Hi {client_name}, you have an appointment scheduled for {date_str} at {time_str} at {dealer_str}. To reschedule or cancel, visit: [LINK_APPOINTMENT]. - DealerCRM"
+    
+    # Send SMS via Twilio
+    result = await send_sms_twilio(client["phone"], message)
+    
+    # Log the SMS
     sms_log = {
         "id": str(uuid.uuid4()),
         "client_id": client_id,
         "appointment_id": appointment_id,
         "phone": client["phone"],
         "message_type": "appointment",
-        "status": "sent",
+        "message": message,
+        "status": "sent" if result["success"] else "failed",
+        "twilio_sid": result.get("sid"),
+        "error": result.get("error"),
         "sent_at": datetime.now(timezone.utc).isoformat(),
         "sent_by": current_user["id"]
     }
     await db.sms_logs.insert_one(sms_log)
     
     # Update appointment link_sent_at
-    await db.appointments.update_one({"id": appointment_id}, {"$set": {"link_sent_at": datetime.now(timezone.utc).isoformat()}})
+    await db.appointments.update_one(
+        {"id": appointment_id}, 
+        {"$set": {
+            "link_sent_at": datetime.now(timezone.utc).isoformat(),
+            "last_sms_sent": datetime.now(timezone.utc).isoformat()
+        }}
+    )
     
-    return {"message": "Appointment SMS sent (mocked)", "phone": client["phone"]}
+    if not result["success"]:
+        raise HTTPException(status_code=500, detail=f"Failed to send SMS: {result.get('error')}")
+    
+    return {"message": "Appointment SMS sent successfully", "phone": client["phone"], "twilio_sid": result.get("sid")}
+
+@api_router.post("/sms/send-reminder")
+async def send_reminder_sms(client_id: str, record_id: str, current_user: dict = Depends(get_current_user)):
+    """Send weekly reminder SMS for pending records"""
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    record = await db.user_records.find_one({"id": record_id}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="Record not found")
+    
+    # Don't send reminder if already sold
+    if record.get("finance_status") in ["financiado", "least"]:
+        return {"message": "No reminder needed - record already sold", "skipped": True}
+    
+    # Create reminder message
+    client_name = f"{client['first_name']} {client['last_name']}"
+    message = f"Hola {client_name}, le recordamos que tiene una oportunidad pendiente con nosotros. Por favor visite nuestro concesionario o contáctenos para más información. - DealerCRM"
+    
+    # Send SMS via Twilio
+    result = await send_sms_twilio(client["phone"], message)
+    
+    # Log the SMS
+    sms_log = {
+        "id": str(uuid.uuid4()),
+        "client_id": client_id,
+        "record_id": record_id,
+        "phone": client["phone"],
+        "message_type": "reminder",
+        "message": message,
+        "status": "sent" if result["success"] else "failed",
+        "twilio_sid": result.get("sid"),
+        "error": result.get("error"),
+        "sent_at": datetime.now(timezone.utc).isoformat(),
+        "sent_by": current_user["id"]
+    }
+    await db.sms_logs.insert_one(sms_log)
+    
+    # Update record with last reminder date
+    await db.user_records.update_one(
+        {"id": record_id},
+        {"$set": {"last_reminder_sent": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if not result["success"]:
+        raise HTTPException(status_code=500, detail=f"Failed to send SMS: {result.get('error')}")
+    
+    return {"message": "Reminder SMS sent successfully", "phone": client["phone"], "twilio_sid": result.get("sid")}
 
 # ==================== CONFIGURABLE LISTS (Banks, Dealers, Cars) ====================
 
