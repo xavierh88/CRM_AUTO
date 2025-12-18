@@ -31,6 +31,10 @@ export default function ClientsPage() {
   const [appointments, setAppointments] = useState({});
   const [cosigners, setCosigners] = useState({});
   
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const clientsPerPage = 10;
+  
   const isAdmin = user?.role === 'admin';
   
   const deleteClient = async (clientId) => {
