@@ -803,15 +803,22 @@ async def send_sms_twilio(to_phone: str, message: str) -> dict:
         return {"success": False, "error": str(e)}
 
 @api_router.post("/sms/send-documents-link")
-async def send_documents_sms(client_id: str, current_user: dict = Depends(get_current_user)):
+async def send_documents_sms(client_id: str, record_id: str, current_user: dict = Depends(get_current_user)):
     """Send SMS with documents upload link"""
     client = await db.clients.find_one({"id": client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
+    # Generate public link token
+    token = await create_public_link(client_id, record_id, "documents")
+    
+    # Get base URL from environment or use default
+    base_url = os.environ.get('FRONTEND_URL', 'https://work-1-hxroqbnbaygfdbdd.prod-runtime.all-hands.dev')
+    document_link = f"{base_url}/c/docs/{token}"
+    
     # Create the message
     client_name = f"{client['first_name']} {client['last_name']}"
-    message = f"Hola {client_name}, por favor suba sus documentos (ID y comprobante de ingresos) en el siguiente enlace: [LINK_DOCUMENTOS]. Gracias - DealerCRM"
+    message = f"Hola {client_name}, por favor suba sus documentos (ID y comprobante de ingresos) en: {document_link} - DealerCRM"
     
     # Send SMS via Twilio
     result = await send_sms_twilio(client["phone"], message)
@@ -820,9 +827,11 @@ async def send_documents_sms(client_id: str, current_user: dict = Depends(get_cu
     sms_log = {
         "id": str(uuid.uuid4()),
         "client_id": client_id,
+        "record_id": record_id,
         "phone": client["phone"],
         "message_type": "documents",
         "message": message,
+        "link": document_link,
         "status": "sent" if result["success"] else "failed",
         "twilio_sid": result.get("sid"),
         "error": result.get("error"),
@@ -834,7 +843,7 @@ async def send_documents_sms(client_id: str, current_user: dict = Depends(get_cu
     if not result["success"]:
         raise HTTPException(status_code=500, detail=f"Failed to send SMS: {result.get('error')}")
     
-    return {"message": "Documents SMS sent successfully", "phone": client["phone"], "twilio_sid": result.get("sid")}
+    return {"message": "Documents SMS sent successfully", "phone": client["phone"], "twilio_sid": result.get("sid"), "link": document_link}
 
 @api_router.post("/sms/send-appointment-link")
 async def send_appointment_sms(client_id: str, appointment_id: str, current_user: dict = Depends(get_current_user)):
