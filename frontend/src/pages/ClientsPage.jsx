@@ -30,6 +30,19 @@ export default function ClientsPage() {
   const [userRecords, setUserRecords] = useState({});
   const [appointments, setAppointments] = useState({});
   const [cosigners, setCosigners] = useState({});
+  
+  const isAdmin = user?.role === 'admin';
+  
+  const deleteClient = async (clientId) => {
+    if (!window.confirm('¿Está seguro de eliminar este cliente? Se moverá a la papelera.')) return;
+    try {
+      await axios.delete(`${API}/clients/${clientId}`);
+      toast.success('Cliente movido a la papelera');
+      fetchClients();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al eliminar cliente');
+    }
+  };
 
   const [newClient, setNewClient] = useState({
     first_name: '', last_name: '', phone: '', email: '', address: '', apartment: ''
