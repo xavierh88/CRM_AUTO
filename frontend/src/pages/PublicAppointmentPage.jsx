@@ -19,12 +19,15 @@ export default function PublicAppointmentPage() {
   const [clientInfo, setClientInfo] = useState(null);
   const [dealers, setDealers] = useState([]);
   const [error, setError] = useState(null);
-  const [mode, setMode] = useState('view'); // 'view', 'reschedule', 'cancelled', 'confirmed'
+  const [mode, setMode] = useState('view'); // 'view', 'reschedule', 'late', 'cancelled', 'confirmed'
   
   // Reschedule form
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
   const [newDealer, setNewDealer] = useState('');
+  
+  // Late arrival
+  const [lateTime, setLateTime] = useState('');
 
   useEffect(() => {
     validateToken();
