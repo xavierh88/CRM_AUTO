@@ -418,6 +418,10 @@ async def update_client_documents(client_id: str, id_uploaded: bool = None, inco
 async def create_user_record(record: UserRecordCreate, current_user: dict = Depends(get_current_user)):
     now = datetime.now(timezone.utc).isoformat()
     
+    # Check if this is the first record for this client
+    existing_records_count = await db.user_records.count_documents({"client_id": record.client_id, "is_deleted": {"$ne": True}})
+    is_first_record = existing_records_count == 0
+    
     # Calculate opportunity number
     opportunity_number = 1
     if record.previous_record_id:
@@ -434,14 +438,49 @@ async def create_user_record(record: UserRecordCreate, current_user: dict = Depe
         **record.model_dump(exclude={"client_id"}),
         "opportunity_number": opportunity_number,
         "created_at": now,
-        "is_deleted": False
+        "is_deleted": False,
+        "first_sms_sent": False,
+        "last_reminder_sent": None
     }
     await db.user_records.insert_one(record_doc)
     
     # Update client last_record_date
     await db.clients.update_one({"id": record.client_id}, {"$set": {"last_record_date": now}})
     
+    # Send automatic SMS if this is the first record for the client
+    sms_sent = False
+    if is_first_record and twilio_client:
+        client = await db.clients.find_one({"id": record.client_id}, {"_id": 0})
+        if client and client.get("phone"):
+            client_name = f"{client['first_name']} {client['last_name']}"
+            message = f"Hola {client_name}, gracias por visitarnos. Le mantendremos informado sobre su proceso de compra. Si tiene preguntas, no dude en contactarnos. - DealerCRM"
+            
+            result = await send_sms_twilio(client["phone"], message)
+            
+            # Log the automatic SMS
+            sms_log = {
+                "id": str(uuid.uuid4()),
+                "client_id": record.client_id,
+                "record_id": record_doc["id"],
+                "phone": client["phone"],
+                "message_type": "welcome_first_record",
+                "message": message,
+                "status": "sent" if result["success"] else "failed",
+                "twilio_sid": result.get("sid"),
+                "error": result.get("error"),
+                "sent_at": now,
+                "sent_by": current_user["id"],
+                "automatic": True
+            }
+            await db.sms_logs.insert_one(sms_log)
+            
+            if result["success"]:
+                sms_sent = True
+                await db.user_records.update_one({"id": record_doc["id"]}, {"$set": {"first_sms_sent": True}})
+                logger.info(f"Automatic welcome SMS sent to {client['phone']} for first record")
+    
     del record_doc["_id"]
+    record_doc["auto_sms_sent"] = sms_sent
     return record_doc
 
 @api_router.get("/user-records", response_model=List[dict])
