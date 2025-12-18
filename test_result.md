@@ -151,3 +151,85 @@ test_plan:
     - "Collapsible opportunity sections"
     - "Record permissions (edit/delete)"
   
+
+## New Features Implemented (Session 2)
+
+frontend:
+  - task: "Admin configurable lists (Banks, Dealers, Autos)"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/AdminPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "New tabs added for Banks (33), Dealers (2), and Autos with add/delete functionality"
+
+  - task: "Client delete functionality for admin"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/ClientsPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Delete button visible on client cards for admin users only"
+
+  - task: "Trash/Recycle bin for deleted clients"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/AdminPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Trash tab shows deleted clients with Restore and Delete Permanently options"
+
+  - task: "Dropdown selects for Auto, Bank, Dealer in record form"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/ClientsPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Record form now uses Select components with configurable lists"
+
+backend:
+  - task: "Config lists API endpoints"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "GET/POST/DELETE endpoints for config-lists working"
+
+  - task: "Client delete and restore endpoints"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "DELETE /clients/{id} and POST /clients/{id}/restore working"
+
+test_plan:
+  current_focus:
+    - "Admin configurable lists management"
+    - "Client delete and restore functionality"
+    - "Record form with dropdown selects"
