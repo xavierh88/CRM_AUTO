@@ -3,12 +3,13 @@ import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Switch } from '../components/ui/switch';
 import { toast } from 'sonner';
-import { Trash2, RotateCcw, Users, FileText, Shield, CheckCircle2, XCircle, UserCog } from 'lucide-react';
+import { Trash2, RotateCcw, Users, FileText, Shield, CheckCircle2, XCircle, UserCog, Plus, Building2, Car, Landmark } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -18,6 +19,14 @@ export default function AdminPage() {
   const [trashClients, setTrashClients] = useState([]);
   const [trashRecords, setTrashRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Config lists state
+  const [banks, setBanks] = useState([]);
+  const [dealers, setDealers] = useState([]);
+  const [cars, setCars] = useState([]);
+  const [newBank, setNewBank] = useState('');
+  const [newDealer, setNewDealer] = useState('');
+  const [newCar, setNewCar] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -25,14 +34,20 @@ export default function AdminPage() {
 
   const fetchData = async () => {
     try {
-      const [usersRes, trashClientsRes, trashRecordsRes] = await Promise.all([
+      const [usersRes, trashClientsRes, trashRecordsRes, banksRes, dealersRes, carsRes] = await Promise.all([
         axios.get(`${API}/users`),
         axios.get(`${API}/trash/clients`),
-        axios.get(`${API}/trash/user-records`)
+        axios.get(`${API}/trash/user-records`),
+        axios.get(`${API}/config-lists/bank`),
+        axios.get(`${API}/config-lists/dealer`),
+        axios.get(`${API}/config-lists/car`)
       ]);
       setUsers(usersRes.data);
       setTrashClients(trashClientsRes.data);
       setTrashRecords(trashRecordsRes.data);
+      setBanks(banksRes.data);
+      setDealers(dealersRes.data);
+      setCars(carsRes.data);
     } catch (error) {
       console.error('Failed to fetch admin data:', error);
     } finally {
@@ -98,6 +113,33 @@ export default function AdminPage() {
     }
   };
 
+  // Config list functions
+  const addConfigItem = async (category, name, setter) => {
+    if (!name.trim()) {
+      toast.error('Please enter a name');
+      return;
+    }
+    try {
+      await axios.post(`${API}/config-lists`, { name: name.trim(), category });
+      toast.success(`${name} added to ${category} list`);
+      setter('');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to add item');
+    }
+  };
+
+  const deleteConfigItem = async (itemId, category) => {
+    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    try {
+      await axios.delete(`${API}/config-lists/${itemId}`);
+      toast.success('Item deleted');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to delete item');
+    }
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString();
@@ -122,7 +164,7 @@ export default function AdminPage() {
           <Shield className="w-6 h-6 text-purple-600" />
           {t('nav.admin')}
         </h1>
-        <p className="text-slate-500 mt-1">Manage users and recover deleted items</p>
+        <p className="text-slate-500 mt-1">Manage users, lists, and recover deleted items</p>
       </div>
 
       {/* Pending Activations Alert */}
@@ -139,23 +181,31 @@ export default function AdminPage() {
       )}
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
+        <TabsList className="grid w-full grid-cols-5 max-w-2xl">
           <TabsTrigger value="users" data-testid="users-tab" className="relative">
-            <Users className="w-4 h-4 mr-2" />
-            {t('admin.users')}
+            <Users className="w-4 h-4 mr-1" />
+            Users
             {pendingUsers > 0 && (
               <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-white text-xs rounded-full flex items-center justify-center">
                 {pendingUsers}
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="trash-clients" data-testid="trash-clients-tab">
-            <Trash2 className="w-4 h-4 mr-2" />
-            Clients
+          <TabsTrigger value="banks" data-testid="banks-tab">
+            <Landmark className="w-4 h-4 mr-1" />
+            Banks
           </TabsTrigger>
-          <TabsTrigger value="trash-records" data-testid="trash-records-tab">
-            <FileText className="w-4 h-4 mr-2" />
-            Records
+          <TabsTrigger value="dealers" data-testid="dealers-tab">
+            <Building2 className="w-4 h-4 mr-1" />
+            Dealers
+          </TabsTrigger>
+          <TabsTrigger value="cars" data-testid="cars-tab">
+            <Car className="w-4 h-4 mr-1" />
+            Autos
+          </TabsTrigger>
+          <TabsTrigger value="trash" data-testid="trash-tab">
+            <Trash2 className="w-4 h-4 mr-1" />
+            Trash
           </TabsTrigger>
         </TabsList>
 
@@ -251,119 +301,243 @@ export default function AdminPage() {
           </Card>
         </TabsContent>
 
-        {/* Trash Clients Tab */}
-        <TabsContent value="trash-clients">
+        {/* Banks Tab */}
+        <TabsContent value="banks">
           <Card className="dashboard-card">
             <CardHeader>
-              <CardTitle>{t('admin.deletedClients')} ({trashClients.length})</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Landmark className="w-5 h-5 text-blue-600" />
+                Banks ({banks.length})
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Deleted At</TableHead>
-                    <TableHead>{t('common.actions')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {trashClients.map((client) => (
-                    <TableRow key={client.id} data-testid={`trash-client-${client.id}`}>
-                      <TableCell className="font-medium">
-                        {client.first_name} {client.last_name}
-                      </TableCell>
-                      <TableCell>{client.phone}</TableCell>
-                      <TableCell>{client.email || '-'}</TableCell>
-                      <TableCell>{formatDate(client.deleted_at)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => restoreClient(client.id)}
-                            data-testid={`restore-client-${client.id}`}
-                          >
-                            <RotateCcw className="w-4 h-4 mr-1" />
-                            {t('common.restore')}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-red-600 hover:bg-red-50"
-                            onClick={() => permanentDeleteClient(client.id)}
-                            data-testid={`delete-client-${client.id}`}
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            {t('admin.permanentDelete')}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {trashClients.length === 0 && (
-                <p className="text-center text-slate-400 py-8">No deleted clients</p>
-              )}
+              <div className="flex gap-2 mb-4">
+                <Input
+                  placeholder="Enter new bank name..."
+                  value={newBank}
+                  onChange={(e) => setNewBank(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addConfigItem('bank', newBank, setNewBank)}
+                  data-testid="new-bank-input"
+                />
+                <Button onClick={() => addConfigItem('bank', newBank, setNewBank)} data-testid="add-bank-btn">
+                  <Plus className="w-4 h-4 mr-1" /> Add
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-96 overflow-y-auto">
+                {banks.map((bank) => (
+                  <div key={bank.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2 group">
+                    <span className="text-sm">{bank.name}</span>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+                      onClick={() => deleteConfigItem(bank.id, 'bank')}
+                    >
+                      <Trash2 className="w-3 h-3 text-red-400" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Trash Records Tab */}
-        <TabsContent value="trash-records">
+        {/* Dealers Tab */}
+        <TabsContent value="dealers">
           <Card className="dashboard-card">
             <CardHeader>
-              <CardTitle>{t('admin.deletedRecords')} ({trashRecords.length})</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-green-600" />
+                Dealers ({dealers.length})
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Salesperson</TableHead>
-                    <TableHead>Client ID</TableHead>
-                    <TableHead>Dealer</TableHead>
-                    <TableHead>Sold</TableHead>
-                    <TableHead>Deleted At</TableHead>
-                    <TableHead>{t('common.actions')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {trashRecords.map((record) => (
-                    <TableRow key={record.id} data-testid={`trash-record-${record.id}`}>
-                      <TableCell className="font-medium">{record.salesperson_name}</TableCell>
-                      <TableCell className="font-mono text-xs">{record.client_id.slice(0, 8)}...</TableCell>
-                      <TableCell>{record.dealer || '-'}</TableCell>
-                      <TableCell>
-                        {record.sold ? (
-                          <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs">Yes</span>
-                        ) : (
-                          <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-xs">No</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{formatDate(record.deleted_at)}</TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-red-600 hover:bg-red-50"
-                          onClick={() => permanentDeleteRecord(record.id)}
-                          data-testid={`delete-record-${record.id}`}
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Delete
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {trashRecords.length === 0 && (
-                <p className="text-center text-slate-400 py-8">No deleted records</p>
-              )}
+              <div className="flex gap-2 mb-4">
+                <Input
+                  placeholder="Enter new dealer name..."
+                  value={newDealer}
+                  onChange={(e) => setNewDealer(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addConfigItem('dealer', newDealer, setNewDealer)}
+                  data-testid="new-dealer-input"
+                />
+                <Button onClick={() => addConfigItem('dealer', newDealer, setNewDealer)} data-testid="add-dealer-btn">
+                  <Plus className="w-4 h-4 mr-1" /> Add
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                {dealers.map((dealer) => (
+                  <div key={dealer.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2 group">
+                    <span className="text-sm">{dealer.name}</span>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+                      onClick={() => deleteConfigItem(dealer.id, 'dealer')}
+                    >
+                      <Trash2 className="w-3 h-3 text-red-400" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Cars Tab */}
+        <TabsContent value="cars">
+          <Card className="dashboard-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Car className="w-5 h-5 text-amber-600" />
+                Autos ({cars.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2 mb-4">
+                <Input
+                  placeholder="Enter new car make/model..."
+                  value={newCar}
+                  onChange={(e) => setNewCar(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addConfigItem('car', newCar, setNewCar)}
+                  data-testid="new-car-input"
+                />
+                <Button onClick={() => addConfigItem('car', newCar, setNewCar)} data-testid="add-car-btn">
+                  <Plus className="w-4 h-4 mr-1" /> Add
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-96 overflow-y-auto">
+                {cars.map((car) => (
+                  <div key={car.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2 group">
+                    <span className="text-sm">{car.name}</span>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+                      onClick={() => deleteConfigItem(car.id, 'car')}
+                    >
+                      <Trash2 className="w-3 h-3 text-red-400" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Trash Tab */}
+        <TabsContent value="trash">
+          <div className="space-y-4">
+            {/* Trash Clients */}
+            <Card className="dashboard-card">
+              <CardHeader>
+                <CardTitle>{t('admin.deletedClients')} ({trashClients.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Deleted At</TableHead>
+                      <TableHead>{t('common.actions')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {trashClients.map((client) => (
+                      <TableRow key={client.id} data-testid={`trash-client-${client.id}`}>
+                        <TableCell className="font-medium">
+                          {client.first_name} {client.last_name}
+                        </TableCell>
+                        <TableCell>{client.phone}</TableCell>
+                        <TableCell>{client.email || '-'}</TableCell>
+                        <TableCell>{formatDate(client.deleted_at)}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => restoreClient(client.id)}
+                              data-testid={`restore-client-${client.id}`}
+                            >
+                              <RotateCcw className="w-4 h-4 mr-1" />
+                              {t('common.restore')}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 hover:bg-red-50"
+                              onClick={() => permanentDeleteClient(client.id)}
+                              data-testid={`delete-client-${client.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              {t('admin.permanentDelete')}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {trashClients.length === 0 && (
+                  <p className="text-center text-slate-400 py-8">No deleted clients</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Trash Records */}
+            <Card className="dashboard-card">
+              <CardHeader>
+                <CardTitle>{t('admin.deletedRecords')} ({trashRecords.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Salesperson</TableHead>
+                      <TableHead>Client ID</TableHead>
+                      <TableHead>Dealer</TableHead>
+                      <TableHead>Sold</TableHead>
+                      <TableHead>Deleted At</TableHead>
+                      <TableHead>{t('common.actions')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {trashRecords.map((record) => (
+                      <TableRow key={record.id} data-testid={`trash-record-${record.id}`}>
+                        <TableCell className="font-medium">{record.salesperson_name}</TableCell>
+                        <TableCell className="font-mono text-xs">{record.client_id.slice(0, 8)}...</TableCell>
+                        <TableCell>{record.dealer || '-'}</TableCell>
+                        <TableCell>
+                          {record.sold ? (
+                            <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs">Yes</span>
+                          ) : (
+                            <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-xs">No</span>
+                          )}
+                        </TableCell>
+                        <TableCell>{formatDate(record.deleted_at)}</TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={() => permanentDeleteRecord(record.id)}
+                            data-testid={`delete-record-${record.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Delete
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {trashRecords.length === 0 && (
+                  <p className="text-center text-slate-400 py-8">No deleted records</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
