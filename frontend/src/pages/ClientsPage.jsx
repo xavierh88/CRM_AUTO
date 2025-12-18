@@ -278,14 +278,14 @@ export default function ClientsPage() {
 
       {/* Client List */}
       <div className="space-y-3">
-        {filteredClients.length === 0 ? (
+        {currentClients.length === 0 ? (
           <Card className="dashboard-card">
             <CardContent className="py-12 text-center text-slate-400">
               {t('common.noData')}
             </CardContent>
           </Card>
         ) : (
-          filteredClients.map((client) => (
+          currentClients.map((client) => (
             <Card key={client.id} className="dashboard-card overflow-hidden" data-testid={`client-card-${client.id}`}>
               <Collapsible open={expandedClients[client.id]} onOpenChange={() => toggleClientExpand(client.id)}>
                 <CollapsibleTrigger asChild>
