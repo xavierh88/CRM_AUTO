@@ -1129,12 +1129,33 @@ async def get_public_document_info(token: str):
         "documents_submitted": documents_submitted
     }
 
+@api_router.put("/public/documents/{token}/language")
+async def update_document_language_preference(token: str, data: LanguagePreferenceRequest):
+    """Update client's language preference for documents (public, no auth)"""
+    if data.language not in ['en', 'es']:
+        raise HTTPException(status_code=400, detail="Invalid language. Must be 'en' or 'es'")
+    
+    link = await db.public_links.find_one({"token": token, "link_type": "documents"}, {"_id": 0})
+    if not link:
+        raise HTTPException(status_code=404, detail="Link not found")
+    
+    # Update record with language preference
+    await db.user_records.update_one(
+        {"id": link["record_id"]},
+        {"$set": {"preferred_language": data.language}}
+    )
+    
+    # Also update the link itself
+    await db.public_links.update_one({"token": token}, {"$set": {"preferred_language": data.language}})
+    
+    return {"message": f"Language preference updated to {data.language}"}
+
 @api_router.post("/public/documents/{token}/upload")
 async def upload_public_documents(token: str):
     """Handle document upload from client (public, no auth)"""
     link = await db.public_links.find_one({"token": token, "link_type": "documents"}, {"_id": 0})
     if not link:
-        raise HTTPException(status_code=404, detail="Link inválido")
+        raise HTTPException(status_code=404, detail="Invalid link")
     
     # For now, just mark as submitted (actual file upload would need more setup)
     await db.user_records.update_one(
@@ -1148,7 +1169,7 @@ async def upload_public_documents(token: str):
     # Mark link as used
     await db.public_links.update_one({"token": token}, {"$set": {"used": True}})
     
-    return {"message": "Documentos recibidos exitosamente"}
+    return {"message": "Documents received successfully"}
 
 @api_router.get("/public/appointment/{token}")
 async def get_public_appointment_info(token: str):
