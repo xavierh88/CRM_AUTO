@@ -1032,6 +1032,208 @@ async def get_sms_logs(client_id: Optional[str] = None, limit: int = 50, current
     logs = await db.sms_logs.find(query, {"_id": 0}).sort("sent_at", -1).limit(limit).to_list(limit)
     return logs
 
+# ==================== PUBLIC CLIENT ROUTES (No Auth Required) ====================
+
+import secrets
+import base64
+
+def generate_public_token(client_id: str, record_id: str, token_type: str) -> str:
+    """Generate a unique token for public client links"""
+    raw = f"{client_id}:{record_id}:{token_type}:{secrets.token_hex(8)}"
+    return base64.urlsafe_b64encode(raw.encode()).decode()
+
+async def create_public_link(client_id: str, record_id: str, link_type: str) -> str:
+    """Create and store a public link token"""
+    token = generate_public_token(client_id, record_id, link_type)
+    
+    link_doc = {
+        "id": str(uuid.uuid4()),
+        "token": token,
+        "client_id": client_id,
+        "record_id": record_id,
+        "link_type": link_type,  # 'documents' or 'appointment'
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        "used": False
+    }
+    await db.public_links.insert_one(link_doc)
+    return token
+
+@api_router.post("/generate-document-link/{client_id}")
+async def generate_document_link(client_id: str, record_id: str, current_user: dict = Depends(get_current_user)):
+    """Generate a public link for client to upload documents"""
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    token = await create_public_link(client_id, record_id, "documents")
+    # The frontend URL would be: /c/docs/{token}
+    return {"token": token, "link": f"/c/docs/{token}"}
+
+@api_router.post("/generate-appointment-link/{appointment_id}")
+async def generate_appointment_link(appointment_id: str, current_user: dict = Depends(get_current_user)):
+    """Generate a public link for client to manage appointment"""
+    appointment = await db.appointments.find_one({"id": appointment_id}, {"_id": 0})
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    token = await create_public_link(appointment.get("client_id", ""), appointment_id, "appointment")
+    
+    # Update appointment with the token
+    await db.appointments.update_one({"id": appointment_id}, {"$set": {"public_token": token}})
+    
+    return {"token": token, "link": f"/c/appointment/{token}"}
+
+# Public endpoints (no auth required)
+@api_router.get("/public/documents/{token}")
+async def get_public_document_info(token: str):
+    """Get client info for document upload (public, no auth)"""
+    link = await db.public_links.find_one({"token": token, "link_type": "documents"}, {"_id": 0})
+    if not link:
+        raise HTTPException(status_code=404, detail="Link inválido o expirado")
+    
+    # Check expiration
+    if datetime.fromisoformat(link["expires_at"].replace('Z', '+00:00')) < datetime.now(timezone.utc):
+        raise HTTPException(status_code=410, detail="Este link ha expirado")
+    
+    client = await db.clients.find_one({"id": link["client_id"]}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    
+    # Check if documents already submitted
+    record = await db.user_records.find_one({"id": link["record_id"]}, {"_id": 0})
+    documents_submitted = record.get("documents_submitted", False) if record else False
+    
+    return {
+        "first_name": client["first_name"],
+        "last_name": client["last_name"],
+        "documents_submitted": documents_submitted
+    }
+
+@api_router.post("/public/documents/{token}/upload")
+async def upload_public_documents(token: str):
+    """Handle document upload from client (public, no auth)"""
+    link = await db.public_links.find_one({"token": token, "link_type": "documents"}, {"_id": 0})
+    if not link:
+        raise HTTPException(status_code=404, detail="Link inválido")
+    
+    # For now, just mark as submitted (actual file upload would need more setup)
+    await db.user_records.update_one(
+        {"id": link["record_id"]},
+        {"$set": {
+            "documents_submitted": True,
+            "documents_submitted_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Mark link as used
+    await db.public_links.update_one({"token": token}, {"$set": {"used": True}})
+    
+    return {"message": "Documentos recibidos exitosamente"}
+
+@api_router.get("/public/appointment/{token}")
+async def get_public_appointment_info(token: str):
+    """Get appointment info for client management (public, no auth)"""
+    link = await db.public_links.find_one({"token": token, "link_type": "appointment"}, {"_id": 0})
+    if not link:
+        # Also try to find by appointment's public_token
+        appointment = await db.appointments.find_one({"public_token": token}, {"_id": 0})
+        if not appointment:
+            raise HTTPException(status_code=404, detail="Link inválido o expirado")
+        client_id = appointment.get("client_id")
+    else:
+        appointment = await db.appointments.find_one({"id": link["record_id"]}, {"_id": 0})
+        client_id = link["client_id"]
+    
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Cita no encontrada")
+    
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    
+    # Get dealers list for rescheduling
+    dealers = await db.config_lists.find({"category": "dealer"}, {"_id": 0}).to_list(100)
+    
+    return {
+        "appointment": appointment,
+        "client": {
+            "first_name": client["first_name"] if client else "Cliente",
+            "last_name": client["last_name"] if client else ""
+        },
+        "dealers": dealers
+    }
+
+class RescheduleRequest(BaseModel):
+    date: str
+    time: str
+    dealer: Optional[str] = None
+
+@api_router.put("/public/appointment/{token}/reschedule")
+async def reschedule_public_appointment(token: str, data: RescheduleRequest):
+    """Reschedule appointment (public, no auth)"""
+    link = await db.public_links.find_one({"token": token, "link_type": "appointment"}, {"_id": 0})
+    appointment_id = link["record_id"] if link else None
+    
+    if not appointment_id:
+        # Try by public_token
+        appointment = await db.appointments.find_one({"public_token": token}, {"_id": 0})
+        if appointment:
+            appointment_id = appointment["id"]
+    
+    if not appointment_id:
+        raise HTTPException(status_code=404, detail="Cita no encontrada")
+    
+    update_data = {
+        "date": data.date,
+        "time": data.time,
+        "status": "reagendado",
+        "rescheduled_at": datetime.now(timezone.utc).isoformat()
+    }
+    if data.dealer:
+        update_data["dealer"] = data.dealer
+    
+    await db.appointments.update_one({"id": appointment_id}, {"$set": update_data})
+    return {"message": "Cita reprogramada exitosamente"}
+
+@api_router.put("/public/appointment/{token}/cancel")
+async def cancel_public_appointment(token: str):
+    """Cancel appointment (public, no auth)"""
+    link = await db.public_links.find_one({"token": token, "link_type": "appointment"}, {"_id": 0})
+    appointment_id = link["record_id"] if link else None
+    
+    if not appointment_id:
+        appointment = await db.appointments.find_one({"public_token": token}, {"_id": 0})
+        if appointment:
+            appointment_id = appointment["id"]
+    
+    if not appointment_id:
+        raise HTTPException(status_code=404, detail="Cita no encontrada")
+    
+    await db.appointments.update_one(
+        {"id": appointment_id},
+        {"$set": {"status": "cancelado", "cancelled_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Cita cancelada"}
+
+@api_router.put("/public/appointment/{token}/confirm")
+async def confirm_public_appointment(token: str):
+    """Confirm appointment (public, no auth)"""
+    link = await db.public_links.find_one({"token": token, "link_type": "appointment"}, {"_id": 0})
+    appointment_id = link["record_id"] if link else None
+    
+    if not appointment_id:
+        appointment = await db.appointments.find_one({"public_token": token}, {"_id": 0})
+        if appointment:
+            appointment_id = appointment["id"]
+    
+    if not appointment_id:
+        raise HTTPException(status_code=404, detail="Cita no encontrada")
+    
+    await db.appointments.update_one(
+        {"id": appointment_id},
+        {"$set": {"status": "confirmado", "confirmed_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Cita confirmada"}
+
 # ==================== CONFIGURABLE LISTS (Banks, Dealers, Cars) ====================
 
 class ConfigListItem(BaseModel):
