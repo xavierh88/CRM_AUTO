@@ -1253,6 +1253,80 @@ async def confirm_public_appointment(token: str):
     )
     return {"message": "Cita confirmada"}
 
+class LateArrivalRequest(BaseModel):
+    new_time: str
+
+@api_router.put("/public/appointment/{token}/late")
+async def notify_late_arrival(token: str, data: LateArrivalRequest):
+    """Notify that client will arrive late and send SMS to salesperson (public, no auth)"""
+    link = await db.public_links.find_one({"token": token, "link_type": "appointment"}, {"_id": 0})
+    appointment_id = link["record_id"] if link else None
+    client_id = link["client_id"] if link else None
+    
+    if not appointment_id:
+        appointment = await db.appointments.find_one({"public_token": token}, {"_id": 0})
+        if appointment:
+            appointment_id = appointment["id"]
+            # Get client_id from record
+            record = await db.user_records.find_one({"id": appointment.get("record_id")}, {"_id": 0})
+            if record:
+                client_id = record.get("client_id")
+    
+    if not appointment_id:
+        raise HTTPException(status_code=404, detail="Cita no encontrada")
+    
+    # Get appointment details
+    appointment = await db.appointments.find_one({"id": appointment_id}, {"_id": 0})
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Cita no encontrada")
+    
+    original_time = appointment.get("time", "N/A")
+    
+    # Get client info
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0}) if client_id else None
+    client_name = f"{client['first_name']} {client['last_name']}" if client else "Cliente"
+    
+    # Get salesperson info to send notification
+    record = await db.user_records.find_one({"id": appointment.get("record_id")}, {"_id": 0})
+    if record:
+        salesperson = await db.users.find_one({"id": record.get("salesperson_id")}, {"_id": 0})
+        
+        # Send SMS to salesperson if they have a phone number
+        if salesperson and salesperson.get("phone") and twilio_client:
+            message = f"AVISO: {client_name} llegará tarde a su cita. Hora original: {original_time}. Nueva hora de llegada: {data.new_time}. - DealerCRM"
+            result = await send_sms_twilio(salesperson["phone"], message)
+            
+            # Log the SMS
+            sms_log = {
+                "id": str(uuid.uuid4()),
+                "client_id": client_id,
+                "appointment_id": appointment_id,
+                "phone": salesperson["phone"],
+                "message_type": "late_notification",
+                "message": message,
+                "status": "sent" if result["success"] else "failed",
+                "twilio_sid": result.get("sid"),
+                "error": result.get("error"),
+                "sent_at": datetime.now(timezone.utc).isoformat(),
+                "sent_by": "client_public",
+                "automatic": True
+            }
+            await db.sms_logs.insert_one(sms_log)
+            logger.info(f"Late notification sent to salesperson {salesperson['name']}: {result}")
+    
+    # Update appointment with late arrival info
+    await db.appointments.update_one(
+        {"id": appointment_id},
+        {"$set": {
+            "status": "llegará tarde",
+            "original_time": original_time,
+            "new_arrival_time": data.new_time,
+            "late_notified_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": "Vendedor notificado exitosamente"}
+
 # ==================== CONFIGURABLE LISTS (Banks, Dealers, Cars) ====================
 
 class ConfigListItem(BaseModel):
