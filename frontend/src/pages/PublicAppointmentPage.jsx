@@ -348,12 +348,85 @@ export default function PublicAppointmentPage() {
           </CardContent>
         </Card>
 
+        {/* Late Arrival Form */}
+        {mode === 'late' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-amber-600" />
+                Llegaré Tarde
+              </CardTitle>
+              <CardDescription>
+                Seleccione su nueva hora de llegada. El vendedor será notificado automáticamente.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleLateArrival} className="space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                  <p className="font-medium">Su cita original:</p>
+                  <p>{appointmentInfo?.date} a las {appointmentInfo?.time}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="late-time">¿A qué hora llegará?</Label>
+                  <Select value={lateTime} onValueChange={setLateTime}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccione nueva hora" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="09:30">9:30 AM</SelectItem>
+                      <SelectItem value="10:00">10:00 AM</SelectItem>
+                      <SelectItem value="10:30">10:30 AM</SelectItem>
+                      <SelectItem value="11:00">11:00 AM</SelectItem>
+                      <SelectItem value="11:30">11:30 AM</SelectItem>
+                      <SelectItem value="12:00">12:00 PM</SelectItem>
+                      <SelectItem value="12:30">12:30 PM</SelectItem>
+                      <SelectItem value="13:00">1:00 PM</SelectItem>
+                      <SelectItem value="13:30">1:30 PM</SelectItem>
+                      <SelectItem value="14:00">2:00 PM</SelectItem>
+                      <SelectItem value="14:30">2:30 PM</SelectItem>
+                      <SelectItem value="15:00">3:00 PM</SelectItem>
+                      <SelectItem value="15:30">3:30 PM</SelectItem>
+                      <SelectItem value="16:00">4:00 PM</SelectItem>
+                      <SelectItem value="16:30">4:30 PM</SelectItem>
+                      <SelectItem value="17:00">5:00 PM</SelectItem>
+                      <SelectItem value="17:30">5:30 PM</SelectItem>
+                      <SelectItem value="18:00">6:00 PM</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    type="submit" 
+                    className="flex-1 bg-amber-600 hover:bg-amber-700"
+                    disabled={submitting}
+                  >
+                    {submitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Notificar al Vendedor'
+                    )}
+                  </Button>
+                  <Button 
+                    type="button"
+                    variant="outline" 
+                    onClick={() => setMode('view')}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Reschedule Form */}
         {mode === 'reschedule' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <RefreshCw className="w-5 h-5 text-amber-600" />
+                <RefreshCw className="w-5 h-5 text-blue-600" />
                 Reprogramar Cita
               </CardTitle>
               <CardDescription>
