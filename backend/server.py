@@ -1256,6 +1256,34 @@ async def confirm_public_appointment(token: str):
 class LateArrivalRequest(BaseModel):
     new_time: str
 
+class LanguagePreferenceRequest(BaseModel):
+    language: str  # 'en' or 'es'
+
+@api_router.put("/public/appointment/{token}/language")
+async def update_language_preference(token: str, data: LanguagePreferenceRequest):
+    """Update client's language preference for the appointment (public, no auth)"""
+    if data.language not in ['en', 'es']:
+        raise HTTPException(status_code=400, detail="Invalid language. Must be 'en' or 'es'")
+    
+    link = await db.public_links.find_one({"token": token, "link_type": "appointment"}, {"_id": 0})
+    appointment_id = link["record_id"] if link else None
+    
+    if not appointment_id:
+        appointment = await db.appointments.find_one({"public_token": token}, {"_id": 0})
+        if appointment:
+            appointment_id = appointment["id"]
+    
+    if not appointment_id:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    # Update appointment with language preference
+    await db.appointments.update_one(
+        {"id": appointment_id},
+        {"$set": {"preferred_language": data.language, "language_updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": f"Language preference updated to {data.language}"}
+
 @api_router.put("/public/appointment/{token}/late")
 async def notify_late_arrival(token: str, data: LateArrivalRequest):
     """Notify that client will arrive late and send SMS to salesperson (public, no auth)"""
