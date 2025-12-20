@@ -466,6 +466,99 @@ export default function AdminPage() {
           </Card>
         </TabsContent>
 
+        {/* SMS Templates Tab */}
+        <TabsContent value="sms">
+          <Card className="dashboard-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-purple-600" />
+                SMS Templates ({smsTemplates.length})
+              </CardTitle>
+              <CardDescription>
+                Edit the SMS messages sent to clients. Use {'{first_name}'}, {'{link}'}, {'{date}'}, {'{time}'}, {'{dealer}'} as placeholders.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {editingTemplate ? (
+                <div className="space-y-4 p-4 bg-slate-50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium text-lg">{editingTemplate.name}</h3>
+                    <Button variant="ghost" size="sm" onClick={() => setEditingTemplate(null)}>
+                      Cancel
+                    </Button>
+                  </div>
+                  <p className="text-sm text-slate-500">{editingTemplate.description}</p>
+                  
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>English Message</Label>
+                      <Textarea
+                        value={editingTemplate.message_en}
+                        onChange={(e) => setEditingTemplate({...editingTemplate, message_en: e.target.value})}
+                        rows={4}
+                        className="resize-none"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Spanish Message (Español)</Label>
+                      <Textarea
+                        value={editingTemplate.message_es}
+                        onChange={(e) => setEditingTemplate({...editingTemplate, message_es: e.target.value})}
+                        rows={4}
+                        className="resize-none"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end">
+                    <Button onClick={handleSaveTemplate} disabled={savingTemplate}>
+                      {savingTemplate ? 'Saving...' : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Save Template
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {smsTemplates.map((template) => (
+                    <div 
+                      key={template.template_key} 
+                      className="p-4 bg-slate-50 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
+                      onClick={() => setEditingTemplate(template)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-slate-900">{template.name}</h4>
+                          <p className="text-sm text-slate-500 mt-0.5">{template.description}</p>
+                          <div className="mt-2 grid gap-2 md:grid-cols-2">
+                            <div className="text-xs">
+                              <span className="font-medium text-slate-600">EN:</span>
+                              <p className="text-slate-500 truncate">{template.message_en}</p>
+                            </div>
+                            <div className="text-xs">
+                              <span className="font-medium text-slate-600">ES:</span>
+                              <p className="text-slate-500 truncate">{template.message_es}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="sm">
+                          Edit
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {smsTemplates.length === 0 && (
+                    <p className="text-center text-slate-400 py-8">No SMS templates found</p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Trash Tab */}
         <TabsContent value="trash">
           <div className="space-y-4">
