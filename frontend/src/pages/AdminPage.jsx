@@ -219,7 +219,7 @@ export default function AdminPage() {
       )}
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 max-w-2xl">
+        <TabsList className="grid w-full grid-cols-6 max-w-3xl">
           <TabsTrigger value="users" data-testid="users-tab" className="relative">
             <Users className="w-4 h-4 mr-1" />
             Users
