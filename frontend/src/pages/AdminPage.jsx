@@ -219,7 +219,7 @@ export default function AdminPage() {
       )}
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-6 max-w-3xl">
+        <TabsList className="grid w-full grid-cols-6 max-w-4xl">
           <TabsTrigger value="users" data-testid="users-tab" className="relative">
             <Users className="w-4 h-4 mr-1" />
             Users
@@ -240,6 +240,10 @@ export default function AdminPage() {
           <TabsTrigger value="cars" data-testid="cars-tab">
             <Car className="w-4 h-4 mr-1" />
             Autos
+          </TabsTrigger>
+          <TabsTrigger value="sms" data-testid="sms-tab">
+            <MessageSquare className="w-4 h-4 mr-1" />
+            SMS
           </TabsTrigger>
           <TabsTrigger value="trash" data-testid="trash-tab">
             <Trash2 className="w-4 h-4 mr-1" />
