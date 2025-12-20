@@ -101,7 +101,7 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
-user_problem_statement: CRM for car dealerships - Collapsible opportunities and record permissions
+user_problem_statement: CRM for car dealerships - Import Contacts and SMS Marketing Campaign Feature
 backend:
   - task: "User records CRUD with opportunity linking"
     implemented: true
@@ -115,41 +115,99 @@ backend:
         - agent: "main"
         - comment: "Backend endpoints working correctly"
 
-frontend:
-  - task: "Collapsible opportunity sections"
+  - task: "Import contacts from Excel/CSV"
     implemented: true
     working: true
-    file: "/app/frontend/src/pages/ClientsPage.jsx"
+    file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
     needs_retesting: true
     status_history:
-        - working: true
+        - working: "NA"
         - agent: "main"
-        - comment: "Visual verification done - opportunities collapse/expand correctly, opening one closes others"
+        - comment: "Implemented POST /api/import-contacts endpoint for Excel/CSV file import"
 
-  - task: "Record permissions (edit/delete)"
+  - task: "SMS Templates API"
     implemented: true
     working: true
-    file: "/app/frontend/src/pages/ClientsPage.jsx"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "Implemented GET /api/sms-templates and PUT /api/sms-templates/{template_key} endpoints"
+
+  - task: "Imported contacts management API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "Implemented GET /api/imported-contacts, POST /api/imported-contacts/{id}/send-sms-now, PUT opt-out, DELETE endpoints"
+
+frontend:
+  - task: "Import Contacts Page"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/ImportContactsPage.jsx"
     stuck_count: 0
     priority: "high"
     needs_retesting: true
     status_history:
         - working: true
         - agent: "main"
-        - comment: "Edit button available for all, Delete button only for record owner"
+        - comment: "UI complete with file upload, contacts list, send SMS, opt-out toggle, delete functionality"
+
+  - task: "SMS Templates tab in Admin"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/AdminPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "New SMS tab added with 4 templates (marketing_initial, marketing_reminder, appointment_notification, welcome_first_record)"
+
+  - task: "Import link in navigation sidebar"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/components/Layout.jsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Added Import link to sidebar with FileSpreadsheet icon and translations"
 
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 1
+  test_sequence: 5
   run_ui: true
 
 test_plan:
   current_focus:
-    - "Collapsible opportunity sections"
-    - "Record permissions (edit/delete)"
+    - "Import contacts from Excel/CSV"
+    - "SMS Templates API"
+    - "Imported contacts management API"
+    - "Import Contacts Page"
+    - "SMS Templates tab in Admin"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "main"
+    - message: "Completed implementation of Import Contacts and SMS Marketing feature. Backend APIs for file import, contact management, and SMS templates are ready. Frontend pages for Import and Admin SMS tab are functional. Google Places API key added to frontend .env. Ready for testing."
   
 
 ## New Features Implemented (Session 2)
