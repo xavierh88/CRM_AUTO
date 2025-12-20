@@ -96,6 +96,16 @@ function App() {
             }
           />
           <Route
+            path="/import"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ImportContactsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin"
             element={
               <AdminRoute>
