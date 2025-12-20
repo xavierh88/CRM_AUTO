@@ -11,6 +11,7 @@ import ClientsPage from "./pages/ClientsPage";
 import AgendaPage from "./pages/AgendaPage";
 import AdminPage from "./pages/AdminPage";
 import SettingsPage from "./pages/SettingsPage";
+import ImportContactsPage from "./pages/ImportContactsPage";
 import Layout from "./components/Layout";
 
 // Public Pages (for clients)
