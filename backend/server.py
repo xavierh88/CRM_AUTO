@@ -1384,6 +1384,349 @@ async def notify_late_arrival(token: str, data: LateArrivalRequest):
     
     return {"message": "Vendedor notificado exitosamente"}
 
+# ==================== SMS TEMPLATES ====================
+
+class SMSTemplateUpdate(BaseModel):
+    template_key: str
+    message_en: str
+    message_es: str
+
+@api_router.get("/sms-templates")
+async def get_sms_templates(current_user: dict = Depends(get_current_user)):
+    """Get all SMS templates"""
+    templates = await db.sms_templates.find({}, {"_id": 0}).to_list(100)
+    
+    # If no templates exist, create defaults
+    if not templates:
+        await initialize_default_sms_templates()
+        templates = await db.sms_templates.find({}, {"_id": 0}).to_list(100)
+    
+    return templates
+
+@api_router.put("/sms-templates/{template_key}")
+async def update_sms_template(template_key: str, data: SMSTemplateUpdate, current_user: dict = Depends(get_current_user)):
+    """Update an SMS template (admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await db.sms_templates.update_one(
+        {"template_key": template_key},
+        {"$set": {
+            "message_en": data.message_en,
+            "message_es": data.message_es,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_by": current_user["id"]
+        }}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    return {"message": "Template updated successfully"}
+
+async def initialize_default_sms_templates():
+    """Initialize default SMS templates"""
+    templates = [
+        {
+            "id": str(uuid.uuid4()),
+            "template_key": "marketing_initial",
+            "name": "Marketing - Initial Contact",
+            "description": "First SMS sent to imported contacts",
+            "message_en": "Hi {first_name}! Are you interested in a car? We can help you with everything - financing, trade-ins, and more. Schedule your appointment here: {link} - DealerCRM",
+            "message_es": "¡Hola {first_name}! ¿Te interesa un auto? Te ayudamos con todo - financiamiento, trade-ins y más. Agenda tu cita aquí: {link} - DealerCRM",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "template_key": "marketing_reminder",
+            "name": "Marketing - Weekly Reminder",
+            "description": "Weekly reminder for contacts who haven't scheduled",
+            "message_en": "Hi {first_name}! Don't miss out on your dream car. We're here to help. Schedule your appointment: {link} - DealerCRM",
+            "message_es": "¡Hola {first_name}! No te pierdas el auto de tus sueños. Estamos para ayudarte. Agenda tu cita: {link} - DealerCRM",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "template_key": "appointment_notification",
+            "name": "Appointment Notification",
+            "description": "Sent when salesperson creates appointment for client",
+            "message_en": "Hi {first_name}! Your appointment has been scheduled for {date} at {time} at {dealer}. Manage your appointment here: {link} - DealerCRM",
+            "message_es": "¡Hola {first_name}! Tu cita ha sido programada para el {date} a las {time} en {dealer}. Gestiona tu cita aquí: {link} - DealerCRM",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "template_key": "welcome_first_record",
+            "name": "Welcome - First Record",
+            "description": "Sent when first record is created for a client",
+            "message_en": "Hi {first_name}! Thanks for visiting us. We'll keep you informed about your purchase process. Questions? Contact us anytime. - DealerCRM",
+            "message_es": "¡Hola {first_name}! Gracias por visitarnos. Te mantendremos informado sobre tu proceso de compra. ¿Preguntas? Contáctanos. - DealerCRM",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+    ]
+    await db.sms_templates.insert_many(templates)
+    logger.info("Initialized default SMS templates")
+
+async def get_sms_template(template_key: str, language: str = "en") -> str:
+    """Get SMS template message by key and language"""
+    template = await db.sms_templates.find_one({"template_key": template_key}, {"_id": 0})
+    if not template:
+        return ""
+    return template.get(f"message_{language}", template.get("message_en", ""))
+
+# ==================== CONTACT IMPORT (Leads/Prospects) ====================
+
+def extract_phone_last_10(phone_str: str) -> str:
+    """Extract last 10 digits from phone number (assuming US numbers)"""
+    if not phone_str:
+        return ""
+    # Remove all non-digit characters
+    digits = re.sub(r'\D', '', str(phone_str))
+    # Get last 10 digits
+    if len(digits) >= 10:
+        return digits[-10:]
+    return digits
+
+class ImportedContact(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    first_name: str
+    last_name: str
+    phone: str
+    imported_by: str
+    imported_at: str
+    sms_sent: bool = False
+    sms_count: int = 0
+    last_sms_sent: Optional[str] = None
+    appointment_created: bool = False
+    appointment_id: Optional[str] = None
+    opt_out: bool = False  # If true, no automatic SMS
+
+@api_router.post("/import-contacts")
+async def import_contacts(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+    """Import contacts from Excel or CSV file"""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided")
+    
+    # Check file extension
+    filename = file.filename.lower()
+    if not (filename.endswith('.csv') or filename.endswith('.xlsx') or filename.endswith('.xls')):
+        raise HTTPException(status_code=400, detail="Invalid file format. Please upload CSV or Excel file (.csv, .xlsx, .xls)")
+    
+    try:
+        contents = await file.read()
+        
+        # Read file based on type
+        if filename.endswith('.csv'):
+            df = pd.read_csv(io.BytesIO(contents))
+        else:
+            df = pd.read_excel(io.BytesIO(contents))
+        
+        # Normalize column names (lowercase, strip spaces)
+        df.columns = df.columns.str.lower().str.strip()
+        
+        # Map possible column names
+        name_columns = ['first_name', 'firstname', 'first name', 'nombre', 'name']
+        lastname_columns = ['last_name', 'lastname', 'last name', 'apellido', 'surname']
+        phone_columns = ['phone', 'phone_number', 'phonenumber', 'telefono', 'teléfono', 'tel', 'mobile', 'cell']
+        
+        # Find matching columns
+        first_name_col = next((col for col in df.columns if col in name_columns), None)
+        last_name_col = next((col for col in df.columns if col in lastname_columns), None)
+        phone_col = next((col for col in df.columns if col in phone_columns), None)
+        
+        if not phone_col:
+            raise HTTPException(status_code=400, detail="Phone column not found. Please ensure your file has a column named 'Phone', 'Telefono', or similar.")
+        
+        now = datetime.now(timezone.utc).isoformat()
+        imported_count = 0
+        skipped_count = 0
+        contacts_to_insert = []
+        
+        for _, row in df.iterrows():
+            phone = extract_phone_last_10(str(row.get(phone_col, '')))
+            
+            if not phone or len(phone) < 10:
+                skipped_count += 1
+                continue
+            
+            # Check if phone already exists
+            existing = await db.imported_contacts.find_one({"phone": phone})
+            if existing:
+                skipped_count += 1
+                continue
+            
+            first_name = str(row.get(first_name_col, '')).strip() if first_name_col else ''
+            last_name = str(row.get(last_name_col, '')).strip() if last_name_col else ''
+            
+            # Clean up names
+            if first_name.lower() == 'nan' or not first_name:
+                first_name = 'Customer'
+            if last_name.lower() == 'nan':
+                last_name = ''
+            
+            contact = {
+                "id": str(uuid.uuid4()),
+                "first_name": first_name,
+                "last_name": last_name,
+                "phone": phone,
+                "phone_formatted": f"+1{phone}",
+                "imported_by": current_user["id"],
+                "imported_by_name": current_user["name"],
+                "imported_at": now,
+                "sms_sent": False,
+                "sms_count": 0,
+                "last_sms_sent": None,
+                "next_sms_scheduled": None,
+                "appointment_created": False,
+                "appointment_id": None,
+                "opt_out": False,
+                "status": "pending"  # pending, contacted, scheduled, converted
+            }
+            contacts_to_insert.append(contact)
+            imported_count += 1
+        
+        if contacts_to_insert:
+            await db.imported_contacts.insert_many(contacts_to_insert)
+        
+        return {
+            "message": f"Import completed. {imported_count} contacts imported, {skipped_count} skipped.",
+            "imported": imported_count,
+            "skipped": skipped_count
+        }
+        
+    except Exception as e:
+        logger.error(f"Import error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+
+@api_router.get("/imported-contacts")
+async def get_imported_contacts(
+    status: Optional[str] = None,
+    limit: int = 100,
+    skip: int = 0,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get imported contacts"""
+    query = {}
+    
+    # Non-admin users only see their own imports
+    if current_user["role"] != "admin":
+        query["imported_by"] = current_user["id"]
+    
+    if status:
+        query["status"] = status
+    
+    contacts = await db.imported_contacts.find(query, {"_id": 0}).sort("imported_at", -1).skip(skip).limit(limit).to_list(limit)
+    total = await db.imported_contacts.count_documents(query)
+    
+    return {"contacts": contacts, "total": total}
+
+@api_router.post("/imported-contacts/{contact_id}/send-sms-now")
+async def send_marketing_sms_now(contact_id: str, current_user: dict = Depends(get_current_user)):
+    """Send marketing SMS immediately to an imported contact"""
+    contact = await db.imported_contacts.find_one({"id": contact_id}, {"_id": 0})
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    
+    if contact.get("opt_out"):
+        raise HTTPException(status_code=400, detail="Contact has opted out of SMS")
+    
+    if contact.get("appointment_created"):
+        raise HTTPException(status_code=400, detail="Contact already has an appointment")
+    
+    # Get marketing template
+    template_msg = await get_sms_template("marketing_initial", "en")
+    
+    # Generate appointment link for this contact
+    # First create a temporary public link
+    token = await create_public_link(contact_id, contact_id, "marketing_appointment")
+    base_url = os.environ.get('FRONTEND_URL', 'https://work-1-hxroqbnbaygfdbdd.prod-runtime.all-hands.dev')
+    appointment_link = f"{base_url}/c/schedule/{token}"
+    
+    # Format message
+    message = template_msg.format(
+        first_name=contact.get("first_name", ""),
+        link=appointment_link
+    )
+    
+    # Send SMS
+    result = await send_sms_twilio(contact["phone_formatted"], message)
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    # Update contact
+    await db.imported_contacts.update_one(
+        {"id": contact_id},
+        {"$set": {
+            "sms_sent": True,
+            "sms_count": contact.get("sms_count", 0) + 1,
+            "last_sms_sent": now,
+            "status": "contacted",
+            "next_sms_scheduled": None  # Clear scheduled since we sent now
+        }}
+    )
+    
+    # Log SMS
+    sms_log = {
+        "id": str(uuid.uuid4()),
+        "contact_id": contact_id,
+        "phone": contact["phone_formatted"],
+        "message_type": "marketing",
+        "message": message,
+        "status": "sent" if result["success"] else "failed",
+        "twilio_sid": result.get("sid"),
+        "error": result.get("error"),
+        "sent_at": now,
+        "sent_by": current_user["id"]
+    }
+    await db.sms_logs.insert_one(sms_log)
+    
+    if not result["success"]:
+        raise HTTPException(status_code=500, detail=f"Failed to send SMS: {result.get('error')}")
+    
+    return {"message": "SMS sent successfully", "twilio_sid": result.get("sid")}
+
+@api_router.put("/imported-contacts/{contact_id}/opt-out")
+async def toggle_contact_opt_out(contact_id: str, opt_out: bool, current_user: dict = Depends(get_current_user)):
+    """Toggle opt-out status for a contact (disable/enable automatic SMS)"""
+    result = await db.imported_contacts.update_one(
+        {"id": contact_id},
+        {"$set": {"opt_out": opt_out, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    
+    return {"message": f"Contact {'opted out' if opt_out else 'opted in'} successfully"}
+
+@api_router.delete("/imported-contacts/{contact_id}")
+async def delete_imported_contact(contact_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete an imported contact"""
+    contact = await db.imported_contacts.find_one({"id": contact_id}, {"_id": 0})
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    
+    # Only owner or admin can delete
+    if current_user["role"] != "admin" and contact.get("imported_by") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this contact")
+    
+    await db.imported_contacts.delete_one({"id": contact_id})
+    return {"message": "Contact deleted"}
+
+# Also add opt_out field to clients
+@api_router.put("/clients/{client_id}/opt-out")
+async def toggle_client_opt_out(client_id: str, opt_out: bool, current_user: dict = Depends(get_current_user)):
+    """Toggle opt-out status for a client (disable/enable automatic appointment SMS)"""
+    result = await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {"opt_out_sms": opt_out, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    return {"message": f"Client SMS {'disabled' if opt_out else 'enabled'} successfully"}
+
 # ==================== CONFIGURABLE LISTS (Banks, Dealers, Cars) ====================
 
 class ConfigListItem(BaseModel):
