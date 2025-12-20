@@ -149,6 +149,35 @@ export default function AdminPage() {
     }
   };
 
+  // SMS Template functions
+  const handleEditTemplate = (template) => {
+    setEditingTemplate({
+      ...template,
+      message_en: template.message_en || '',
+      message_es: template.message_es || ''
+    });
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!editingTemplate) return;
+    
+    setSavingTemplate(true);
+    try {
+      await axios.put(`${API}/sms-templates/${editingTemplate.template_key}`, {
+        template_key: editingTemplate.template_key,
+        message_en: editingTemplate.message_en,
+        message_es: editingTemplate.message_es
+      });
+      toast.success('Template saved successfully');
+      setEditingTemplate(null);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save template');
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString();
