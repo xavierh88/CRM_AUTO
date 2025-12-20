@@ -12,6 +12,7 @@ const resources = {
       "nav.settings": "Settings",
       "nav.logout": "Logout",
       "nav.trash": "Trash",
+      "nav.import": "Import",
       
       // Auth
       "auth.login": "Login",
@@ -128,6 +129,7 @@ const resources = {
       "nav.settings": "Ajustes",
       "nav.logout": "Salir",
       "nav.trash": "Papelera",
+      "nav.import": "Importar",
       
       // Auth
       "auth.login": "Iniciar Sesión",
