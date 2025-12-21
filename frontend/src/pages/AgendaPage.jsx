@@ -311,8 +311,9 @@ export default function AgendaPage() {
   );
 }
 
-function AppointmentSection({ title, appointments, getStatusBadge, updateStatus, sendReminderSMS, emptyMessage, isWarning }) {
-  const { t } = useTranslation();
+function AppointmentSection({ title, appointments, getStatusBadge, updateStatus, sendReminderSMS, emptyMessage, isWarning, highlight }) {
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language === 'es' ? es : undefined;
 
   if (appointments.length === 0 && emptyMessage) {
     return (
@@ -330,41 +331,52 @@ function AppointmentSection({ title, appointments, getStatusBadge, updateStatus,
   if (appointments.length === 0) return null;
 
   return (
-    <Card className={`dashboard-card ${isWarning ? 'border-orange-200' : ''}`}>
-      <CardHeader>
-        <CardTitle className={`text-lg ${isWarning ? 'text-orange-600' : ''}`}>
-          {title} ({appointments.length})
+    <Card className={`dashboard-card ${isWarning ? 'border-orange-200 bg-orange-50/30' : ''} ${highlight ? 'border-blue-200 bg-blue-50/30' : ''}`}>
+      <CardHeader className="pb-2">
+        <CardTitle className={`text-lg flex items-center justify-between ${isWarning ? 'text-orange-600' : ''} ${highlight ? 'text-blue-700' : ''}`}>
+          <span>{title}</span>
+          <Badge variant="secondary" className={`${highlight ? 'bg-blue-100 text-blue-700' : ''}`}>
+            {appointments.length}
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {appointments.map((appt) => (
           <div
             key={appt.id}
-            className={`agenda-item status-${appt.status} bg-white rounded-lg border p-4`}
+            className={`agenda-item status-${appt.status} bg-white rounded-lg border p-4 ${appt.running_late ? 'border-l-4 border-l-orange-500' : ''}`}
             data-testid={`appointment-${appt.id}`}
           >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center gap-3 mb-2 flex-wrap">
                   <User className="w-4 h-4 text-slate-400" />
                   <span className="font-semibold text-slate-900">
                     {appt.client?.first_name} {appt.client?.last_name}
                   </span>
                   {getStatusBadge(appt.status)}
+                  {appt.running_late && (
+                    <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50">
+                      <AlertTriangle className="w-3 h-3 mr-1" />
+                      Llegando tarde
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm text-slate-500">
                   {appt.date && (
                     <div className="flex items-center gap-1">
                       <CalendarIcon className="w-4 h-4" />
-                      {format(parseISO(appt.date), 'MMM d, yyyy')}
+                      {format(parseISO(appt.date), 'd MMM', { locale: dateLocale })}
                     </div>
                   )}
                   {appt.time && (
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      {appt.time}
+                      <span className={appt.change_time ? 'line-through text-slate-400' : ''}>
+                        {appt.time}
+                      </span>
                       {appt.change_time && (
-                        <span className="text-blue-600 ml-1">→ {appt.change_time}</span>
+                        <span className="text-blue-600 font-medium">→ {appt.change_time}</span>
                       )}
                     </div>
                   )}
@@ -374,14 +386,27 @@ function AppointmentSection({ title, appointments, getStatusBadge, updateStatus,
                       {appt.dealer}
                     </div>
                   )}
+                  {appt.client?.phone && (
+                    <div className="flex items-center gap-1">
+                      <Phone className="w-4 h-4" />
+                      <a href={`tel:${appt.client.phone}`} className="hover:text-blue-600">
+                        {appt.client.phone}
+                      </a>
+                    </div>
+                  )}
                 </div>
+                {appt.notes && (
+                  <p className="mt-2 text-sm text-slate-600 bg-slate-50 p-2 rounded">
+                    {appt.notes}
+                  </p>
+                )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-shrink-0">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => sendReminderSMS(appt)}
-                  title="Send reminder"
+                  title="Enviar recordatorio SMS"
                   data-testid={`send-reminder-${appt.id}`}
                 >
                   <Send className="w-4 h-4" />
@@ -393,7 +418,7 @@ function AppointmentSection({ title, appointments, getStatusBadge, updateStatus,
                       variant="outline"
                       className="text-emerald-600 hover:bg-emerald-50"
                       onClick={() => updateStatus(appt.id, 'cumplido')}
-                      title={t('appointments.markCompleted')}
+                      title="Marcar como cumplida"
                       data-testid={`mark-complete-${appt.id}`}
                     >
                       <CheckCircle2 className="w-4 h-4" />
@@ -403,7 +428,7 @@ function AppointmentSection({ title, appointments, getStatusBadge, updateStatus,
                       variant="outline"
                       className="text-slate-600 hover:bg-slate-50"
                       onClick={() => updateStatus(appt.id, 'no_show')}
-                      title={t('appointments.markNoShow')}
+                      title="Marcar como No Show"
                       data-testid={`mark-noshow-${appt.id}`}
                     >
                       <XCircle className="w-4 h-4" />
