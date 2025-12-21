@@ -16,6 +16,9 @@ from twilio.rest import Client as TwilioClient
 import pandas as pd
 import io
 import re
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+import asyncio
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -51,6 +54,134 @@ security = HTTPBearer()
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# ==================== SCHEDULER ====================
+
+scheduler = AsyncIOScheduler()
+
+async def send_marketing_sms_job():
+    """
+    Scheduled job to send marketing SMS at 11:00 AM daily.
+    Sends initial SMS to new contacts and weekly reminders to contacts without appointments.
+    """
+    logger.info("Running scheduled marketing SMS job...")
+    
+    if not twilio_client:
+        logger.warning("Twilio client not configured - skipping SMS job")
+        return
+    
+    now = datetime.now(timezone.utc)
+    today = now.date()
+    
+    # Get contacts that need SMS
+    # 1. New contacts that haven't received any SMS yet
+    # 2. Contacts without appointments that need weekly reminders (up to 5 weeks)
+    
+    contacts_to_message = await db.imported_contacts.find({
+        "opt_out": False,
+        "appointment_created": False,
+        "$or": [
+            # Never sent SMS
+            {"sms_sent": False},
+            # Sent SMS but need weekly reminder (max 5 times)
+            {
+                "sms_sent": True,
+                "sms_count": {"$lt": 5},
+                "last_sms_sent": {"$lt": (now - timedelta(days=7)).isoformat()}
+            }
+        ]
+    }, {"_id": 0}).to_list(100)
+    
+    logger.info(f"Found {len(contacts_to_message)} contacts to message")
+    
+    # Get marketing template
+    template_key = "marketing_initial"
+    
+    for contact in contacts_to_message:
+        try:
+            # Determine which template to use
+            if contact.get("sms_count", 0) > 0:
+                template_key = "marketing_reminder"
+            
+            template = await db.sms_templates.find_one({"template_key": template_key}, {"_id": 0})
+            if not template:
+                logger.warning(f"Template {template_key} not found")
+                continue
+            
+            # Use Spanish message by default for marketing
+            message_template = template.get("message_es", template.get("message_en", ""))
+            
+            # Generate appointment link
+            token = generate_public_token(contact["id"], contact["id"], "marketing_appointment")
+            base_url = os.environ.get('FRONTEND_URL', 'https://work-1-hxroqbnbaygfdbdd.prod-runtime.all-hands.dev')
+            appointment_link = f"{base_url}/c/schedule/{token}"
+            
+            # Format message
+            message = message_template.format(
+                first_name=contact.get("first_name", ""),
+                link=appointment_link
+            )
+            
+            # Send SMS
+            result = await send_sms_twilio(contact["phone_formatted"], message)
+            
+            # Update contact
+            await db.imported_contacts.update_one(
+                {"id": contact["id"]},
+                {"$set": {
+                    "sms_sent": True,
+                    "sms_count": contact.get("sms_count", 0) + 1,
+                    "last_sms_sent": now.isoformat(),
+                    "status": "contacted"
+                }}
+            )
+            
+            # Log SMS
+            sms_log = {
+                "id": str(uuid.uuid4()),
+                "contact_id": contact["id"],
+                "phone": contact["phone_formatted"],
+                "message_type": "marketing_scheduled",
+                "message": message,
+                "status": "sent" if result["success"] else "failed",
+                "twilio_sid": result.get("sid"),
+                "error": result.get("error"),
+                "sent_at": now.isoformat(),
+                "sent_by": "scheduler"
+            }
+            await db.sms_logs.insert_one(sms_log)
+            
+            if result["success"]:
+                logger.info(f"Marketing SMS sent to {contact['phone_formatted']}")
+            else:
+                logger.error(f"Failed to send SMS to {contact['phone_formatted']}: {result.get('error')}")
+            
+            # Small delay between messages
+            await asyncio.sleep(0.5)
+            
+        except Exception as e:
+            logger.error(f"Error sending SMS to contact {contact.get('id')}: {str(e)}")
+    
+    logger.info("Marketing SMS job completed")
+
+@app.on_event("startup")
+async def startup_event():
+    """Start the scheduler when the app starts"""
+    # Schedule the marketing SMS job to run at 11:00 AM every day (US Eastern time)
+    scheduler.add_job(
+        send_marketing_sms_job,
+        CronTrigger(hour=11, minute=0, timezone='America/Los_Angeles'),
+        id='marketing_sms_job',
+        replace_existing=True
+    )
+    scheduler.start()
+    logger.info("SMS Scheduler started - Marketing SMS will be sent at 11:00 AM Pacific time daily")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Stop the scheduler when the app stops"""
+    scheduler.shutdown()
+    logger.info("SMS Scheduler stopped")
 
 # ==================== MODELS ====================
 
