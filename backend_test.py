@@ -895,7 +895,7 @@ class CRMAPITester:
         return success1 and success2
 
 def main():
-    print("🚀 Starting CRM API Testing - Import Contacts & SMS Marketing Features...")
+    print("🚀 Starting CRM API Testing - Dashboard, Agenda, and SMS Scheduler Features...")
     tester = CRMAPITester()
     
     # Authentication Tests
@@ -916,6 +916,27 @@ def main():
     tester.test_salesperson_login()
     
     tester.test_auth_me()
+    
+    # NEW SCHEDULER TESTS
+    print("\n" + "="*50)
+    print("SMS SCHEDULER TESTS")
+    print("="*50)
+    
+    tester.test_scheduler_status()
+    tester.test_scheduler_run_now()
+    tester.test_non_admin_scheduler_access()
+    
+    # Dashboard and Agenda Tests
+    print("\n" + "="*50)
+    print("DASHBOARD & AGENDA TESTS")
+    print("="*50)
+    
+    tester.test_dashboard_stats()
+    tester.test_get_agenda()
+    
+    # Create test data for appointment status testing
+    if tester.test_create_client() and tester.test_create_user_record() and tester.test_create_appointment():
+        tester.test_update_appointment_status()
     
     # Import Contacts & SMS Marketing Tests
     print("\n" + "="*50)
@@ -942,17 +963,9 @@ def main():
     # Test 1: Last record date null when no records
     tester.test_last_record_date_null_when_no_records()
     
-    # Create client with record to test last_record_date functionality
-    if not tester.test_create_client():
-        print("❌ Client creation failed, stopping related tests")
-        return 1
-    
-    if not tester.test_create_user_record():
-        print("❌ User record creation failed, stopping related tests")
-        return 1
-    
-    # Test 2: Last record date shows when records exist
-    tester.test_last_record_date_shows_when_records_exist()
+    # Test 2: Last record date shows when records exist (using existing client)
+    if tester.client_id:
+        tester.test_last_record_date_shows_when_records_exist()
     
     # Search Tests
     print("\n" + "="*50)
@@ -971,7 +984,8 @@ def main():
     print("="*50)
     
     # Test 5: New opportunity with previous_record_id
-    tester.test_new_opportunity_with_previous_record_id()
+    if tester.client_id and tester.record_id:
+        tester.test_new_opportunity_with_previous_record_id()
     
     # Multiple Co-signers Tests
     print("\n" + "="*50)
@@ -979,7 +993,8 @@ def main():
     print("="*50)
     
     # Test 6: Multiple co-signers allowed
-    tester.test_multiple_cosigners_allowed()
+    if tester.client_id:
+        tester.test_multiple_cosigners_allowed()
     
     # Additional Core Tests
     print("\n" + "="*50)
@@ -988,8 +1003,6 @@ def main():
     
     tester.test_list_clients()
     tester.test_get_user_records()
-    tester.test_create_appointment()
-    tester.test_dashboard_stats()
     
     # Print Results
     print("\n" + "="*50)
