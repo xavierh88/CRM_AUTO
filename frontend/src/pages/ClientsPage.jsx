@@ -238,10 +238,11 @@ export default function ClientsPage() {
               </div>
               <div>
                 <Label className="form-label">{t('clients.address')}</Label>
-                <Input
+                <AddressAutocomplete
                   value={newClient.address}
-                  onChange={(e) => setNewClient({ ...newClient, address: e.target.value })}
+                  onChange={(value) => setNewClient({ ...newClient, address: value })}
                   data-testid="client-address"
+                  placeholder="Start typing an address..."
                 />
               </div>
               <div>
