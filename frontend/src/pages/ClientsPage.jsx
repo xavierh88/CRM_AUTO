@@ -15,6 +15,7 @@ import {
   Plus, Search, Info, Calendar, ChevronDown, ChevronRight, 
   Send, Trash2, CheckCircle2, XCircle, UserPlus, Phone, RefreshCw
 } from 'lucide-react';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
