@@ -6,19 +6,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Calendar } from '../components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
-import { Calendar as CalendarIcon, Clock, MapPin, User, Send, CheckCircle2, XCircle } from 'lucide-react';
-import { format, isToday, isTomorrow, addDays, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { Calendar as CalendarIcon, Clock, MapPin, User, Send, CheckCircle2, XCircle, Phone, AlertTriangle } from 'lucide-react';
+import { format, isToday, isTomorrow, addDays, parseISO, isWithinInterval, startOfDay, endOfDay, isSameDay } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function AgendaPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [filter, setFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('grouped'); // 'grouped' or 'selected'
 
   useEffect(() => {
     fetchAppointments();
@@ -48,11 +51,24 @@ export default function AgendaPage() {
   const sendReminderSMS = async (appointment) => {
     try {
       await axios.post(`${API}/sms/send-appointment-link?client_id=${appointment.client_id}&appointment_id=${appointment.id}`);
-      toast.success('Reminder SMS sent (mocked)');
+      toast.success('SMS de recordatorio enviado');
     } catch (error) {
       toast.error('Failed to send SMS');
     }
   };
+
+  // Get appointments for selected date
+  const getSelectedDateAppointments = () => {
+    return appointments.filter(a => {
+      if (!a.date) return false;
+      return isSameDay(parseISO(a.date), selectedDate);
+    });
+  };
+
+  // Get dates that have appointments (for calendar highlighting)
+  const appointmentDates = appointments
+    .filter(a => a.date)
+    .map(a => parseISO(a.date));
 
   const getFilteredAppointments = () => {
     let filtered = appointments;
@@ -88,7 +104,19 @@ export default function AgendaPage() {
     </span>
   );
 
+  // Calculate stats
+  const stats = {
+    total: appointments.length,
+    today: appointments.filter(a => a.date && isToday(parseISO(a.date))).length,
+    pending: appointments.filter(a => a.status === 'agendado' || a.status === 'sin_configurar').length,
+    completed: appointments.filter(a => a.status === 'cumplido').length,
+    noShow: appointments.filter(a => a.status === 'no_show').length,
+    runningLate: appointments.filter(a => a.running_late).length
+  };
+
   const grouped = getFilteredAppointments();
+  const selectedDateAppts = getSelectedDateAppointments();
+  const dateLocale = i18n.language === 'es' ? es : undefined;
 
   if (loading) {
     return (
@@ -104,15 +132,24 @@ export default function AgendaPage() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{t('nav.agenda')}</h1>
-          <p className="text-slate-500 mt-1">Manage your appointments</p>
+          <p className="text-slate-500 mt-1">{t('agenda.subtitle') || 'Manage your appointments'}</p>
         </div>
         <div className="flex items-center gap-3">
+          <Select value={viewMode} onValueChange={setViewMode}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="grouped">Vista Agrupada</SelectItem>
+              <SelectItem value="selected">Vista por Día</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-48" data-testid="status-filter">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="all">Todos los Estados</SelectItem>
               <SelectItem value="agendado">{t('status.agendado')}</SelectItem>
               <SelectItem value="sin_configurar">{t('status.sin_configurar')}</SelectItem>
               <SelectItem value="cambio_hora">{t('status.cambio_hora')}</SelectItem>
@@ -124,76 +161,149 @@ export default function AgendaPage() {
         </div>
       </div>
 
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <Card className="dashboard-card">
+          <CardContent className="p-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Total</p>
+            <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+          </CardContent>
+        </Card>
+        <Card className="dashboard-card border-l-4 border-l-blue-500">
+          <CardContent className="p-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Hoy</p>
+            <p className="text-2xl font-bold text-blue-600">{stats.today}</p>
+          </CardContent>
+        </Card>
+        <Card className="dashboard-card border-l-4 border-l-amber-500">
+          <CardContent className="p-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Pendientes</p>
+            <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
+          </CardContent>
+        </Card>
+        <Card className="dashboard-card border-l-4 border-l-emerald-500">
+          <CardContent className="p-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Cumplidas</p>
+            <p className="text-2xl font-bold text-emerald-600">{stats.completed}</p>
+          </CardContent>
+        </Card>
+        <Card className="dashboard-card border-l-4 border-l-slate-400">
+          <CardContent className="p-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wide">No Show</p>
+            <p className="text-2xl font-bold text-slate-500">{stats.noShow}</p>
+          </CardContent>
+        </Card>
+        {stats.runningLate > 0 && (
+          <Card className="dashboard-card border-l-4 border-l-orange-500 bg-orange-50">
+            <CardContent className="p-4">
+              <p className="text-xs text-orange-600 uppercase tracking-wide flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Llegando Tarde
+              </p>
+              <p className="text-2xl font-bold text-orange-600">{stats.runningLate}</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar */}
         <Card className="dashboard-card lg:col-span-1">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <CalendarIcon className="w-5 h-5 text-blue-600" />
-              Calendar
+              Calendario
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Calendar
               mode="single"
               selected={selectedDate}
-              onSelect={setSelectedDate}
+              onSelect={(date) => {
+                setSelectedDate(date || new Date());
+                setViewMode('selected');
+              }}
               className="rounded-md border"
+              locale={dateLocale}
               modifiers={{
-                hasAppointment: appointments
-                  .filter(a => a.date)
-                  .map(a => parseISO(a.date))
+                hasAppointment: appointmentDates
               }}
               modifiersClassNames={{
                 hasAppointment: 'bg-blue-100 text-blue-900 font-semibold'
               }}
             />
+            {viewMode === 'selected' && (
+              <div className="mt-4 p-3 bg-slate-50 rounded-lg">
+                <p className="text-sm font-medium text-slate-700">
+                  {format(selectedDate, "EEEE, d 'de' MMMM", { locale: dateLocale })}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {selectedDateAppts.length} {selectedDateAppts.length === 1 ? 'cita' : 'citas'}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         {/* Appointments List */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Today */}
-          <AppointmentSection
-            title="Today"
-            appointments={grouped.today}
-            getStatusBadge={getStatusBadge}
-            updateStatus={updateStatus}
-            sendReminderSMS={sendReminderSMS}
-            emptyMessage="No appointments today"
-          />
-
-          {/* Tomorrow */}
-          <AppointmentSection
-            title="Tomorrow"
-            appointments={grouped.tomorrow}
-            getStatusBadge={getStatusBadge}
-            updateStatus={updateStatus}
-            sendReminderSMS={sendReminderSMS}
-            emptyMessage="No appointments tomorrow"
-          />
-
-          {/* This Week */}
-          <AppointmentSection
-            title="Next 7 Days"
-            appointments={grouped.thisWeek}
-            getStatusBadge={getStatusBadge}
-            updateStatus={updateStatus}
-            sendReminderSMS={sendReminderSMS}
-            emptyMessage="No upcoming appointments"
-          />
-
-          {/* Not Configured */}
-          {grouped.unconfigured.length > 0 && (
+          {viewMode === 'selected' ? (
+            // View by selected date
             <AppointmentSection
-              title="Not Configured"
-              appointments={grouped.unconfigured}
+              title={format(selectedDate, "EEEE, d 'de' MMMM yyyy", { locale: dateLocale })}
+              appointments={selectedDateAppts}
               getStatusBadge={getStatusBadge}
               updateStatus={updateStatus}
               sendReminderSMS={sendReminderSMS}
-              emptyMessage=""
-              isWarning
+              emptyMessage="No hay citas para esta fecha"
             />
+          ) : (
+            // Grouped view
+            <>
+              {/* Today */}
+              <AppointmentSection
+                title={`Hoy (${format(new Date(), 'd MMM', { locale: dateLocale })})`}
+                appointments={grouped.today}
+                getStatusBadge={getStatusBadge}
+                updateStatus={updateStatus}
+                sendReminderSMS={sendReminderSMS}
+                emptyMessage="No hay citas hoy"
+                highlight
+              />
+
+              {/* Tomorrow */}
+              <AppointmentSection
+                title={`Mañana (${format(addDays(new Date(), 1), 'd MMM', { locale: dateLocale })})`}
+                appointments={grouped.tomorrow}
+                getStatusBadge={getStatusBadge}
+                updateStatus={updateStatus}
+                sendReminderSMS={sendReminderSMS}
+                emptyMessage="No hay citas mañana"
+              />
+
+              {/* This Week */}
+              <AppointmentSection
+                title="Próximos 7 Días"
+                appointments={grouped.thisWeek}
+                getStatusBadge={getStatusBadge}
+                updateStatus={updateStatus}
+                sendReminderSMS={sendReminderSMS}
+                emptyMessage="No hay citas próximas"
+              />
+
+              {/* Not Configured */}
+              {grouped.unconfigured.length > 0 && (
+                <AppointmentSection
+                  title="Sin Configurar"
+                  appointments={grouped.unconfigured}
+                  getStatusBadge={getStatusBadge}
+                  updateStatus={updateStatus}
+                  sendReminderSMS={sendReminderSMS}
+                  emptyMessage=""
+                  isWarning
+                />
+              )}
+            </>
           )}
         </div>
       </div>
