@@ -33,6 +33,9 @@ const resources = {
       "dashboard.appointmentsByStatus": "Appointments by Status",
       "dashboard.performance": "Salesperson Performance",
       
+      // Agenda
+      "agenda.subtitle": "Manage your appointments",
+      
       // Clients
       "clients.title": "Clients",
       "clients.addNew": "Add Client",
