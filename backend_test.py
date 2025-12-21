@@ -841,6 +841,59 @@ class CRMAPITester:
         self.token = old_token
         return success
 
+    # ==================== NEW SCHEDULER TESTS ====================
+    
+    def test_scheduler_status(self):
+        """Test GET /api/scheduler/status (admin only)"""
+        success, response = self.run_test(
+            "Get Scheduler Status",
+            "GET",
+            "scheduler/status",
+            200,
+            use_admin=True
+        )
+        return success and 'status' in response
+
+    def test_scheduler_run_now(self):
+        """Test POST /api/scheduler/run-now (admin only)"""
+        success, response = self.run_test(
+            "Manually Trigger Marketing SMS Job",
+            "POST",
+            "scheduler/run-now",
+            200,
+            use_admin=True
+        )
+        return success and 'message' in response
+
+    def test_non_admin_scheduler_access(self):
+        """Test that non-admin users cannot access scheduler endpoints"""
+        if not hasattr(self, 'salesperson_token'):
+            return False
+            
+        # Temporarily use salesperson token
+        old_token = self.token
+        self.token = self.salesperson_token
+        
+        # Test scheduler status access
+        success1, _ = self.run_test(
+            "Non-Admin Scheduler Status (Should Fail)",
+            "GET",
+            "scheduler/status",
+            403  # Should be forbidden
+        )
+        
+        # Test scheduler run-now access
+        success2, _ = self.run_test(
+            "Non-Admin Scheduler Run-Now (Should Fail)",
+            "POST",
+            "scheduler/run-now",
+            403  # Should be forbidden
+        )
+        
+        # Restore admin token
+        self.token = old_token
+        return success1 and success2
+
 def main():
     print("🚀 Starting CRM API Testing - Import Contacts & SMS Marketing Features...")
     tester = CRMAPITester()
