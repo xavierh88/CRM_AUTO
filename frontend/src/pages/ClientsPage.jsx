@@ -1330,9 +1330,10 @@ function CoSignersSection({ clientId, cosigners, onRefresh }) {
               </div>
               <div>
                 <Label className="form-label">{t('clients.address')}</Label>
-                <Input
+                <AddressAutocomplete
                   value={newCosigner.address}
-                  onChange={(e) => setNewCosigner({ ...newCosigner, address: e.target.value })}
+                  onChange={(value) => setNewCosigner({ ...newCosigner, address: value })}
+                  placeholder="Start typing an address..."
                 />
               </div>
               <div>
@@ -1453,9 +1454,10 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onRefresh }) {
                 </div>
                 <div className="col-span-2">
                   <Label className="form-label">{t('clients.address')}</Label>
-                  <Input
+                  <AddressAutocomplete
                     value={editData.address}
-                    onChange={(e) => setEditData({ ...editData, address: e.target.value })}
+                    onChange={(value) => setEditData({ ...editData, address: value })}
+                    placeholder="Start typing an address..."
                   />
                 </div>
                 <div className="col-span-2">
