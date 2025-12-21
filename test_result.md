@@ -101,113 +101,88 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
-user_problem_statement: CRM for car dealerships - Import Contacts and SMS Marketing Campaign Feature
+user_problem_statement: CRM for car dealerships - Dashboard, Agenda and Address Autocomplete improvements
 backend:
-  - task: "User records CRUD with opportunity linking"
+  - task: "SMS Scheduler for marketing campaigns"
     implemented: true
     working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: true
         - agent: "main"
-        - comment: "Backend endpoints working correctly"
+        - comment: "APScheduler configured for 11:00 AM Pacific time daily. Sends initial SMS and weekly reminders (up to 5 weeks)"
 
-  - task: "Import contacts from Excel/CSV"
+  - task: "Scheduler endpoints"
     implemented: true
     working: true
     file: "/app/backend/server.py"
     stuck_count: 0
-    priority: "high"
+    priority: "medium"
     needs_retesting: true
     status_history:
-        - working: "NA"
+        - working: true
         - agent: "main"
-        - comment: "Implemented POST /api/import-contacts endpoint for Excel/CSV file import"
-
-  - task: "SMS Templates API"
-    implemented: true
-    working: true
-    file: "/app/backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: true
-    status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "Implemented GET /api/sms-templates and PUT /api/sms-templates/{template_key} endpoints"
-
-  - task: "Imported contacts management API"
-    implemented: true
-    working: true
-    file: "/app/backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: true
-    status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "Implemented GET /api/imported-contacts, POST /api/imported-contacts/{id}/send-sms-now, PUT opt-out, DELETE endpoints"
+        - comment: "GET /api/scheduler/status and POST /api/scheduler/run-now endpoints"
 
 frontend:
-  - task: "Import Contacts Page"
+  - task: "Address Autocomplete component"
     implemented: true
     working: true
-    file: "/app/frontend/src/pages/ImportContactsPage.jsx"
+    file: "/app/frontend/src/components/AddressAutocomplete.jsx"
     stuck_count: 0
     priority: "high"
     needs_retesting: true
     status_history:
         - working: true
         - agent: "main"
-        - comment: "UI complete with file upload, contacts list, send SMS, opt-out toggle, delete functionality"
+        - comment: "Google Places API integration for address autocomplete in client forms"
 
-  - task: "SMS Templates tab in Admin"
+  - task: "Agenda page improvements"
     implemented: true
     working: true
-    file: "/app/frontend/src/pages/AdminPage.jsx"
+    file: "/app/frontend/src/pages/AgendaPage.jsx"
     stuck_count: 0
     priority: "high"
     needs_retesting: true
     status_history:
         - working: true
         - agent: "main"
-        - comment: "New SMS tab added with 4 templates (marketing_initial, marketing_reminder, appointment_notification, welcome_first_record)"
+        - comment: "Added stats cards, view by selected date, running late indicator, phone display, Spanish translations"
 
-  - task: "Import link in navigation sidebar"
+  - task: "Calendar component fix"
     implemented: true
     working: true
-    file: "/app/frontend/src/components/Layout.jsx"
+    file: "/app/frontend/src/components/ui/calendar.jsx"
     stuck_count: 0
     priority: "medium"
     needs_retesting: false
     status_history:
         - working: true
         - agent: "main"
-        - comment: "Added Import link to sidebar with FileSpreadsheet icon and translations"
+        - comment: "Fixed calendar grid alignment issue"
 
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 5
+  test_sequence: 6
   run_ui: true
 
 test_plan:
   current_focus:
-    - "Import contacts from Excel/CSV"
-    - "SMS Templates API"
-    - "Imported contacts management API"
-    - "Import Contacts Page"
-    - "SMS Templates tab in Admin"
+    - "SMS Scheduler for marketing campaigns"
+    - "Scheduler endpoints"
+    - "Address Autocomplete component"
+    - "Agenda page improvements"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
     - agent: "main"
-    - message: "Completed implementation of Import Contacts and SMS Marketing feature. Backend APIs for file import, contact management, and SMS templates are ready. Frontend pages for Import and Admin SMS tab are functional. Google Places API key added to frontend .env. Ready for testing."
+    - message: "Completed improvements to Dashboard, Agenda page, and Address Autocomplete. SMS Scheduler configured for 11:00 AM daily. Calendar alignment fixed. Ready for testing."
   
 
 ## New Features Implemented (Session 2)
