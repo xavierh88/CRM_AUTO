@@ -2050,3 +2050,54 @@ async def initialize_default_config_lists():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+# ==================== SCHEDULER ENDPOINTS ====================
+
+@api_router.get("/scheduler/status")
+async def get_scheduler_status(current_user: dict = Depends(get_current_user)):
+    """Get the status of the SMS scheduler (admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    jobs = []
+    for job in scheduler.get_jobs():
+        jobs.append({
+            "id": job.id,
+            "name": job.name,
+            "next_run": job.next_run_time.isoformat() if job.next_run_time else None,
+            "trigger": str(job.trigger)
+        })
+    
+    # Get stats on pending contacts
+    pending_initial = await db.imported_contacts.count_documents({
+        "opt_out": False,
+        "appointment_created": False,
+        "sms_sent": False
+    })
+    
+    pending_reminder = await db.imported_contacts.count_documents({
+        "opt_out": False,
+        "appointment_created": False,
+        "sms_sent": True,
+        "sms_count": {"$lt": 5}
+    })
+    
+    return {
+        "scheduler_running": scheduler.running,
+        "jobs": jobs,
+        "pending_stats": {
+            "contacts_awaiting_initial_sms": pending_initial,
+            "contacts_eligible_for_reminder": pending_reminder
+        }
+    }
+
+@api_router.post("/scheduler/run-now")
+async def run_marketing_sms_now(current_user: dict = Depends(get_current_user)):
+    """Manually trigger the marketing SMS job (admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Run the job in background
+    asyncio.create_task(send_marketing_sms_job())
+    
+    return {"message": "Marketing SMS job started. Check logs for progress."}
