@@ -153,6 +153,9 @@ const resources = {
       "dashboard.appointmentsByStatus": "Citas por Estado",
       "dashboard.performance": "Rendimiento de Vendedores",
       
+      // Agenda
+      "agenda.subtitle": "Gestiona tus citas",
+      
       // Clients
       "clients.title": "Clientes",
       "clients.addNew": "Agregar Cliente",
