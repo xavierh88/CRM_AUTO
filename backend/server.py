@@ -1205,24 +1205,58 @@ async def get_sms_logs(client_id: Optional[str] = None, limit: int = 50, current
 # ==================== SMS INBOX & CONVERSATIONS ====================
 
 async def send_email_notification(to_email: str, subject: str, html_content: str) -> dict:
-    """Send email notification using Resend"""
-    if not RESEND_API_KEY:
-        logger.warning("Resend API key not configured - skipping email notification")
-        return {"success": False, "error": "Email not configured"}
+    """
+    Send email notification using SMTP (FREE) or Resend (paid).
+    Supports Gmail, Outlook, Yahoo, etc.
+    """
+    # Try SMTP first (FREE)
+    if SMTP_USER and SMTP_PASSWORD:
+        try:
+            def send_smtp_email():
+                msg = MIMEMultipart('alternative')
+                msg['Subject'] = subject
+                msg['From'] = f"{SMTP_FROM_NAME} <{SMTP_USER}>"
+                msg['To'] = to_email
+                
+                # Create HTML part
+                html_part = MIMEText(html_content, 'html')
+                msg.attach(html_part)
+                
+                # Connect and send
+                with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+                    server.starttls()
+                    server.login(SMTP_USER, SMTP_PASSWORD)
+                    server.sendmail(SMTP_USER, to_email, msg.as_string())
+                
+                return True
+            
+            # Run in thread to not block async
+            result = await asyncio.to_thread(send_smtp_email)
+            logger.info(f"Email notification sent via SMTP to {to_email}")
+            return {"success": True, "method": "smtp"}
+            
+        except Exception as e:
+            logger.error(f"Failed to send email via SMTP: {str(e)}")
+            # Fall through to try Resend if configured
     
-    try:
-        params = {
-            "from": SENDER_EMAIL,
-            "to": [to_email],
-            "subject": subject,
-            "html": html_content
-        }
-        email = await asyncio.to_thread(resend.Emails.send, params)
-        logger.info(f"Email notification sent to {to_email}")
-        return {"success": True, "email_id": email.get("id")}
-    except Exception as e:
-        logger.error(f"Failed to send email: {str(e)}")
-        return {"success": False, "error": str(e)}
+    # Try Resend as fallback (paid)
+    if RESEND_API_KEY:
+        try:
+            params = {
+                "from": SENDER_EMAIL,
+                "to": [to_email],
+                "subject": subject,
+                "html": html_content
+            }
+            email = await asyncio.to_thread(resend.Emails.send, params)
+            logger.info(f"Email notification sent via Resend to {to_email}")
+            return {"success": True, "email_id": email.get("id"), "method": "resend"}
+        except Exception as e:
+            logger.error(f"Failed to send email via Resend: {str(e)}")
+            return {"success": False, "error": str(e)}
+    
+    logger.warning("No email service configured - skipping email notification")
+    return {"success": False, "error": "Email not configured"}
 
 @api_router.get("/inbox/{client_id}")
 async def get_client_inbox(client_id: str, current_user: dict = Depends(get_current_user)):
