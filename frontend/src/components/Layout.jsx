@@ -15,6 +15,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { Button } from './ui/button';
+import NotificationsPopover from './NotificationsPopover';
 
 export const Layout = ({ children }) => {
   const { t } = useTranslation();
