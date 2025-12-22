@@ -32,6 +32,7 @@ export default function ClientsPage() {
   const [userRecords, setUserRecords] = useState({});
   const [appointments, setAppointments] = useState({});
   const [cosigners, setCosigners] = useState({});
+  const [inboxClient, setInboxClient] = useState(null); // For SMS inbox dialog
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
