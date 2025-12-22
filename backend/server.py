@@ -39,11 +39,18 @@ TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
 TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
 TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
 
-# Resend Email Configuration
+# Resend Email Configuration (optional - can use SMTP instead)
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
+
+# SMTP Email Configuration (FREE - Gmail, Outlook, etc.)
+SMTP_HOST = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
+SMTP_USER = os.environ.get('SMTP_USER', '')  # Your email
+SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')  # App password
+SMTP_FROM_NAME = os.environ.get('SMTP_FROM_NAME', 'DealerCRM')
 
 # Initialize Twilio client
 twilio_client = None
