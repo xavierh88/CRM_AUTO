@@ -335,6 +335,19 @@ export default function ClientsPage() {
                       >
                         <Info className="w-4 h-4" />
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setInboxClient(client);
+                        }}
+                        data-testid={`client-inbox-btn-${client.id}`}
+                        title="SMS Inbox"
+                        className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                      </Button>
                       {isAdmin && (
                         <Button
                           variant="ghost"
