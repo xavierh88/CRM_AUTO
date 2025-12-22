@@ -446,6 +446,14 @@ export default function ClientsPage() {
           onRefresh={fetchClients}
         />
       )}
+
+      {/* SMS Inbox Dialog */}
+      <SmsInboxDialog
+        open={!!inboxClient}
+        onOpenChange={(open) => !open && setInboxClient(null)}
+        client={inboxClient}
+        onMessageSent={fetchClients}
+      />
     </div>
   );
 }
