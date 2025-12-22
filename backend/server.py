@@ -1192,6 +1192,612 @@ async def get_sms_logs(client_id: Optional[str] = None, limit: int = 50, current
     logs = await db.sms_logs.find(query, {"_id": 0}).sort("sent_at", -1).limit(limit).to_list(limit)
     return logs
 
+# ==================== SMS INBOX & CONVERSATIONS ====================
+
+async def send_email_notification(to_email: str, subject: str, html_content: str) -> dict:
+    """Send email notification using Resend"""
+    if not RESEND_API_KEY:
+        logger.warning("Resend API key not configured - skipping email notification")
+        return {"success": False, "error": "Email not configured"}
+    
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [to_email],
+            "subject": subject,
+            "html": html_content
+        }
+        email = await asyncio.to_thread(resend.Emails.send, params)
+        logger.info(f"Email notification sent to {to_email}")
+        return {"success": True, "email_id": email.get("id")}
+    except Exception as e:
+        logger.error(f"Failed to send email: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@api_router.get("/inbox/{client_id}")
+async def get_client_inbox(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Get all SMS messages for a client (conversation inbox)"""
+    # Get client info
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Get all messages for this client (both sent and received)
+    messages = await db.sms_conversations.find(
+        {"client_id": client_id},
+        {"_id": 0}
+    ).sort("timestamp", 1).to_list(500)
+    
+    # Also get SMS logs for historical messages
+    sms_logs = await db.sms_logs.find(
+        {"client_id": client_id},
+        {"_id": 0}
+    ).sort("sent_at", 1).to_list(500)
+    
+    # Merge logs into conversation format if not already in conversations
+    existing_sids = {m.get("twilio_sid") for m in messages if m.get("twilio_sid")}
+    for log in sms_logs:
+        if log.get("twilio_sid") and log["twilio_sid"] not in existing_sids:
+            messages.append({
+                "id": log.get("id", str(uuid.uuid4())),
+                "client_id": client_id,
+                "direction": "outbound",
+                "message": log.get("message", ""),
+                "timestamp": log.get("sent_at"),
+                "sender_id": log.get("sent_by"),
+                "sender_name": log.get("sender_name", "System"),
+                "twilio_sid": log.get("twilio_sid"),
+                "status": log.get("status", "sent")
+            })
+    
+    # Sort by timestamp
+    messages.sort(key=lambda x: x.get("timestamp", ""))
+    
+    # Get unread count
+    unread_count = await db.sms_conversations.count_documents({
+        "client_id": client_id,
+        "direction": "inbound",
+        "read": False
+    })
+    
+    return {
+        "client": client,
+        "messages": messages,
+        "unread_count": unread_count
+    }
+
+@api_router.post("/inbox/{client_id}/send")
+async def send_inbox_message(client_id: str, message: str = Form(...), current_user: dict = Depends(get_current_user)):
+    """Send a message from the inbox to a client"""
+    # Get client info
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    if not client.get("phone"):
+        raise HTTPException(status_code=400, detail="Client has no phone number")
+    
+    # Send SMS
+    result = await send_sms_twilio(client["phone"], message)
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    # Store in conversations
+    conversation_msg = {
+        "id": str(uuid.uuid4()),
+        "client_id": client_id,
+        "direction": "outbound",
+        "message": message,
+        "timestamp": now,
+        "sender_id": current_user["id"],
+        "sender_name": current_user.get("name", current_user.get("email", "Unknown")),
+        "twilio_sid": result.get("sid"),
+        "status": "sent" if result["success"] else "failed",
+        "read": True
+    }
+    await db.sms_conversations.insert_one(conversation_msg)
+    
+    # Update client's last activity
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {"last_sms_activity": now, "last_active_user_id": current_user["id"]}}
+    )
+    
+    if result["success"]:
+        return {"message": "SMS sent successfully", "conversation": {**conversation_msg, "_id": None}}
+    else:
+        raise HTTPException(status_code=500, detail=f"Failed to send SMS: {result.get('error')}")
+
+@api_router.post("/inbox/{client_id}/mark-read")
+async def mark_messages_read(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Mark all inbound messages for a client as read"""
+    result = await db.sms_conversations.update_many(
+        {"client_id": client_id, "direction": "inbound", "read": False},
+        {"$set": {"read": True, "read_by": current_user["id"], "read_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": f"Marked {result.modified_count} messages as read"}
+
+@api_router.get("/inbox/unread-count")
+async def get_unread_count(current_user: dict = Depends(get_current_user)):
+    """Get total unread messages count for notification badge"""
+    count = await db.sms_conversations.count_documents({
+        "direction": "inbound",
+        "read": False
+    })
+    return {"unread_count": count}
+
+@api_router.get("/notifications")
+async def get_notifications(current_user: dict = Depends(get_current_user), limit: int = 20):
+    """Get in-app notifications for the current user"""
+    notifications = await db.notifications.find(
+        {"user_id": current_user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    unread_count = await db.notifications.count_documents({
+        "user_id": current_user["id"],
+        "read": False
+    })
+    
+    return {"notifications": notifications, "unread_count": unread_count}
+
+@api_router.post("/notifications/mark-read")
+async def mark_notifications_read(notification_ids: List[str] = None, current_user: dict = Depends(get_current_user)):
+    """Mark notifications as read"""
+    query = {"user_id": current_user["id"]}
+    if notification_ids:
+        query["id"] = {"$in": notification_ids}
+    
+    result = await db.notifications.update_many(
+        query,
+        {"$set": {"read": True, "read_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": f"Marked {result.modified_count} notifications as read"}
+
+# ==================== TWILIO WEBHOOK (Receive SMS) ====================
+
+@app.post("/webhook/twilio/sms")
+async def twilio_sms_webhook(request: Request):
+    """
+    Webhook endpoint to receive incoming SMS messages from Twilio.
+    Configure this URL in your Twilio console: https://your-domain.com/webhook/twilio/sms
+    """
+    try:
+        form_data = await request.form()
+        
+        from_number = form_data.get("From", "")
+        to_number = form_data.get("To", "")
+        body = form_data.get("Body", "")
+        message_sid = form_data.get("MessageSid", "")
+        
+        logger.info(f"Received SMS from {from_number}: {body[:50]}...")
+        
+        now = datetime.now(timezone.utc)
+        
+        # Find client by phone number
+        # Normalize phone number for matching
+        normalized_phone = re.sub(r'[^\d+]', '', from_number)
+        client = await db.clients.find_one({
+            "$or": [
+                {"phone": from_number},
+                {"phone": normalized_phone},
+                {"phone": {"$regex": normalized_phone[-10:] + "$"}}
+            ]
+        }, {"_id": 0})
+        
+        if not client:
+            # Try imported contacts
+            contact = await db.imported_contacts.find_one({
+                "$or": [
+                    {"phone_formatted": from_number},
+                    {"phone_formatted": normalized_phone}
+                ]
+            }, {"_id": 0})
+            
+            if contact:
+                client = {
+                    "id": contact["id"],
+                    "first_name": contact.get("first_name", ""),
+                    "last_name": contact.get("last_name", ""),
+                    "phone": contact.get("phone_formatted", from_number),
+                    "is_imported_contact": True
+                }
+        
+        if client:
+            # Store the message
+            conversation_msg = {
+                "id": str(uuid.uuid4()),
+                "client_id": client["id"],
+                "direction": "inbound",
+                "message": body,
+                "timestamp": now.isoformat(),
+                "from_phone": from_number,
+                "twilio_sid": message_sid,
+                "status": "received",
+                "read": False
+            }
+            await db.sms_conversations.insert_one(conversation_msg)
+            
+            # Update client's last activity
+            await db.clients.update_one(
+                {"id": client["id"]},
+                {"$set": {
+                    "last_sms_activity": now.isoformat(),
+                    "last_client_response": now.isoformat()
+                }}
+            )
+            
+            # Find assigned salesperson(s) - get the most recent record's salesperson
+            recent_record = await db.user_records.find_one(
+                {"client_id": client["id"]},
+                {"_id": 0}
+            )
+            
+            salespeople_to_notify = set()
+            
+            if recent_record and recent_record.get("salesperson_id"):
+                salespeople_to_notify.add(recent_record["salesperson_id"])
+            
+            # Also check if there's a collaboration
+            if client.get("collaboration_users"):
+                salespeople_to_notify.update(client["collaboration_users"])
+            
+            # Also check last_active_user_id
+            if client.get("last_active_user_id"):
+                salespeople_to_notify.add(client["last_active_user_id"])
+            
+            # Create notifications for each salesperson
+            client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}".strip() or "Unknown Client"
+            
+            for user_id in salespeople_to_notify:
+                user = await db.users.find_one({"id": user_id}, {"_id": 0})
+                if not user:
+                    continue
+                
+                # Create in-app notification
+                notification = {
+                    "id": str(uuid.uuid4()),
+                    "user_id": user_id,
+                    "type": "sms_received",
+                    "title": f"Nuevo SMS de {client_name}",
+                    "message": body[:100] + ("..." if len(body) > 100 else ""),
+                    "client_id": client["id"],
+                    "client_name": client_name,
+                    "read": False,
+                    "created_at": now.isoformat()
+                }
+                await db.notifications.insert_one(notification)
+                
+                # Send email notification if user has email
+                if user.get("email"):
+                    email_html = f"""
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #3b82f6;">📱 Nuevo mensaje SMS</h2>
+                        <p><strong>Cliente:</strong> {client_name}</p>
+                        <p><strong>Teléfono:</strong> {from_number}</p>
+                        <div style="background-color: #f1f5f9; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                            <p style="margin: 0; color: #334155;">{body}</p>
+                        </div>
+                        <p style="color: #64748b; font-size: 12px;">
+                            Responde desde el CRM para mantener el historial de conversación.
+                        </p>
+                    </div>
+                    """
+                    # Send email in background (don't wait)
+                    asyncio.create_task(send_email_notification(
+                        user["email"],
+                        f"Nuevo SMS de {client_name}",
+                        email_html
+                    ))
+            
+            logger.info(f"Processed incoming SMS from {from_number} for client {client['id']}")
+        else:
+            # Unknown sender - log it anyway
+            unknown_msg = {
+                "id": str(uuid.uuid4()),
+                "client_id": None,
+                "direction": "inbound",
+                "message": body,
+                "timestamp": now.isoformat(),
+                "from_phone": from_number,
+                "twilio_sid": message_sid,
+                "status": "received_unknown",
+                "read": False
+            }
+            await db.sms_conversations.insert_one(unknown_msg)
+            logger.warning(f"Received SMS from unknown number: {from_number}")
+        
+        # Return TwiML response (empty response = don't auto-reply)
+        return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
+        
+    except Exception as e:
+        logger.error(f"Error processing Twilio webhook: {str(e)}")
+        return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
+
+# ==================== CLIENT COLLABORATION ====================
+
+@api_router.post("/clients/{client_id}/request-collaboration")
+async def request_collaboration(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Request to collaborate on a client with the original salesperson"""
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Find the original salesperson
+    original_user_id = client.get("last_active_user_id") or client.get("created_by")
+    
+    if original_user_id == current_user["id"]:
+        raise HTTPException(status_code=400, detail="You are already the primary salesperson for this client")
+    
+    original_user = await db.users.find_one({"id": original_user_id}, {"_id": 0})
+    if not original_user:
+        raise HTTPException(status_code=404, detail="Original salesperson not found")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}".strip()
+    
+    # Create collaboration request
+    collab_request = {
+        "id": str(uuid.uuid4()),
+        "client_id": client_id,
+        "client_name": client_name,
+        "requester_id": current_user["id"],
+        "requester_name": current_user.get("name", current_user.get("email")),
+        "original_user_id": original_user_id,
+        "original_user_name": original_user.get("name", original_user.get("email")),
+        "status": "pending",
+        "created_at": now
+    }
+    await db.collaboration_requests.insert_one(collab_request)
+    
+    # Notify the original salesperson
+    notification = {
+        "id": str(uuid.uuid4()),
+        "user_id": original_user_id,
+        "type": "collaboration_request",
+        "title": f"Solicitud de colaboración",
+        "message": f"{current_user.get('name', 'Un vendedor')} quiere trabajar juntos el cliente {client_name}",
+        "client_id": client_id,
+        "client_name": client_name,
+        "request_id": collab_request["id"],
+        "read": False,
+        "created_at": now
+    }
+    await db.notifications.insert_one(notification)
+    
+    # Send email notification
+    if original_user.get("email"):
+        email_html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #3b82f6;">🤝 Solicitud de Colaboración</h2>
+            <p><strong>{current_user.get('name', 'Un vendedor')}</strong> quiere trabajar contigo el cliente:</p>
+            <div style="background-color: #f1f5f9; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                <p style="margin: 0; font-size: 18px; color: #334155;"><strong>{client_name}</strong></p>
+                <p style="margin: 5px 0 0 0; color: #64748b;">{client.get('phone', '')}</p>
+            </div>
+            <p>Ingresa al CRM para aceptar o rechazar esta solicitud.</p>
+        </div>
+        """
+        asyncio.create_task(send_email_notification(
+            original_user["email"],
+            f"Solicitud de colaboración - {client_name}",
+            email_html
+        ))
+    
+    return {"message": "Collaboration request sent", "request_id": collab_request["id"]}
+
+@api_router.get("/collaboration-requests")
+async def get_collaboration_requests(current_user: dict = Depends(get_current_user)):
+    """Get pending collaboration requests for the current user"""
+    requests = await db.collaboration_requests.find({
+        "original_user_id": current_user["id"],
+        "status": "pending"
+    }, {"_id": 0}).to_list(100)
+    return requests
+
+@api_router.post("/collaboration-requests/{request_id}/respond")
+async def respond_to_collaboration(request_id: str, accept: bool, current_user: dict = Depends(get_current_user)):
+    """Accept or reject a collaboration request"""
+    collab_request = await db.collaboration_requests.find_one({"id": request_id}, {"_id": 0})
+    if not collab_request:
+        raise HTTPException(status_code=404, detail="Collaboration request not found")
+    
+    if collab_request["original_user_id"] != current_user["id"]:
+        raise HTTPException(status_code=403, detail="You are not authorized to respond to this request")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    if accept:
+        # Add requester to client's collaboration list
+        await db.clients.update_one(
+            {"id": collab_request["client_id"]},
+            {"$addToSet": {"collaboration_users": collab_request["requester_id"]}}
+        )
+        
+        # Update request status
+        await db.collaboration_requests.update_one(
+            {"id": request_id},
+            {"$set": {"status": "accepted", "responded_at": now}}
+        )
+        
+        # Notify requester
+        notification = {
+            "id": str(uuid.uuid4()),
+            "user_id": collab_request["requester_id"],
+            "type": "collaboration_accepted",
+            "title": "Colaboración aceptada",
+            "message": f"{current_user.get('name', 'El vendedor')} aceptó trabajar juntos el cliente {collab_request['client_name']}",
+            "client_id": collab_request["client_id"],
+            "read": False,
+            "created_at": now
+        }
+        await db.notifications.insert_one(notification)
+        
+        return {"message": "Collaboration accepted", "client_id": collab_request["client_id"]}
+    else:
+        # Reject request
+        await db.collaboration_requests.update_one(
+            {"id": request_id},
+            {"$set": {"status": "rejected", "responded_at": now}}
+        )
+        
+        # Notify requester
+        notification = {
+            "id": str(uuid.uuid4()),
+            "user_id": collab_request["requester_id"],
+            "type": "collaboration_rejected",
+            "title": "Colaboración rechazada",
+            "message": f"{current_user.get('name', 'El vendedor')} rechazó la solicitud de colaboración para {collab_request['client_name']}",
+            "client_id": collab_request["client_id"],
+            "read": False,
+            "created_at": now
+        }
+        await db.notifications.insert_one(notification)
+        
+        return {"message": "Collaboration rejected"}
+
+# ==================== IMPORT WITH DUPLICATE DETECTION ====================
+
+@api_router.post("/import-contacts/check-duplicates")
+async def check_import_duplicates(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+    """
+    Check for duplicate contacts before importing.
+    Returns list of duplicates with their status (72h rule, active, etc.)
+    """
+    try:
+        content = await file.read()
+        
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(io.BytesIO(content))
+        else:
+            df = pd.read_excel(io.BytesIO(content))
+        
+        # Normalize column names
+        df.columns = df.columns.str.strip().str.lower()
+        
+        # Find phone column
+        phone_col = None
+        for col in df.columns:
+            if 'phone' in col or 'telefono' in col or 'tel' in col:
+                phone_col = col
+                break
+        
+        if not phone_col:
+            raise HTTPException(status_code=400, detail="No phone column found in file")
+        
+        now = datetime.now(timezone.utc)
+        seventy_two_hours_ago = (now - timedelta(hours=72)).isoformat()
+        
+        results = []
+        
+        for _, row in df.iterrows():
+            phone_raw = str(row.get(phone_col, ''))
+            phone_clean = re.sub(r'[^\d]', '', phone_raw)
+            
+            if len(phone_clean) < 10:
+                continue
+            
+            # Check if client exists
+            existing_client = await db.clients.find_one({
+                "$or": [
+                    {"phone": {"$regex": phone_clean[-10:] + "$"}},
+                    {"phone": phone_raw}
+                ]
+            }, {"_id": 0})
+            
+            if existing_client:
+                # Get last activity info
+                last_activity = existing_client.get("last_sms_activity") or existing_client.get("last_client_response")
+                last_active_user_id = existing_client.get("last_active_user_id") or existing_client.get("created_by")
+                
+                # Get salesperson info
+                salesperson = None
+                if last_active_user_id:
+                    salesperson = await db.users.find_one({"id": last_active_user_id}, {"_id": 0, "password": 0})
+                
+                # Determine status
+                is_own_client = last_active_user_id == current_user["id"]
+                is_inactive_72h = not last_activity or last_activity < seventy_two_hours_ago
+                
+                status = "own" if is_own_client else ("available" if is_inactive_72h else "active")
+                
+                results.append({
+                    "phone": phone_raw,
+                    "phone_clean": phone_clean,
+                    "first_name": row.get('first_name') or row.get('nombre') or row.get('first name') or '',
+                    "last_name": row.get('last_name') or row.get('apellido') or row.get('last name') or '',
+                    "existing_client": {
+                        "id": existing_client["id"],
+                        "first_name": existing_client.get("first_name", ""),
+                        "last_name": existing_client.get("last_name", ""),
+                        "phone": existing_client.get("phone", ""),
+                        "last_activity": last_activity,
+                        "salesperson": {
+                            "id": salesperson["id"] if salesperson else None,
+                            "name": salesperson.get("name", salesperson.get("email")) if salesperson else "Unknown"
+                        } if salesperson else None
+                    },
+                    "status": status,
+                    "can_take_over": is_inactive_72h and not is_own_client,
+                    "is_own_client": is_own_client,
+                    "can_request_collaboration": not is_inactive_72h and not is_own_client
+                })
+            else:
+                results.append({
+                    "phone": phone_raw,
+                    "phone_clean": phone_clean,
+                    "first_name": row.get('first_name') or row.get('nombre') or row.get('first name') or '',
+                    "last_name": row.get('last_name') or row.get('apellido') or row.get('last name') or '',
+                    "existing_client": None,
+                    "status": "new",
+                    "can_take_over": True,
+                    "is_own_client": False,
+                    "can_request_collaboration": False
+                })
+        
+        return {
+            "total_rows": len(results),
+            "new_contacts": len([r for r in results if r["status"] == "new"]),
+            "duplicates": len([r for r in results if r["status"] != "new"]),
+            "available_to_take": len([r for r in results if r["can_take_over"] and r["status"] != "new"]),
+            "active_with_others": len([r for r in results if r["can_request_collaboration"]]),
+            "contacts": results
+        }
+        
+    except Exception as e:
+        logger.error(f"Error checking duplicates: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/import-contacts/take-over/{client_id}")
+async def take_over_client(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Take over an inactive client (72h+ without activity)"""
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    now = datetime.now(timezone.utc)
+    seventy_two_hours_ago = (now - timedelta(hours=72)).isoformat()
+    
+    last_activity = client.get("last_sms_activity") or client.get("last_client_response")
+    
+    if last_activity and last_activity >= seventy_two_hours_ago:
+        raise HTTPException(
+            status_code=400, 
+            detail="Client has been active in the last 72 hours. Request collaboration instead."
+        )
+    
+    # Update client ownership
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {
+            "last_active_user_id": current_user["id"],
+            "taken_over_at": now.isoformat(),
+            "taken_over_by": current_user["id"]
+        }}
+    )
+    
+    return {"message": "Client taken over successfully", "client_id": client_id}
+
 # ==================== PUBLIC CLIENT ROUTES (No Auth Required) ====================
 
 import secrets
