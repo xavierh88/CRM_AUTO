@@ -121,7 +121,8 @@ export const Layout = ({ children }) => {
               <Menu className="w-5 h-5 text-slate-600" />
             </button>
             <div className="flex-1" />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <NotificationsPopover />
               <span className="text-sm text-slate-500 hidden sm:block">
                 {isAdmin ? 'Admin' : 'Salesperson'}
               </span>
