@@ -224,10 +224,13 @@ export default function ClientsPage() {
                   type="tel"
                   value={newClient.phone}
                   onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-                  placeholder="+1 555 123 4567"
+                  placeholder="(213) 462-9914"
                   required
                   data-testid="client-phone"
                 />
+                <p className="text-xs text-slate-400 mt-1">
+                  Formato: 10 dígitos (ej: 2134629914) - Se agregará +1 automáticamente
+                </p>
               </div>
               <div>
                 <Label className="form-label">{t('clients.email')}</Label>
