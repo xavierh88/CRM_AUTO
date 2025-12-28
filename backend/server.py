@@ -457,10 +457,48 @@ async def update_user_role(data: UserRoleUpdate, current_user: dict = Depends(ge
 
 # ==================== CLIENTS ROUTES ====================
 
+def normalize_phone_number(phone: str) -> str:
+    """
+    Normalize phone number to E.164 format for US numbers: +1XXXXXXXXXX
+    Accepts various formats: 1234567890, (123) 456-7890, 123-456-7890, +1 123 456 7890, etc.
+    """
+    if not phone:
+        return phone
+    
+    # Remove all non-digit characters except +
+    digits = re.sub(r'[^\d]', '', phone)
+    
+    # Handle different cases
+    if len(digits) == 10:
+        # US number without country code: 2134629914 -> +12134629914
+        return f"+1{digits}"
+    elif len(digits) == 11 and digits.startswith('1'):
+        # US number with country code: 12134629914 -> +12134629914
+        return f"+{digits}"
+    elif len(digits) > 11:
+        # International number or has extra digits
+        if not phone.startswith('+'):
+            return f"+{digits}"
+        return f"+{digits}"
+    else:
+        # Return as-is with + prefix if missing
+        if not phone.startswith('+'):
+            return f"+{digits}"
+        return phone
+
 @api_router.post("/clients", response_model=dict)
 async def create_client(client: ClientCreate, current_user: dict = Depends(get_current_user)):
-    # Check for existing client by phone
-    existing = await db.clients.find_one({"phone": client.phone, "is_deleted": {"$ne": True}})
+    # Normalize phone number to E.164 format
+    normalized_phone = normalize_phone_number(client.phone)
+    
+    # Check for existing client by phone (check both original and normalized)
+    existing = await db.clients.find_one({
+        "$or": [
+            {"phone": normalized_phone},
+            {"phone": client.phone}
+        ],
+        "is_deleted": {"$ne": True}
+    })
     if existing:
         raise HTTPException(status_code=400, detail="Client with this phone already exists")
     
@@ -469,7 +507,7 @@ async def create_client(client: ClientCreate, current_user: dict = Depends(get_c
         "id": str(uuid.uuid4()),
         "first_name": client.first_name,
         "last_name": client.last_name,
-        "phone": client.phone,
+        "phone": normalized_phone,  # Store normalized phone
         "email": client.email,
         "address": client.address,
         "apartment": client.apartment,
