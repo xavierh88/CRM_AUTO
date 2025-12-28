@@ -1468,7 +1468,11 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onRefresh }) {
                     type="tel"
                     value={editData.phone}
                     onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                    placeholder="(213) 462-9914"
                   />
+                  <p className="text-xs text-slate-400 mt-1">
+                    Formato: 10 dígitos - Se agregará +1 automáticamente
+                  </p>
                 </div>
                 <div>
                   <Label className="form-label">{t('clients.email')}</Label>
