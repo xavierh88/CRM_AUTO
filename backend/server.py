@@ -563,6 +563,10 @@ async def update_client(client_id: str, client: ClientCreate, current_user: dict
     update_data = client.model_dump(exclude_unset=True)
     update_data["last_contact"] = datetime.now(timezone.utc).isoformat()
     
+    # Normalize phone number if provided
+    if "phone" in update_data and update_data["phone"]:
+        update_data["phone"] = normalize_phone_number(update_data["phone"])
+    
     result = await db.clients.update_one({"id": client_id}, {"$set": update_data})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Client not found")
