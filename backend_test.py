@@ -841,6 +841,272 @@ class CRMAPITester:
         self.token = old_token
         return success
 
+    # ==================== CONFIG LISTS TESTS ====================
+    
+    def test_get_id_types(self):
+        """Test GET /api/config-lists/id_type"""
+        success, response = self.run_test(
+            "Get ID Types",
+            "GET",
+            "config-lists/id_type",
+            200,
+            use_admin=True
+        )
+        if success and isinstance(response, list):
+            print(f"✅ Found {len(response)} ID types: {[item.get('name') for item in response]}")
+            # Check for expected items
+            expected_items = ["DL", "Matricula", "Other Driver Licenses", "Passport", "Resident ID", "US Passport", "Votacion ID"]
+            found_items = [item.get('name') for item in response]
+            if len(found_items) >= 7:
+                print(f"✅ Expected 7+ ID types, found {len(found_items)}")
+                return True
+            else:
+                print(f"❌ Expected 7+ ID types, found {len(found_items)}")
+        return False
+
+    def test_get_poi_types(self):
+        """Test GET /api/config-lists/poi_type"""
+        success, response = self.run_test(
+            "Get POI Types",
+            "GET",
+            "config-lists/poi_type",
+            200,
+            use_admin=True
+        )
+        if success and isinstance(response, list):
+            print(f"✅ Found {len(response)} POI types: {[item.get('name') for item in response]}")
+            # Check for expected items
+            expected_items = ["Cash", "Company Check", "Personal Check", "Talon de Cheque"]
+            found_items = [item.get('name') for item in response]
+            if len(found_items) >= 4:
+                print(f"✅ Expected 4+ POI types, found {len(found_items)}")
+                return True
+            else:
+                print(f"❌ Expected 4+ POI types, found {len(found_items)}")
+        return False
+
+    def test_get_por_types(self):
+        """Test GET /api/config-lists/por_type"""
+        success, response = self.run_test(
+            "Get POR Types",
+            "GET",
+            "config-lists/por_type",
+            200,
+            use_admin=True
+        )
+        if success and isinstance(response, list):
+            print(f"✅ Found {len(response)} POR types: {[item.get('name') for item in response]}")
+            # Check for expected items
+            expected_items = ["Agua", "Bank Statements", "Car Insurance", "Gas", "Internet", "Luz", "TV Cable", "Telefono"]
+            found_items = [item.get('name') for item in response]
+            if len(found_items) >= 8:
+                print(f"✅ Expected 8+ POR types, found {len(found_items)}")
+                return True
+            else:
+                print(f"❌ Expected 8+ POR types, found {len(found_items)}")
+        return False
+
+    def test_add_id_type(self):
+        """Test POST /api/config-lists with category=id_type"""
+        timestamp = datetime.now().strftime('%H%M%S')
+        success, response = self.run_test(
+            "Add New ID Type",
+            "POST",
+            "config-lists",
+            200,
+            data={
+                "category": "id_type",
+                "name": f"Test ID Type {timestamp}"
+            },
+            use_admin=True
+        )
+        if success and 'id' in response:
+            self.test_id_type_id = response['id']
+            print(f"✅ Created ID type with ID: {self.test_id_type_id}")
+            return True
+        return False
+
+    def test_add_poi_type(self):
+        """Test POST /api/config-lists with category=poi_type"""
+        timestamp = datetime.now().strftime('%H%M%S')
+        success, response = self.run_test(
+            "Add New POI Type",
+            "POST",
+            "config-lists",
+            200,
+            data={
+                "category": "poi_type",
+                "name": f"Test POI Type {timestamp}"
+            },
+            use_admin=True
+        )
+        if success and 'id' in response:
+            self.test_poi_type_id = response['id']
+            print(f"✅ Created POI type with ID: {self.test_poi_type_id}")
+            return True
+        return False
+
+    def test_add_por_type(self):
+        """Test POST /api/config-lists with category=por_type"""
+        timestamp = datetime.now().strftime('%H%M%S')
+        success, response = self.run_test(
+            "Add New POR Type",
+            "POST",
+            "config-lists",
+            200,
+            data={
+                "category": "por_type",
+                "name": f"Test POR Type {timestamp}"
+            },
+            use_admin=True
+        )
+        if success and 'id' in response:
+            self.test_por_type_id = response['id']
+            print(f"✅ Created POR type with ID: {self.test_por_type_id}")
+            return True
+        return False
+
+    def test_delete_id_type(self):
+        """Test DELETE /api/config-lists/{id} for ID type"""
+        if not hasattr(self, 'test_id_type_id'):
+            return False
+        
+        success, response = self.run_test(
+            "Delete ID Type",
+            "DELETE",
+            f"config-lists/{self.test_id_type_id}",
+            200,
+            use_admin=True
+        )
+        return success
+
+    def test_delete_poi_type(self):
+        """Test DELETE /api/config-lists/{id} for POI type"""
+        if not hasattr(self, 'test_poi_type_id'):
+            return False
+        
+        success, response = self.run_test(
+            "Delete POI Type",
+            "DELETE",
+            f"config-lists/{self.test_poi_type_id}",
+            200,
+            use_admin=True
+        )
+        return success
+
+    def test_delete_por_type(self):
+        """Test DELETE /api/config-lists/{id} for POR type"""
+        if not hasattr(self, 'test_por_type_id'):
+            return False
+        
+        success, response = self.run_test(
+            "Delete POR Type",
+            "DELETE",
+            f"config-lists/{self.test_por_type_id}",
+            200,
+            use_admin=True
+        )
+        return success
+
+    def test_enhanced_opportunity_form_fields(self):
+        """Test creating user record with enhanced opportunity form fields"""
+        if not self.client_id:
+            return False
+            
+        success, response = self.run_test(
+            "Create Enhanced Opportunity Record",
+            "POST",
+            "user-records",
+            200,
+            data={
+                "client_id": self.client_id,
+                # ID fields
+                "has_id": True,
+                "id_type": "DL",
+                # POI fields
+                "has_poi": True,
+                "poi_type": "Cash",
+                # Other checkboxes
+                "ssn": True,
+                "itin": False,
+                "self_employed": True,
+                # POR fields
+                "has_por": True,
+                "por_types": ["Agua", "Luz", "Gas"],
+                # Bank info
+                "bank": "Chase Bank",
+                "bank_deposit_type": "No deposito directo",
+                # Down Payment with Trade-in
+                "down_payment_type": "Trade",
+                "trade_make": "Honda",
+                "trade_model": "Civic",
+                "trade_year": "2018",
+                "trade_title": "Clean Title",
+                "trade_miles": "50000",
+                "trade_plate": "CA",
+                "trade_estimated_value": "15000",
+                # Finance status (fixed typo)
+                "finance_status": "lease"  # Should be "lease" not "least"
+            }
+        )
+        
+        if success and 'id' in response:
+            # Verify the fields are saved correctly
+            record = response
+            checks = [
+                record.get('has_id') == True,
+                record.get('id_type') == "DL",
+                record.get('has_poi') == True,
+                record.get('poi_type') == "Cash",
+                record.get('self_employed') == True,
+                record.get('has_por') == True,
+                record.get('por_types') == ["Agua", "Luz", "Gas"],
+                record.get('bank') == "Chase Bank",
+                record.get('bank_deposit_type') == "No deposito directo",
+                record.get('down_payment_type') == "Trade",
+                record.get('trade_make') == "Honda",
+                record.get('finance_status') == "lease"
+            ]
+            
+            if all(checks):
+                print(f"✅ All enhanced opportunity form fields saved correctly")
+                return True
+            else:
+                print(f"❌ Some enhanced opportunity form fields not saved correctly")
+                print(f"   Record data: {json.dumps(record, indent=2)}")
+        
+        return False
+
+    def test_cosigner_alert_logic(self):
+        """Test cosigner alert when Tipo de Depósito='No deposito directo' AND POI type='Cash'"""
+        if not self.client_id:
+            return False
+            
+        # This test verifies the backend accepts the combination that should trigger frontend alert
+        success, response = self.run_test(
+            "Create Record with Cosigner Alert Conditions",
+            "POST",
+            "user-records",
+            200,
+            data={
+                "client_id": self.client_id,
+                "has_poi": True,
+                "poi_type": "Cash",
+                "bank_deposit_type": "No deposito directo"
+            }
+        )
+        
+        if success:
+            record = response
+            if (record.get('poi_type') == "Cash" and 
+                record.get('bank_deposit_type') == "No deposito directo"):
+                print(f"✅ Cosigner alert conditions saved correctly (frontend should show warning)")
+                return True
+            else:
+                print(f"❌ Cosigner alert conditions not saved correctly")
+        
+        return False
+
     # ==================== NEW SCHEDULER TESTS ====================
     
     def test_scheduler_status(self):
