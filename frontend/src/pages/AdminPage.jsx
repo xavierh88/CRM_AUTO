@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Switch } from '../components/ui/switch';
 import { toast } from 'sonner';
-import { Trash2, RotateCcw, Users, Shield, CheckCircle2, XCircle, UserCog, Plus, Building2, Car, Landmark, MessageSquare, Save } from 'lucide-react';
+import { Trash2, RotateCcw, Users, Shield, CheckCircle2, XCircle, UserCog, Plus, Building2, Car, Landmark, MessageSquare, Save, CreditCard, Home, FileText } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -26,9 +26,15 @@ export default function AdminPage() {
   const [banks, setBanks] = useState([]);
   const [dealers, setDealers] = useState([]);
   const [cars, setCars] = useState([]);
+  const [idTypes, setIdTypes] = useState([]);
+  const [poiTypes, setPoiTypes] = useState([]);
+  const [porTypes, setPorTypes] = useState([]);
   const [newBank, setNewBank] = useState('');
   const [newDealer, setNewDealer] = useState('');
   const [newCar, setNewCar] = useState('');
+  const [newIdType, setNewIdType] = useState('');
+  const [newPoiType, setNewPoiType] = useState('');
+  const [newPorType, setNewPorType] = useState('');
   
   // SMS Templates state
   const [smsTemplates, setSmsTemplates] = useState([]);
@@ -41,13 +47,16 @@ export default function AdminPage() {
 
   const fetchData = async () => {
     try {
-      const [usersRes, trashClientsRes, trashRecordsRes, banksRes, dealersRes, carsRes, templatesRes] = await Promise.all([
+      const [usersRes, trashClientsRes, trashRecordsRes, banksRes, dealersRes, carsRes, idTypesRes, poiTypesRes, porTypesRes, templatesRes] = await Promise.all([
         axios.get(`${API}/users`),
         axios.get(`${API}/trash/clients`),
         axios.get(`${API}/trash/user-records`),
         axios.get(`${API}/config-lists/bank`),
         axios.get(`${API}/config-lists/dealer`),
         axios.get(`${API}/config-lists/car`),
+        axios.get(`${API}/config-lists/id_type`).catch(() => ({ data: [] })),
+        axios.get(`${API}/config-lists/poi_type`).catch(() => ({ data: [] })),
+        axios.get(`${API}/config-lists/por_type`).catch(() => ({ data: [] })),
         axios.get(`${API}/sms-templates`).catch(() => ({ data: [] }))
       ]);
       setUsers(usersRes.data);
@@ -56,6 +65,9 @@ export default function AdminPage() {
       setBanks(banksRes.data);
       setDealers(dealersRes.data);
       setCars(carsRes.data);
+      setIdTypes(idTypesRes.data);
+      setPoiTypes(poiTypesRes.data);
+      setPorTypes(porTypesRes.data);
       setSmsTemplates(templatesRes.data);
     } catch (error) {
       console.error('Failed to fetch admin data:', error);
