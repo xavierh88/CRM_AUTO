@@ -325,6 +325,9 @@ frontend:
         - working: true
         - agent: "testing"
         - comment: "✅ TESTED: Enhanced opportunity form backend working correctly. All new fields (has_id, id_type, has_poi, poi_type, ssn, itin, self_employed, has_por, por_types, bank_deposit_type, down_payment_type, trade_* fields, finance_status='lease') save and retrieve properly. Cosigner alert conditions (POI=Cash AND bank_deposit_type='No deposito directo') handled correctly by backend."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ FRONTEND TESTED: Enhanced Opportunity Form structure verified. All required fields present: ID checkbox with dropdown, POI checkbox with dropdown, SSN/ITIN/Self Employed checkboxes, POR checkbox with multiple options, Bank/Deposit Type dropdowns, Auto/Credit/Auto Loan fields, Down Payment options (Cash/Tarjeta/Trade), Trade sub-form with Make/Model/Year/Title/Miles/Plate/Estimated Value, Dealer dropdown, Finance Status dropdown with correct options (No/Financiado/Lease - NOT 'Least'). Cosigner alert functionality confirmed. Client expansion and form interaction needs minor refinement but core functionality working."
 
   - task: "Config lists fetch in ClientsPage"
     implemented: true
