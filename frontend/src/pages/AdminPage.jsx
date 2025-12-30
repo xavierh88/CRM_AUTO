@@ -490,6 +490,138 @@ export default function AdminPage() {
           </Card>
         </TabsContent>
 
+        {/* ID Types Tab */}
+        <TabsContent value="id_types">
+          <Card className="dashboard-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-indigo-600" />
+                ID Types ({idTypes.length})
+              </CardTitle>
+              <CardDescription>
+                Manage identification document types for the opportunity form
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2 mb-4">
+                <Input
+                  value={newIdType}
+                  onChange={(e) => setNewIdType(e.target.value)}
+                  placeholder="New ID type..."
+                  className="max-w-xs"
+                  onKeyDown={(e) => e.key === 'Enter' && addConfigItem(newIdType, 'id_type', setNewIdType)}
+                />
+                <Button onClick={() => addConfigItem(newIdType, 'id_type', setNewIdType)}>
+                  <Plus className="w-4 h-4 mr-1" /> Add
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {idTypes.map((item) => (
+                  <div key={item.id} className="flex items-center gap-1 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full">
+                    <span>{item.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0 hover:bg-indigo-100 rounded-full"
+                      onClick={() => deleteConfigItem(item.id, 'id_type')}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* POI Types Tab */}
+        <TabsContent value="poi_types">
+          <Card className="dashboard-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-green-600" />
+                POI Types - Proof of Income ({poiTypes.length})
+              </CardTitle>
+              <CardDescription>
+                Manage proof of income types for the opportunity form
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2 mb-4">
+                <Input
+                  value={newPoiType}
+                  onChange={(e) => setNewPoiType(e.target.value)}
+                  placeholder="New POI type..."
+                  className="max-w-xs"
+                  onKeyDown={(e) => e.key === 'Enter' && addConfigItem(newPoiType, 'poi_type', setNewPoiType)}
+                />
+                <Button onClick={() => addConfigItem(newPoiType, 'poi_type', setNewPoiType)}>
+                  <Plus className="w-4 h-4 mr-1" /> Add
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {poiTypes.map((item) => (
+                  <div key={item.id} className="flex items-center gap-1 bg-green-50 text-green-700 px-3 py-1.5 rounded-full">
+                    <span>{item.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0 hover:bg-green-100 rounded-full"
+                      onClick={() => deleteConfigItem(item.id, 'poi_type')}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* POR Types Tab */}
+        <TabsContent value="por_types">
+          <Card className="dashboard-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Home className="w-5 h-5 text-orange-600" />
+                POR Types - Proof of Residence ({porTypes.length})
+              </CardTitle>
+              <CardDescription>
+                Manage proof of residence types for the opportunity form. These will be linked to documents uploaded by clients.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2 mb-4">
+                <Input
+                  value={newPorType}
+                  onChange={(e) => setNewPorType(e.target.value)}
+                  placeholder="New POR type..."
+                  className="max-w-xs"
+                  onKeyDown={(e) => e.key === 'Enter' && addConfigItem(newPorType, 'por_type', setNewPorType)}
+                />
+                <Button onClick={() => addConfigItem(newPorType, 'por_type', setNewPorType)}>
+                  <Plus className="w-4 h-4 mr-1" /> Add
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {porTypes.map((item) => (
+                  <div key={item.id} className="flex items-center gap-1 bg-orange-50 text-orange-700 px-3 py-1.5 rounded-full">
+                    <span>{item.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0 hover:bg-orange-100 rounded-full"
+                      onClick={() => deleteConfigItem(item.id, 'por_type')}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* SMS Templates Tab */}
         <TabsContent value="sms">
           <Card className="dashboard-card">
