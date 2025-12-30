@@ -231,7 +231,7 @@ export default function AdminPage() {
       )}
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-6 max-w-4xl">
+        <TabsList className="flex flex-wrap justify-start gap-1 h-auto p-1">
           <TabsTrigger value="users" data-testid="users-tab" className="relative">
             <Users className="w-4 h-4 mr-1" />
             Users
@@ -252,6 +252,18 @@ export default function AdminPage() {
           <TabsTrigger value="cars" data-testid="cars-tab">
             <Car className="w-4 h-4 mr-1" />
             Autos
+          </TabsTrigger>
+          <TabsTrigger value="id_types" data-testid="id-types-tab">
+            <CreditCard className="w-4 h-4 mr-1" />
+            ID Types
+          </TabsTrigger>
+          <TabsTrigger value="poi_types" data-testid="poi-types-tab">
+            <FileText className="w-4 h-4 mr-1" />
+            POI Types
+          </TabsTrigger>
+          <TabsTrigger value="por_types" data-testid="por-types-tab">
+            <Home className="w-4 h-4 mr-1" />
+            POR Types
           </TabsTrigger>
           <TabsTrigger value="sms" data-testid="sms-tab">
             <MessageSquare className="w-4 h-4 mr-1" />
