@@ -509,8 +509,28 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
   }, []);
 
   const emptyRecord = {
+    // Legacy checkbox fields (now remapped)
     dl: false, checks: false, ssn: false, itin: false,
-    auto: '', credit: '', bank: '', auto_loan: '', down_payment: '', dealer: '',
+    // New ID fields
+    has_id: false, id_type: '',
+    // New POI fields  
+    has_poi: false, poi_type: '',
+    // New POR fields
+    has_por: false, por_types: [],
+    // Self employed
+    self_employed: false,
+    // Bank info
+    bank: '', bank_deposit_type: '',
+    // Vehicle & finance
+    auto: '', credit: '', auto_loan: '', 
+    // Down payment
+    down_payment: '', down_payment_type: '', down_payment_cash: '', down_payment_card: '',
+    // Trade-in details
+    trade_make: '', trade_model: '', trade_year: '', trade_title: '', 
+    trade_miles: '', trade_plate: '', trade_estimated_value: '',
+    // Dealer
+    dealer: '',
+    // Finance status
     finance_status: 'no', vehicle_make: '', vehicle_year: '',
     sale_month: '', sale_day: '', sale_year: ''
   };
