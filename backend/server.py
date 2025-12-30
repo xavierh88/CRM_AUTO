@@ -796,8 +796,7 @@ async def add_record_comment(record_id: str, comment: str = Form(...), current_u
         "created_at": now
     }
     await db.record_comments.insert_one(comment_doc)
-    del comment_doc["_id"] if "_id" in comment_doc else None
-    return comment_doc
+    return {k: v for k, v in comment_doc.items() if k != "_id"}
 
 @api_router.delete("/user-records/{record_id}/comments/{comment_id}")
 async def delete_record_comment(record_id: str, comment_id: str, current_user: dict = Depends(get_current_user)):
