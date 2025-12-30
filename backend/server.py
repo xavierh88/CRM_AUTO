@@ -2805,7 +2805,7 @@ async def create_default_admin():
     await initialize_default_config_lists()
 
 async def initialize_default_config_lists():
-    """Initialize default banks, dealers, and cars if lists are empty"""
+    """Initialize default banks, dealers, cars, ID types, POI types, and POR types if lists are empty"""
     now = datetime.now(timezone.utc).isoformat()
     
     # Default US Banks
@@ -2837,8 +2837,32 @@ async def initialize_default_config_lists():
         "Audi A4", "Audi Q5", "Lexus ES", "Lexus RX", "Acura TLX", "Acura MDX"
     ]
     
+    # Default ID Types (for identification documents)
+    default_id_types = [
+        "DL", "Passport", "Matricula", "Votacion ID", "US Passport", "Resident ID", "Other Driver Licenses"
+    ]
+    
+    # Default POI Types (Proof of Income)
+    default_poi_types = [
+        "Cash", "Company Check", "Personal Check", "Talon de Cheque"
+    ]
+    
+    # Default POR Types (Proof of Residence)
+    default_por_types = [
+        "Agua", "Luz", "Gas", "Internet", "TV Cable", "Telefono", "Car Insurance", "Bank Statements"
+    ]
+    
     # Check if lists are empty and populate
-    for category, items in [('bank', default_banks), ('dealer', default_dealers), ('car', default_cars)]:
+    all_categories = [
+        ('bank', default_banks), 
+        ('dealer', default_dealers), 
+        ('car', default_cars),
+        ('id_type', default_id_types),
+        ('poi_type', default_poi_types),
+        ('por_type', default_por_types)
+    ]
+    
+    for category, items in all_categories:
         count = await db.config_lists.count_documents({"category": category})
         if count == 0:
             docs = [
