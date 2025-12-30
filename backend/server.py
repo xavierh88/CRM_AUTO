@@ -1212,7 +1212,7 @@ async def send_reminder_sms(client_id: str, record_id: str, current_user: dict =
         raise HTTPException(status_code=404, detail="Record not found")
     
     # Don't send reminder if already sold
-    if record.get("finance_status") in ["financiado", "least"]:
+    if record.get("finance_status") in ["financiado", "lease"]:
         return {"message": "No reminder needed - record already sold", "skipped": True}
     
     # Create reminder message
@@ -1262,12 +1262,12 @@ async def process_weekly_reminders(current_user: dict = Depends(get_current_user
     one_week_ago = (now - timedelta(days=7)).isoformat()
     
     # Find records that:
-    # - Are NOT sold (finance_status != 'financiado' and != 'least')
+    # - Are NOT sold (finance_status != 'financiado' and != 'lease')
     # - Haven't received a reminder in the last week
     # - Are not deleted
     query = {
         "is_deleted": {"$ne": True},
-        "finance_status": {"$nin": ["financiado", "least"]},
+        "finance_status": {"$nin": ["financiado", "lease"]},
         "$or": [
             {"last_reminder_sent": {"$lt": one_week_ago}},
             {"last_reminder_sent": None},
