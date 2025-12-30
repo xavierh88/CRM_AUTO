@@ -652,7 +652,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
   const myMaxOpportunity = Math.max(...Object.keys(myOpportunityGroups).map(Number), 0);
   const latestRecordInMyLastOpp = myOpportunityGroups[myMaxOpportunity]?.[0];
   const canCreateNewOpportunity = myMaxOpportunity < 5 && latestRecordInMyLastOpp && 
-    (latestRecordInMyLastOpp.finance_status === 'financiado' || latestRecordInMyLastOpp.finance_status === 'least');
+    (latestRecordInMyLastOpp.finance_status === 'financiado' || latestRecordInMyLastOpp.finance_status === 'lease');
 
   const opportunityColors = ['blue', 'purple', 'emerald', 'amber', 'rose'];
   
@@ -890,7 +890,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
             </Select>
           </div>
 
-          {/* Vehicle Info (only when financiado or least) */}
+          {/* Vehicle Info (only when financiado or lease) */}
           {(newRecord.finance_status === 'financiado' || newRecord.finance_status === 'lease') && (
             <div className="bg-amber-50 rounded-lg p-3 mb-3 border border-amber-200">
               <Label className="form-label mb-2 block text-amber-700">Vehicle Information</Label>
@@ -1018,13 +1018,13 @@ function RecordCard({
             <SelectContent>
               <SelectItem value="no">No</SelectItem>
               <SelectItem value="financiado">Financiado</SelectItem>
-              <SelectItem value="least">Least</SelectItem>
+              <SelectItem value="lease">Lease</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {/* Vehicle Info */}
-        {(editData.finance_status === 'financiado' || editData.finance_status === 'least') && (
+        {(editData.finance_status === 'financiado' || editData.finance_status === 'lease') && (
           <div className="bg-amber-50 rounded-lg p-3 mb-3 border border-amber-200">
             <Label className="form-label mb-2 block text-amber-700">Vehicle Information</Label>
             <div className="grid grid-cols-2 gap-3">
@@ -1133,8 +1133,8 @@ function RecordCard({
         {record.down_payment && <div><span className="text-slate-400">Down:</span> ${record.down_payment}</div>}
       </div>
 
-      {/* Vehicle info for financed/least */}
-      {(record.finance_status === 'financiado' || record.finance_status === 'least') && record.vehicle_make && (
+      {/* Vehicle info for financed/lease */}
+      {(record.finance_status === 'financiado' || record.finance_status === 'lease') && record.vehicle_make && (
         <div className="mt-3 pt-3 border-t border-slate-100">
           <div className="flex items-center gap-2 text-sm">
             <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded font-medium">
