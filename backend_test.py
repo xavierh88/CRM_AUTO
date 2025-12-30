@@ -1183,6 +1183,36 @@ def main():
     
     tester.test_auth_me()
     
+    # NEW CONFIG LISTS TESTS (Priority 1)
+    print("\n" + "="*50)
+    print("CONFIG LISTS API TESTS (PRIORITY 1)")
+    print("="*50)
+    
+    # Test getting existing config lists
+    tester.test_get_id_types()
+    tester.test_get_poi_types()
+    tester.test_get_por_types()
+    
+    # Test adding new items
+    tester.test_add_id_type()
+    tester.test_add_poi_type()
+    tester.test_add_por_type()
+    
+    # Test deleting items
+    tester.test_delete_id_type()
+    tester.test_delete_poi_type()
+    tester.test_delete_por_type()
+    
+    # NEW ENHANCED OPPORTUNITY FORM TESTS (Priority 2)
+    print("\n" + "="*50)
+    print("ENHANCED OPPORTUNITY FORM TESTS (PRIORITY 2)")
+    print("="*50)
+    
+    # Test enhanced opportunity form with new fields
+    if tester.client_id:
+        tester.test_enhanced_opportunity_form_fields()
+        tester.test_cosigner_alert_logic()
+    
     # NEW SCHEDULER TESTS
     print("\n" + "="*50)
     print("SMS SCHEDULER TESTS")
