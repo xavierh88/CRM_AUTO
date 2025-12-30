@@ -264,5 +264,62 @@ backend:
 test_plan:
   current_focus:
     - "Admin configurable lists management"
-    - "Client delete and restore functionality"
-    - "Record form with dropdown selects"
+    - "New Opportunity Form with all fields"
+    - "ID, POI, POR types dropdowns"
+    - "Down Payment with Trade-in form"
+    
+## Current Session Tasks (Fork 2)
+
+backend:
+  - task: "Config lists endpoints for new categories"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Added id_type, poi_type, por_type to valid categories in GET and POST endpoints"
+
+frontend:
+  - task: "Admin Panel ID/POI/POR Types tabs"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/AdminPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Fixed parameter order in addConfigItem calls. All tabs showing correct counts."
+
+  - task: "Enhanced Opportunity Form"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/ClientsPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Complete rewrite with ID/POI/POR sections, Self Employed, Bank deposit type with alert, Down Payment with Trade-in sub-form, fixed Lease typo"
+
+  - task: "Config lists fetch in ClientsPage"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/ClientsPage.jsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Added id_type, poi_type, por_type to configLists state and fetch"
+
+agent_communication:
+    - agent: "main"
+    - message: "Fixed Admin Panel config lists bug and implemented enhanced Opportunity Form. Ready for testing: 1) Admin Panel ID/POI/POR tabs, 2) New Record form with all new fields, 3) Down Payment Trade-in form"
