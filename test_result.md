@@ -299,11 +299,14 @@ frontend:
     file: "/app/frontend/src/pages/AdminPage.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: true
         - agent: "main"
         - comment: "Fixed parameter order in addConfigItem calls. All tabs showing correct counts."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ TESTED: Backend APIs for admin panel config lists working correctly. All CRUD operations tested successfully. Frontend should display ID Types (7 items), POI Types (4 items), POR Types (8 items) with add/delete functionality."
 
   - task: "Enhanced Opportunity Form"
     implemented: true
@@ -311,11 +314,14 @@ frontend:
     file: "/app/frontend/src/pages/ClientsPage.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: true
         - agent: "main"
         - comment: "Complete rewrite with ID/POI/POR sections, Self Employed, Bank deposit type with alert, Down Payment with Trade-in sub-form, fixed Lease typo"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ TESTED: Enhanced opportunity form backend working correctly. All new fields (has_id, id_type, has_poi, poi_type, ssn, itin, self_employed, has_por, por_types, bank_deposit_type, down_payment_type, trade_* fields, finance_status='lease') save and retrieve properly. Cosigner alert conditions (POI=Cash AND bank_deposit_type='No deposito directo') handled correctly by backend."
 
   - task: "Config lists fetch in ClientsPage"
     implemented: true
@@ -323,11 +329,14 @@ frontend:
     file: "/app/frontend/src/pages/ClientsPage.jsx"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: true
         - agent: "main"
         - comment: "Added id_type, poi_type, por_type to configLists state and fetch"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ TESTED: Backend config-lists endpoints working correctly for all three new categories (id_type, poi_type, por_type). Frontend should be able to fetch these lists successfully."
 
 agent_communication:
     - agent: "main"
