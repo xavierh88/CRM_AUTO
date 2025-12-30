@@ -477,20 +477,29 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
   const [editRecordData, setEditRecordData] = useState(null);
   
   // Config lists for dropdowns
-  const [configLists, setConfigLists] = useState({ banks: [], dealers: [], cars: [] });
+  const [configLists, setConfigLists] = useState({ 
+    banks: [], dealers: [], cars: [], 
+    id_type: [], poi_type: [], por_type: [] 
+  });
   
   useEffect(() => {
     const fetchConfigLists = async () => {
       try {
-        const [banksRes, dealersRes, carsRes] = await Promise.all([
+        const [banksRes, dealersRes, carsRes, idTypesRes, poiTypesRes, porTypesRes] = await Promise.all([
           axios.get(`${API}/config-lists/bank`),
           axios.get(`${API}/config-lists/dealer`),
-          axios.get(`${API}/config-lists/car`)
+          axios.get(`${API}/config-lists/car`),
+          axios.get(`${API}/config-lists/id_type`).catch(() => ({ data: [] })),
+          axios.get(`${API}/config-lists/poi_type`).catch(() => ({ data: [] })),
+          axios.get(`${API}/config-lists/por_type`).catch(() => ({ data: [] }))
         ]);
         setConfigLists({
           banks: banksRes.data,
           dealers: dealersRes.data,
-          cars: carsRes.data
+          cars: carsRes.data,
+          id_type: idTypesRes.data,
+          poi_type: poiTypesRes.data,
+          por_type: porTypesRes.data
         });
       } catch (error) {
         console.error('Failed to fetch config lists:', error);
