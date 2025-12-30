@@ -852,49 +852,259 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
       {(showAddRecord || showNewOpportunity) && (
         <div className="bg-white rounded-lg border border-blue-200 p-4 mt-3">
           <h5 className="font-medium text-slate-700 mb-3">New Record</h5>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-            {['dl', 'checks', 'ssn', 'itin'].map((field) => (
-              <div key={field} className="flex items-center gap-2">
-                <Checkbox
-                  checked={newRecord[field]}
-                  onCheckedChange={(checked) => setNewRecord({ ...newRecord, [field]: checked })}
-                  id={`new-${field}`}
-                />
-                <Label htmlFor={`new-${field}`} className="text-sm uppercase">{t(`records.${field}`)}</Label>
-              </div>
-            ))}
-          </div>
           
-          {/* Info fields */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-            <Select value={newRecord.auto} onValueChange={(value) => setNewRecord({ ...newRecord, auto: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Auto" />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                {configLists.cars.map((car) => (
-                  <SelectItem key={car.id} value={car.name}>{car.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input placeholder="Credit" value={newRecord.credit} onChange={(e) => setNewRecord({ ...newRecord, credit: e.target.value })} />
-            <Select value={newRecord.bank} onValueChange={(value) => setNewRecord({ ...newRecord, bank: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Bank" />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                {configLists.banks.map((bank) => (
-                  <SelectItem key={bank.id} value={bank.name}>{bank.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input placeholder="Auto Loan" value={newRecord.auto_loan} onChange={(e) => setNewRecord({ ...newRecord, auto_loan: e.target.value })} />
+          {/* ID Section */}
+          <div className="space-y-3 mb-4">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={newRecord.has_id}
+                onCheckedChange={(checked) => setNewRecord({ ...newRecord, has_id: checked, id_type: checked ? newRecord.id_type : '' })}
+                id="new-has_id"
+              />
+              <Label htmlFor="new-has_id" className="font-medium">ID</Label>
+            </div>
+            {newRecord.has_id && (
+              <Select value={newRecord.id_type} onValueChange={(value) => setNewRecord({ ...newRecord, id_type: value })}>
+                <SelectTrigger className="max-w-xs">
+                  <SelectValue placeholder="Seleccionar tipo de ID" />
+                </SelectTrigger>
+                <SelectContent>
+                  {configLists.id_type.map((item) => (
+                    <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-            <Input placeholder="Down Payment" value={newRecord.down_payment} onChange={(e) => setNewRecord({ ...newRecord, down_payment: e.target.value })} />
+
+          {/* POI Section (Proof of Income) */}
+          <div className="space-y-3 mb-4">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={newRecord.has_poi}
+                onCheckedChange={(checked) => setNewRecord({ ...newRecord, has_poi: checked, poi_type: checked ? newRecord.poi_type : '' })}
+                id="new-has_poi"
+              />
+              <Label htmlFor="new-has_poi" className="font-medium">POI (Proof of Income)</Label>
+            </div>
+            {newRecord.has_poi && (
+              <Select value={newRecord.poi_type} onValueChange={(value) => setNewRecord({ ...newRecord, poi_type: value })}>
+                <SelectTrigger className="max-w-xs">
+                  <SelectValue placeholder="Seleccionar tipo de POI" />
+                </SelectTrigger>
+                <SelectContent>
+                  {configLists.poi_type.map((item) => (
+                    <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {/* Other Checkboxes */}
+          <div className="flex flex-wrap gap-4 mb-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={newRecord.ssn}
+                onCheckedChange={(checked) => setNewRecord({ ...newRecord, ssn: checked })}
+                id="new-ssn"
+              />
+              <Label htmlFor="new-ssn">SSN</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={newRecord.itin}
+                onCheckedChange={(checked) => setNewRecord({ ...newRecord, itin: checked })}
+                id="new-itin"
+              />
+              <Label htmlFor="new-itin">ITIN</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={newRecord.self_employed}
+                onCheckedChange={(checked) => setNewRecord({ ...newRecord, self_employed: checked })}
+                id="new-self_employed"
+              />
+              <Label htmlFor="new-self_employed">Self Employed</Label>
+            </div>
+          </div>
+
+          {/* POR Section (Proof of Residence) */}
+          <div className="space-y-3 mb-4">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={newRecord.has_por}
+                onCheckedChange={(checked) => setNewRecord({ ...newRecord, has_por: checked, por_types: checked ? newRecord.por_types : [] })}
+                id="new-has_por"
+              />
+              <Label htmlFor="new-has_por" className="font-medium">POR (Proof of Residence)</Label>
+            </div>
+            {newRecord.has_por && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 ml-6">
+                {configLists.por_type.map((item) => (
+                  <div key={item.id} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={(newRecord.por_types || []).includes(item.name)}
+                      onCheckedChange={(checked) => {
+                        const current = newRecord.por_types || [];
+                        setNewRecord({
+                          ...newRecord,
+                          por_types: checked 
+                            ? [...current, item.name]
+                            : current.filter(t => t !== item.name)
+                        });
+                      }}
+                      id={`new-por_${item.id}`}
+                    />
+                    <Label htmlFor={`new-por_${item.id}`} className="text-sm">{item.name}</Label>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Bank Section */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div>
+              <Label className="form-label mb-1 block">Bank</Label>
+              <Select value={newRecord.bank} onValueChange={(value) => setNewRecord({ ...newRecord, bank: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar banco" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {configLists.banks.map((bank) => (
+                    <SelectItem key={bank.id} value={bank.name}>{bank.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="form-label mb-1 block">Tipo de Depósito</Label>
+              <Select value={newRecord.bank_deposit_type} onValueChange={(value) => setNewRecord({ ...newRecord, bank_deposit_type: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Deposito Directo">Deposito Directo</SelectItem>
+                  <SelectItem value="No deposito directo">No deposito directo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Cosigner Alert */}
+          {newRecord.bank_deposit_type === 'No deposito directo' && newRecord.has_poi && newRecord.poi_type === 'Cash' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 flex items-start gap-2">
+              <span className="text-amber-600 text-lg">⚠️</span>
+              <div>
+                <p className="font-medium text-amber-800">Atención</p>
+                <p className="text-sm text-amber-700">Va a necesitar un Cosigner o probar ingreso adicional.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Auto, Credit, Auto Loan */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+            <div>
+              <Label className="form-label mb-1 block">Auto</Label>
+              <Select value={newRecord.auto} onValueChange={(value) => setNewRecord({ ...newRecord, auto: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar auto" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {configLists.cars.map((car) => (
+                    <SelectItem key={car.id} value={car.name}>{car.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="form-label mb-1 block">Credit</Label>
+              <Input placeholder="Score" value={newRecord.credit} onChange={(e) => setNewRecord({ ...newRecord, credit: e.target.value })} />
+            </div>
+            <div>
+              <Label className="form-label mb-1 block">Auto Loan</Label>
+              <Input placeholder="Monto" value={newRecord.auto_loan} onChange={(e) => setNewRecord({ ...newRecord, auto_loan: e.target.value })} />
+            </div>
+          </div>
+
+          {/* Down Payment Section */}
+          <div className="border rounded-lg p-3 mb-4">
+            <Label className="form-label mb-2 block font-medium">Down Payment</Label>
+            <div className="flex flex-wrap gap-4 mb-3">
+              {['Cash', 'Tarjeta', 'Trade'].map((type) => (
+                <div key={type} className="flex items-center gap-2">
+                  <Checkbox
+                    checked={newRecord.down_payment_type === type}
+                    onCheckedChange={(checked) => setNewRecord({ 
+                      ...newRecord, 
+                      down_payment_type: checked ? type : '',
+                      down_payment_cash: type !== 'Cash' ? '' : newRecord.down_payment_cash,
+                      down_payment_card: type !== 'Tarjeta' ? '' : newRecord.down_payment_card
+                    })}
+                    id={`new-dp_${type}`}
+                  />
+                  <Label htmlFor={`new-dp_${type}`}>{type}</Label>
+                </div>
+              ))}
+            </div>
+
+            {newRecord.down_payment_type === 'Cash' && (
+              <Input
+                placeholder="Monto en Cash $0.00"
+                value={newRecord.down_payment_cash}
+                onChange={(e) => setNewRecord({ ...newRecord, down_payment_cash: e.target.value })}
+                className="max-w-xs"
+              />
+            )}
+
+            {newRecord.down_payment_type === 'Tarjeta' && (
+              <Input
+                placeholder="Monto en Tarjeta $0.00"
+                value={newRecord.down_payment_card}
+                onChange={(e) => setNewRecord({ ...newRecord, down_payment_card: e.target.value })}
+                className="max-w-xs"
+              />
+            )}
+
+            {newRecord.down_payment_type === 'Trade' && (
+              <div className="space-y-3 p-3 bg-slate-50 rounded-lg">
+                <h5 className="font-medium text-sm flex items-center gap-1">🚗 Vehículo en Trade</h5>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <Input placeholder="Make" value={newRecord.trade_make} onChange={(e) => setNewRecord({ ...newRecord, trade_make: e.target.value })} />
+                  <Input placeholder="Model" value={newRecord.trade_model} onChange={(e) => setNewRecord({ ...newRecord, trade_model: e.target.value })} />
+                  <Input placeholder="Year" value={newRecord.trade_year} onChange={(e) => setNewRecord({ ...newRecord, trade_year: e.target.value })} />
+                  <Select value={newRecord.trade_title} onValueChange={(value) => setNewRecord({ ...newRecord, trade_title: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Title" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Clean Title">Clean Title</SelectItem>
+                      <SelectItem value="Salvaged">Salvaged</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input placeholder="Miles" value={newRecord.trade_miles} onChange={(e) => setNewRecord({ ...newRecord, trade_miles: e.target.value })} />
+                  <Select value={newRecord.trade_plate} onValueChange={(value) => setNewRecord({ ...newRecord, trade_plate: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Plate" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CA">CA</SelectItem>
+                      <SelectItem value="Out of State">Out of State</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Input placeholder="Estimated Value $0.00" value={newRecord.trade_estimated_value} onChange={(e) => setNewRecord({ ...newRecord, trade_estimated_value: e.target.value })} />
+              </div>
+            )}
+          </div>
+
+          {/* Dealer */}
+          <div className="mb-4">
+            <Label className="form-label mb-1 block">Dealer</Label>
             <Select value={newRecord.dealer} onValueChange={(value) => setNewRecord({ ...newRecord, dealer: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Dealer" />
+              <SelectTrigger className="max-w-xs">
+                <SelectValue placeholder="Seleccionar dealer" />
               </SelectTrigger>
               <SelectContent>
                 {configLists.dealers.map((dealer) => (
@@ -905,8 +1115,8 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
           </div>
 
           {/* Sold Status */}
-          <div className="mb-3">
-            <Label className="form-label mb-2 block">Sold</Label>
+          <div className="mb-4">
+            <Label className="form-label mb-1 block">Finance Status</Label>
             <Select value={newRecord.finance_status} onValueChange={(value) => setNewRecord({ ...newRecord, finance_status: value })}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Select option" />
@@ -921,9 +1131,9 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 
           {/* Vehicle Info (only when financiado or lease) */}
           {(newRecord.finance_status === 'financiado' || newRecord.finance_status === 'lease') && (
-            <div className="bg-amber-50 rounded-lg p-3 mb-3 border border-amber-200">
-              <Label className="form-label mb-2 block text-amber-700">Vehicle Information</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="bg-blue-50 rounded-lg p-3 mb-4 border border-blue-200">
+              <Label className="form-label mb-2 block text-blue-700">Vehicle Information</Label>
+              <div className="grid grid-cols-2 gap-3">
                 <Input placeholder="Make (Marca)" value={newRecord.vehicle_make} onChange={(e) => setNewRecord({ ...newRecord, vehicle_make: e.target.value })} />
                 <Input placeholder="Year (Año)" value={newRecord.vehicle_year} onChange={(e) => setNewRecord({ ...newRecord, vehicle_year: e.target.value })} />
               </div>
