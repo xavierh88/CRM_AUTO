@@ -109,11 +109,14 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: true
         - agent: "main"
         - comment: "APScheduler configured for 11:00 AM Pacific time daily. Sends initial SMS and weekly reminders (up to 5 weeks)"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ TESTED: SMS Scheduler working correctly. Scheduler status endpoint returns proper status. Manual trigger endpoint working. Job runs at 11:00 AM Pacific daily. Non-admin access properly blocked (403)."
 
   - task: "Scheduler endpoints"
     implemented: true
@@ -121,11 +124,14 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: true
         - agent: "main"
         - comment: "GET /api/scheduler/status and POST /api/scheduler/run-now endpoints"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ TESTED: Both scheduler endpoints working correctly. GET /api/scheduler/status returns status info. POST /api/scheduler/run-now manually triggers marketing SMS job. Admin-only access enforced."
 
 frontend:
   - task: "Address Autocomplete component"
