@@ -255,25 +255,55 @@ class ClientResponse(BaseModel):
 
 class UserRecordCreate(BaseModel):
     client_id: str
-    dl: bool = False
-    checks: bool = False
+    # ID/DL fields (renamed from dl to id_type)
+    has_id: bool = False
+    id_type: Optional[str] = None  # DL, Passport, Matricula, Votacion ID, US Passport, Resident ID, Other
+    # POI (Proof of Income) - renamed from checks
+    has_poi: bool = False
+    poi_type: Optional[str] = None  # Cash, Company Check, Personal Check, Talon de Cheque
+    # SSN
     ssn: bool = False
+    # ITIN
     itin: bool = False
+    # Self Employed (new)
+    self_employed: bool = False
+    # POR (Proof of Residence) - new
+    has_por: bool = False
+    por_types: Optional[List[str]] = None  # Agua, Luz, Gas, Internet, etc. (multiple selection)
+    # Bank info with deposit type
+    bank: Optional[str] = None
+    bank_deposit_type: Optional[str] = None  # Deposito Directo, No deposito directo
+    # Other fields
     auto: Optional[str] = None
     credit: Optional[str] = None
-    bank: Optional[str] = None
     auto_loan: Optional[str] = None
-    down_payment: Optional[str] = None
+    # Down Payment with type
+    down_payment_type: Optional[str] = None  # Cash, Tarjeta, Trade
+    down_payment_cash: Optional[str] = None
+    down_payment_card: Optional[str] = None
+    # Trade-in vehicle info
+    trade_make: Optional[str] = None
+    trade_model: Optional[str] = None
+    trade_year: Optional[str] = None
+    trade_title: Optional[str] = None  # Clean Title, Salvaged
+    trade_miles: Optional[str] = None
+    trade_plate: Optional[str] = None  # CA, Out of State
+    trade_estimated_value: Optional[str] = None
+    # Dealer/Location
     dealer: Optional[str] = None
-    # Finance status: financiado, least, no
-    finance_status: str = "no"  # financiado, least, no
-    # Vehicle info (only when finance_status is financiado or least)
+    # Finance status: financiado, lease, no (fixed typo)
+    finance_status: str = "no"  # financiado, lease, no
+    # Vehicle info (only when finance_status is financiado or lease)
     vehicle_make: Optional[str] = None
     vehicle_year: Optional[str] = None
     sale_month: Optional[int] = None
     sale_day: Optional[int] = None
     sale_year: Optional[int] = None
     previous_record_id: Optional[str] = None  # For "New Opportunity" - links to previous record
+    # Legacy fields for backward compatibility
+    dl: Optional[bool] = None
+    checks: Optional[bool] = None
+    down_payment: Optional[str] = None
 
 class UserRecordResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -281,18 +311,42 @@ class UserRecordResponse(BaseModel):
     client_id: str
     salesperson_id: str
     salesperson_name: str
-    dl: bool = False
-    checks: bool = False
+    # ID fields
+    has_id: bool = False
+    id_type: Optional[str] = None
+    # POI fields
+    has_poi: bool = False
+    poi_type: Optional[str] = None
+    # Other checks
     ssn: bool = False
     itin: bool = False
+    self_employed: bool = False
+    # POR fields
+    has_por: bool = False
+    por_types: Optional[List[str]] = None
+    # Bank info
+    bank: Optional[str] = None
+    bank_deposit_type: Optional[str] = None
+    # Other fields
     auto: Optional[str] = None
     credit: Optional[str] = None
-    bank: Optional[str] = None
     auto_loan: Optional[str] = None
-    down_payment: Optional[str] = None
+    # Down Payment
+    down_payment_type: Optional[str] = None
+    down_payment_cash: Optional[str] = None
+    down_payment_card: Optional[str] = None
+    # Trade-in
+    trade_make: Optional[str] = None
+    trade_model: Optional[str] = None
+    trade_year: Optional[str] = None
+    trade_title: Optional[str] = None
+    trade_miles: Optional[str] = None
+    trade_plate: Optional[str] = None
+    trade_estimated_value: Optional[str] = None
+    # Dealer
     dealer: Optional[str] = None
     # Finance status
-    finance_status: str = "no"  # financiado, least, no
+    finance_status: str = "no"  # financiado, lease, no
     # Vehicle info
     vehicle_make: Optional[str] = None
     vehicle_year: Optional[str] = None
@@ -301,8 +355,12 @@ class UserRecordResponse(BaseModel):
     sale_year: Optional[int] = None
     created_at: str
     is_deleted: bool = False
-    previous_record_id: Optional[str] = None  # Reference to previous opportunity
-    opportunity_number: int = 1  # 1 = first, 2 = second opportunity, etc.
+    previous_record_id: Optional[str] = None
+    opportunity_number: int = 1
+    # Legacy fields
+    dl: bool = False
+    checks: bool = False
+    down_payment: Optional[str] = None
 
 class AppointmentCreate(BaseModel):
     user_record_id: str
