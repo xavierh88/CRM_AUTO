@@ -885,13 +885,13 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
               <SelectContent>
                 <SelectItem value="no">No</SelectItem>
                 <SelectItem value="financiado">Financiado</SelectItem>
-                <SelectItem value="least">Least</SelectItem>
+                <SelectItem value="lease">Lease</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Vehicle Info (only when financiado or least) */}
-          {(newRecord.finance_status === 'financiado' || newRecord.finance_status === 'least') && (
+          {(newRecord.finance_status === 'financiado' || newRecord.finance_status === 'lease') && (
             <div className="bg-amber-50 rounded-lg p-3 mb-3 border border-amber-200">
               <Label className="form-label mb-2 block text-amber-700">Vehicle Information</Label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
