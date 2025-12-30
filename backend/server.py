@@ -2670,9 +2670,10 @@ class ConfigListItemResponse(BaseModel):
 
 @api_router.get("/config-lists/{category}", response_model=List[ConfigListItemResponse])
 async def get_config_list(category: str, current_user: dict = Depends(get_current_user)):
-    """Get all items in a configurable list (bank, dealer, car)"""
-    if category not in ['bank', 'dealer', 'car']:
-        raise HTTPException(status_code=400, detail="Invalid category. Must be 'bank', 'dealer', or 'car'")
+    """Get all items in a configurable list"""
+    valid_categories = ['bank', 'dealer', 'car', 'id_type', 'poi_type', 'por_type']
+    if category not in valid_categories:
+        raise HTTPException(status_code=400, detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}")
     items = await db.config_lists.find({"category": category}, {"_id": 0}).sort("name", 1).to_list(1000)
     return items
 
@@ -2682,8 +2683,9 @@ async def create_config_list_item(item: ConfigListItem, current_user: dict = Dep
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    if item.category not in ['bank', 'dealer', 'car']:
-        raise HTTPException(status_code=400, detail="Invalid category")
+    valid_categories = ['bank', 'dealer', 'car', 'id_type', 'poi_type', 'por_type']
+    if item.category not in valid_categories:
+        raise HTTPException(status_code=400, detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}")
     
     # Check for duplicate
     existing = await db.config_lists.find_one({"name": {"$regex": f"^{item.name}$", "$options": "i"}, "category": item.category})

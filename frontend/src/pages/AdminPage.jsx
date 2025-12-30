@@ -509,9 +509,9 @@ export default function AdminPage() {
                   onChange={(e) => setNewIdType(e.target.value)}
                   placeholder="New ID type..."
                   className="max-w-xs"
-                  onKeyDown={(e) => e.key === 'Enter' && addConfigItem(newIdType, 'id_type', setNewIdType)}
+                  onKeyDown={(e) => e.key === 'Enter' && addConfigItem('id_type', newIdType, setNewIdType)}
                 />
-                <Button onClick={() => addConfigItem(newIdType, 'id_type', setNewIdType)}>
+                <Button onClick={() => addConfigItem('id_type', newIdType, setNewIdType)}>
                   <Plus className="w-4 h-4 mr-1" /> Add
                 </Button>
               </div>
@@ -553,9 +553,9 @@ export default function AdminPage() {
                   onChange={(e) => setNewPoiType(e.target.value)}
                   placeholder="New POI type..."
                   className="max-w-xs"
-                  onKeyDown={(e) => e.key === 'Enter' && addConfigItem(newPoiType, 'poi_type', setNewPoiType)}
+                  onKeyDown={(e) => e.key === 'Enter' && addConfigItem('poi_type', newPoiType, setNewPoiType)}
                 />
-                <Button onClick={() => addConfigItem(newPoiType, 'poi_type', setNewPoiType)}>
+                <Button onClick={() => addConfigItem('poi_type', newPoiType, setNewPoiType)}>
                   <Plus className="w-4 h-4 mr-1" /> Add
                 </Button>
               </div>
@@ -597,9 +597,9 @@ export default function AdminPage() {
                   onChange={(e) => setNewPorType(e.target.value)}
                   placeholder="New POR type..."
                   className="max-w-xs"
-                  onKeyDown={(e) => e.key === 'Enter' && addConfigItem(newPorType, 'por_type', setNewPorType)}
+                  onKeyDown={(e) => e.key === 'Enter' && addConfigItem('por_type', newPorType, setNewPorType)}
                 />
-                <Button onClick={() => addConfigItem(newPorType, 'por_type', setNewPorType)}>
+                <Button onClick={() => addConfigItem('por_type', newPorType, setNewPorType)}>
                   <Plus className="w-4 h-4 mr-1" /> Add
                 </Button>
               </div>
