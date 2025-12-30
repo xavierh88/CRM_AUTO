@@ -772,6 +772,46 @@ async def delete_user_record(record_id: str, permanent: bool = False, current_us
         await db.user_records.update_one({"id": record_id}, {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat()}})
     return {"message": "User record deleted"}
 
+# ==================== RECORD COMMENTS/NOTES ====================
+
+@api_router.get("/user-records/{record_id}/comments")
+async def get_record_comments(record_id: str, current_user: dict = Depends(get_current_user)):
+    """Get all comments for a user record"""
+    comments = await db.record_comments.find(
+        {"record_id": record_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    return comments
+
+@api_router.post("/user-records/{record_id}/comments")
+async def add_record_comment(record_id: str, comment: str = Form(...), current_user: dict = Depends(get_current_user)):
+    """Add a comment to a user record"""
+    now = datetime.now(timezone.utc).isoformat()
+    comment_doc = {
+        "id": str(uuid.uuid4()),
+        "record_id": record_id,
+        "comment": comment,
+        "user_id": current_user["id"],
+        "user_name": current_user.get("name", current_user.get("email", "Unknown")),
+        "created_at": now
+    }
+    await db.record_comments.insert_one(comment_doc)
+    del comment_doc["_id"] if "_id" in comment_doc else None
+    return comment_doc
+
+@api_router.delete("/user-records/{record_id}/comments/{comment_id}")
+async def delete_record_comment(record_id: str, comment_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a comment (only by the author or admin)"""
+    comment = await db.record_comments.find_one({"id": comment_id, "record_id": record_id})
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    
+    if comment["user_id"] != current_user["id"] and current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Can only delete your own comments")
+    
+    await db.record_comments.delete_one({"id": comment_id})
+    return {"message": "Comment deleted"}
+
 # ==================== APPOINTMENTS ROUTES ====================
 
 @api_router.post("/appointments", response_model=AppointmentResponse)
