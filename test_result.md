@@ -250,17 +250,17 @@ metadata:
 
 test_plan:
   current_focus:
-    - "SMS Scheduler for marketing campaigns"
-    - "Scheduler endpoints"
-    - "Address Autocomplete component"
-    - "Agenda page improvements"
+    - "Remove document status circles from client cards"
+    - "Direct Deposit Amount Input"
+    - "Document Management in Client Info Modal"
+    - "Residence Proof Field"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
     - agent: "main"
-    - message: "Completed improvements to Dashboard, Agenda page, and Address Autocomplete. SMS Scheduler configured for 11:00 AM daily. Calendar alignment fixed. Ready for testing."
+    - message: "Completed 4 user requests: 1) Removed X circles from client cards, 2) Added Direct Deposit amount field, 3) Added document upload/download/delete in Client Info, 4) Added Residence Proof document type. Ready for testing."
   
 
 ## New Features Implemented (Session 2)
