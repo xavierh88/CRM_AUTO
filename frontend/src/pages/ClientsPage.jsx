@@ -1383,6 +1383,41 @@ function RecordCard({
     fetchCommentsCount();
   }, [record.id]);
 
+  // Email report state
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [emailAddresses, setEmailAddresses] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  const sendEmailReport = async () => {
+    if (!emailAddresses.trim()) {
+      toast.error('Por favor ingrese al menos un email');
+      return;
+    }
+    
+    const emails = emailAddresses.split(',').map(e => e.trim()).filter(e => e);
+    if (emails.length === 0) {
+      toast.error('Por favor ingrese emails válidos');
+      return;
+    }
+    
+    setSendingEmail(true);
+    try {
+      await axios.post(`${API}/send-record-report`, {
+        emails,
+        record_id: record.id,
+        client_id: clientId,
+        include_documents: true
+      });
+      toast.success(`Reporte enviado a ${emails.length} destinatario(s)`);
+      setShowEmailDialog(false);
+      setEmailAddresses('');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al enviar el reporte');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const loadComments = async () => {
     setLoadingComments(true);
     try {
