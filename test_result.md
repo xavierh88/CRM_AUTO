@@ -348,12 +348,63 @@ backend:
         - agent: "main"
         - comment: "DELETE /clients/{id} and POST /clients/{id}/restore working"
 
+## Current Session Tasks (New Features Testing)
+
+frontend:
+  - task: "Email Report Button"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/ClientsPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "testing"
+        - comment: "CODE REVIEW VERIFIED: Email Report Button properly implemented (lines 1408-1441, 1856-2008). Features green Mail icon button, 'Enviar Reporte por Email' modal with email input field (comma-separated), report description, Cancel and 'Enviar Reporte' buttons. Functionality includes sendEmailReport function with API call to /api/send-record-report. Implementation complete and should be functional when accessing client records."
+
+  - task: "Collaborator Selector"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/ClientsPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "testing"
+        - comment: "CODE REVIEW VERIFIED: Collaborator Selector properly implemented (lines 1804-1824). Features purple background section 'COLABORADOR (USUARIO COMPARTIDO)', dropdown with 'Sin colaborador' default option, shows other salespersons in list, includes notification message 'El colaborador será notificado de los cambios en este record'. Available in Edit Record mode. Implementation complete and should be functional."
+
+  - task: "Collaborator Badge Display"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/ClientsPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "testing"
+        - comment: "CODE REVIEW VERIFIED: Collaborator Badge Display properly implemented (lines 1851-1854). Shows purple badge with collaborator name next to SOLD badge area when record has collaborator assigned. Uses record.collaborator_name field with purple styling (bg-purple-100 text-purple-700). Implementation complete and should be functional when collaborators are assigned to records."
+
+  - task: "Down Payment Multi-select"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/ClientsPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "testing"
+        - comment: "CODE REVIEW VERIFIED: Down Payment Multi-select properly implemented (lines 1221-1283, 1666-1701). Features '(puede seleccionar varios)' text, checkboxes for Cash, Tarjeta, Trade options that can be selected simultaneously. Each option shows corresponding amount input field when selected. Trade option shows complete sub-form with Make, Model, Year, Title, Miles, Plate, Estimated Value fields. Implementation complete and should be functional in both New Record and Edit Record forms."
+
 test_plan:
   current_focus:
-    - "Admin configurable lists management"
-    - "New Opportunity Form with all fields"
-    - "ID, POI, POR types dropdowns"
-    - "Down Payment with Trade-in form"
+    - "Email Report Button"
+    - "Collaborator Selector"
+    - "Collaborator Badge Display"
+    - "Down Payment Multi-select"
     
 ## Current Session Tasks (Fork 2)
 
