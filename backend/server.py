@@ -656,18 +656,123 @@ async def restore_client(client_id: str, current_user: dict = Depends(get_curren
     return {"message": "Client restored"}
 
 @api_router.put("/clients/{client_id}/documents")
-async def update_client_documents(client_id: str, id_uploaded: bool = None, income_proof_uploaded: bool = None, current_user: dict = Depends(get_current_user)):
+async def update_client_documents(client_id: str, id_uploaded: bool = None, income_proof_uploaded: bool = None, residence_proof_uploaded: bool = None, current_user: dict = Depends(get_current_user)):
     update_data = {}
     if id_uploaded is not None:
         update_data["id_uploaded"] = id_uploaded
+        if not id_uploaded:
+            update_data["id_file_url"] = None
     if income_proof_uploaded is not None:
         update_data["income_proof_uploaded"] = income_proof_uploaded
+        if not income_proof_uploaded:
+            update_data["income_proof_file_url"] = None
+    if residence_proof_uploaded is not None:
+        update_data["residence_proof_uploaded"] = residence_proof_uploaded
+        if not residence_proof_uploaded:
+            update_data["residence_proof_file_url"] = None
     
     if update_data:
         await db.clients.update_one({"id": client_id}, {"$set": update_data})
     
     updated = await db.clients.find_one({"id": client_id}, {"_id": 0})
     return updated
+
+# Document Upload/Download endpoints
+import base64
+from fastapi.responses import Response
+
+UPLOAD_DIR = Path(__file__).parent / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+@api_router.post("/clients/{client_id}/documents/upload")
+async def upload_client_document(
+    client_id: str, 
+    doc_type: str = Form(...),
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload a document for a client (ID, income proof, or residence proof)"""
+    if doc_type not in ['id', 'income', 'residence']:
+        raise HTTPException(status_code=400, detail="Invalid document type. Must be 'id', 'income', or 'residence'")
+    
+    # Verify client exists
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Read file content
+    content = await file.read()
+    file_ext = file.filename.split('.')[-1] if '.' in file.filename else 'pdf'
+    
+    # Create unique filename
+    filename = f"{client_id}_{doc_type}_{uuid.uuid4().hex[:8]}.{file_ext}"
+    file_path = UPLOAD_DIR / filename
+    
+    # Save file
+    with open(file_path, 'wb') as f:
+        f.write(content)
+    
+    # Update client document status
+    update_data = {}
+    file_url = f"/api/clients/{client_id}/documents/download/{doc_type}"
+    
+    if doc_type == 'id':
+        update_data = {"id_uploaded": True, "id_file_url": str(file_path)}
+    elif doc_type == 'income':
+        update_data = {"income_proof_uploaded": True, "income_proof_file_url": str(file_path)}
+    else:
+        update_data = {"residence_proof_uploaded": True, "residence_proof_file_url": str(file_path)}
+    
+    await db.clients.update_one({"id": client_id}, {"$set": update_data})
+    
+    return {"message": "Document uploaded successfully", "file_url": file_url, "doc_type": doc_type}
+
+@api_router.get("/clients/{client_id}/documents/download/{doc_type}")
+async def download_client_document(
+    client_id: str,
+    doc_type: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Download a client document"""
+    if doc_type not in ['id', 'income', 'residence']:
+        raise HTTPException(status_code=400, detail="Invalid document type")
+    
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Get file path based on doc type
+    file_url_field = f"{doc_type}_file_url" if doc_type != 'income' else "income_proof_file_url"
+    if doc_type == 'residence':
+        file_url_field = "residence_proof_file_url"
+    
+    file_path = client.get(file_url_field)
+    if not file_path:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Document file not found")
+    
+    # Read and return file
+    with open(file_path, 'rb') as f:
+        content = f.read()
+    
+    # Determine content type
+    file_ext = file_path.suffix.lower()
+    content_type = 'application/pdf'
+    if file_ext in ['.jpg', '.jpeg']:
+        content_type = 'image/jpeg'
+    elif file_ext == '.png':
+        content_type = 'image/png'
+    
+    return Response(
+        content=content,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f"attachment; filename={client['first_name']}_{client['last_name']}_{doc_type}{file_ext}"
+        }
+    )
 
 # ==================== USER RECORDS (CARTILLAS) ROUTES ====================
 
