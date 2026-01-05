@@ -1777,6 +1777,36 @@ function RecordCard({
           </div>
         )}
 
+        {/* Collaborator Section */}
+        <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+          <Label className="form-label mb-2 block text-purple-700 text-sm flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Colaborador (Usuario compartido)
+          </Label>
+          <Select 
+            value={editData.collaborator_id || 'none'} 
+            onValueChange={(value) => {
+              const selectedUser = salespersons.find(s => s.id === value);
+              setEditData({ 
+                ...editData, 
+                collaborator_id: value === 'none' ? null : value,
+                collaborator_name: value === 'none' ? null : selectedUser?.name || selectedUser?.email
+              });
+            }}
+          >
+            <SelectTrigger className="max-w-xs">
+              <SelectValue placeholder="Seleccionar colaborador" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Sin colaborador</SelectItem>
+              {salespersons.filter(s => s.id !== currentUserId).map((sp) => (
+                <SelectItem key={sp.id} value={sp.id}>{sp.name || sp.email}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-purple-500 mt-1">El colaborador será notificado de los cambios en este record</p>
+        </div>
+
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={onCancelEdit}>Cancel</Button>
           <Button size="sm" onClick={onSaveEdit}>Save Changes</Button>
