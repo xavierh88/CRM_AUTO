@@ -328,6 +328,7 @@ class UserRecordResponse(BaseModel):
     # Bank info
     bank: Optional[str] = None
     bank_deposit_type: Optional[str] = None
+    direct_deposit_amount: Optional[str] = None
     # Other fields
     auto: Optional[str] = None
     credit: Optional[str] = None
