@@ -1776,7 +1776,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
   const viewCosignerProfile = async (cosigner) => {
     setViewingCosigner(cosigner);
     try {
-      const response = await axios.get(`${API}/user-records/client/${cosigner.id}`);
+      const response = await axios.get(`${API}/user-records?client_id=${cosigner.id}`);
       setCosignerRecords(response.data);
     } catch (error) {
       console.error('Error loading co-signer records:', error);
