@@ -1487,6 +1487,38 @@ def main():
     tester.test_scheduler_run_now()
     tester.test_non_admin_scheduler_access()
     
+    # NEW DOCUMENT UPLOAD/DOWNLOAD TESTS (Priority High)
+    print("\n" + "="*50)
+    print("DOCUMENT UPLOAD/DOWNLOAD API TESTS (PRIORITY HIGH)")
+    print("="*50)
+    
+    # Test document upload endpoints
+    if tester.client_id:
+        tester.test_document_upload_id()
+        tester.test_document_upload_income()
+        tester.test_document_upload_residence()
+        tester.test_document_upload_invalid_type()
+        
+        # Test document download endpoints
+        tester.test_document_download_id()
+        tester.test_document_download_income()
+        tester.test_document_download_residence()
+        tester.test_document_download_invalid_type()
+        
+        # Test document status update
+        tester.test_update_documents_status_residence_proof()
+        tester.test_update_documents_status_clear_file_urls()
+    
+    # NEW DIRECT DEPOSIT AMOUNT TESTS (Priority High)
+    print("\n" + "="*50)
+    print("DIRECT DEPOSIT AMOUNT FIELD TESTS (PRIORITY HIGH)")
+    print("="*50)
+    
+    if tester.client_id:
+        tester.test_create_user_record_with_direct_deposit_amount()
+        tester.test_update_user_record_with_direct_deposit_amount()
+        tester.test_get_user_records_includes_direct_deposit_amount()
+    
     # Dashboard and Agenda Tests
     print("\n" + "="*50)
     print("DASHBOARD & AGENDA TESTS")
