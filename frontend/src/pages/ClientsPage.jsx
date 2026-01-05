@@ -1535,7 +1535,7 @@ function RecordCard({
           </div>
           <div>
             <Label className="form-label mb-1 block text-xs">Tipo de Depósito</Label>
-            <Select value={editData.bank_deposit_type || ''} onValueChange={(value) => setEditData({ ...editData, bank_deposit_type: value })}>
+            <Select value={editData.bank_deposit_type || ''} onValueChange={(value) => setEditData({ ...editData, bank_deposit_type: value, direct_deposit_amount: value !== 'Deposito Directo' ? '' : editData.direct_deposit_amount })}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar tipo" />
               </SelectTrigger>
@@ -1546,6 +1546,19 @@ function RecordCard({
             </Select>
           </div>
         </div>
+
+        {/* Direct Deposit Amount - shown when Deposito Directo is selected */}
+        {editData.bank_deposit_type === 'Deposito Directo' && (
+          <div className="mb-4">
+            <Label className="form-label mb-1 block text-xs">Monto de Depósito Directo</Label>
+            <Input
+              placeholder="$0.00"
+              value={editData.direct_deposit_amount || ''}
+              onChange={(e) => setEditData({ ...editData, direct_deposit_amount: e.target.value })}
+              className="max-w-xs"
+            />
+          </div>
+        )}
 
         {/* Cosigner Alert */}
         {editData.bank_deposit_type === 'No deposito directo' && editData.has_poi && editData.poi_type === 'Cash' && (
