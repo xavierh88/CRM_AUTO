@@ -1567,29 +1567,84 @@ function RecordCard({
         </div>
       </div>
 
-      {/* Checklist */}
-      <div className="flex gap-4 mb-3 flex-wrap">
-        {['dl', 'checks', 'ssn', 'itin'].map((field) => (
-          <div key={field} className="flex items-center gap-2">
-            <span className={`w-5 h-5 rounded flex items-center justify-center ${
-              record[field] ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'
-            }`}>
-              {record[field] ? '✓' : '×'}
-            </span>
-            <span className="text-sm text-slate-600 uppercase">{field}</span>
+      {/* Checklist - New format */}
+      <div className="flex gap-3 mb-3 flex-wrap">
+        {record.has_id && (
+          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs">
+            <span>✓</span> ID: {record.id_type || 'Sí'}
           </div>
-        ))}
+        )}
+        {record.has_poi && (
+          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs">
+            <span>✓</span> POI: {record.poi_type || 'Sí'}
+          </div>
+        )}
+        {record.ssn && (
+          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs">
+            <span>✓</span> SSN
+          </div>
+        )}
+        {record.itin && (
+          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs">
+            <span>✓</span> ITIN
+          </div>
+        )}
+        {record.self_employed && (
+          <div className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded text-xs">
+            <span>✓</span> Self Employed
+          </div>
+        )}
+        {record.has_por && (
+          <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs">
+            <span>✓</span> POR: {(record.por_types || []).join(', ') || 'Sí'}
+          </div>
+        )}
+        {/* Legacy fields for old records */}
+        {!record.has_id && record.dl && (
+          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs">
+            <span>✓</span> DL
+          </div>
+        )}
+        {!record.has_poi && record.checks && (
+          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs">
+            <span>✓</span> CHECKS
+          </div>
+        )}
       </div>
 
       {/* Details */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
         {record.auto && <div><span className="text-slate-400">Auto:</span> {record.auto}</div>}
         {record.credit && <div><span className="text-slate-400">Credit:</span> {record.credit}</div>}
-        {record.bank && <div><span className="text-slate-400">Bank:</span> {record.bank}</div>}
+        {record.bank && (
+          <div>
+            <span className="text-slate-400">Bank:</span> {record.bank}
+            {record.bank_deposit_type && <span className="text-xs text-slate-400"> ({record.bank_deposit_type})</span>}
+          </div>
+        )}
         {record.auto_loan && <div><span className="text-slate-400">Auto Loan:</span> {record.auto_loan}</div>}
         {record.dealer && <div><span className="text-slate-400">Dealer:</span> {record.dealer}</div>}
-        {record.down_payment && <div><span className="text-slate-400">Down:</span> ${record.down_payment}</div>}
+        {/* Down Payment */}
+        {record.down_payment_type && (
+          <div>
+            <span className="text-slate-400">Down:</span> {record.down_payment_type}
+            {record.down_payment_type === 'Cash' && record.down_payment_cash && ` - $${record.down_payment_cash}`}
+            {record.down_payment_type === 'Tarjeta' && record.down_payment_card && ` - $${record.down_payment_card}`}
+          </div>
+        )}
+        {/* Legacy down_payment for old records */}
+        {!record.down_payment_type && record.down_payment && <div><span className="text-slate-400">Down:</span> ${record.down_payment}</div>}
       </div>
+
+      {/* Trade-in Details */}
+      {record.down_payment_type === 'Trade' && record.trade_make && (
+        <div className="mt-2 p-2 bg-slate-50 rounded text-xs">
+          <span className="font-medium">Trade:</span> {record.trade_make} {record.trade_model} {record.trade_year}
+          {record.trade_title && ` • ${record.trade_title}`}
+          {record.trade_miles && ` • ${record.trade_miles} mi`}
+          {record.trade_estimated_value && ` • Est: $${record.trade_estimated_value}`}
+        </div>
+      )}
 
       {/* Vehicle info for financed/lease */}
       {(record.finance_status === 'financiado' || record.finance_status === 'lease') && record.vehicle_make && (
