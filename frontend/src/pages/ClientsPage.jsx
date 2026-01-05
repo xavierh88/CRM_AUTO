@@ -1361,7 +1361,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 function RecordCard({ 
   record, appointments, getStatusBadge, sendAppointmentSMS, clientId, createAppointment, 
   updateAppointmentStatus, t, isPurple, onOpenAppointmentForm, currentUserId,
-  onEdit, onDelete, isEditing, editData, setEditData, onSaveEdit, onCancelEdit, configLists 
+  onEdit, onDelete, isEditing, editData, setEditData, onSaveEdit, onCancelEdit, configLists, salespersons 
 }) {
   const isOwner = record.salesperson_id === currentUserId;
   const [showComments, setShowComments] = useState(false);
