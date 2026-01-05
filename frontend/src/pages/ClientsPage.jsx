@@ -742,7 +742,6 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 
   const handleSaveEditRecord = async () => {
     try {
-      const previousCollaborator = userRecords[clientId]?.find(r => r.id === editingRecord)?.collaborator_id;
       const newCollaborator = editRecordData.collaborator_id;
       
       await axios.put(`${API}/user-records/${editingRecord}`, {
@@ -753,16 +752,8 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
         sale_year: editRecordData.sale_year ? parseInt(editRecordData.sale_year) : null
       });
       
-      // Send notification to collaborator if changed or if there's a collaborator
-      if (newCollaborator && newCollaborator !== previousCollaborator) {
-        // New collaborator added - notify them
-        try {
-          await axios.post(`${API}/notifications/collaborator?record_id=${editingRecord}&action=collaborator_added`);
-        } catch (e) {
-          console.log('Notification failed:', e);
-        }
-      } else if (newCollaborator) {
-        // Existing collaborator - notify about update
+      // Send notification to collaborator if there's one assigned
+      if (newCollaborator) {
         try {
           await axios.post(`${API}/notifications/collaborator?record_id=${editingRecord}&action=record_updated`);
         } catch (e) {
