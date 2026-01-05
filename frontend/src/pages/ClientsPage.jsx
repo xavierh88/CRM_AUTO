@@ -711,6 +711,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
       // Bank info
       bank: record.bank || '',
       bank_deposit_type: record.bank_deposit_type || '',
+      direct_deposit_amount: record.direct_deposit_amount || '',
       // Other fields
       auto: record.auto || '',
       credit: record.credit || '',
