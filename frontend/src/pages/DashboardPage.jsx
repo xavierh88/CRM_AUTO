@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { 
   Users, Calendar, DollarSign, FileCheck, TrendingUp, 
-  UserPlus, CarFront, Clock, Activity, Target, Users2
+  UserPlus, CarFront, Clock, Activity, Target, Users2, Filter
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, 
-  XAxis, YAxis, Tooltip, Legend, LineChart, Line, AreaChart, Area
+  XAxis, YAxis, Tooltip, Legend, AreaChart, Area
 } from 'recharts';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -20,27 +21,70 @@ export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [performance, setPerformance] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState('all');
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [availableMonths, setAvailableMonths] = useState([]);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    setLoading(true);
     try {
+      const params = new URLSearchParams();
+      if (selectedMonth) {
+        params.append('month', selectedMonth);
+      } else {
+        params.append('period', period);
+      }
+      
       const [statsRes, perfRes] = await Promise.all([
-        axios.get(`${API}/dashboard/stats`),
+        axios.get(`${API}/dashboard/stats?${params.toString()}`),
         isAdmin ? axios.get(`${API}/dashboard/salesperson-performance`) : Promise.resolve({ data: [] })
       ]);
       setStats(statsRes.data);
       setPerformance(perfRes.data);
+      if (statsRes.data.available_months) {
+        setAvailableMonths(statsRes.data.available_months);
+      }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
       setLoading(false);
     }
+  }, [period, selectedMonth, isAdmin]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handlePeriodChange = (value) => {
+    setPeriod(value);
+    setSelectedMonth(''); // Clear specific month when changing period
   };
 
-  if (loading) {
+  const handleMonthChange = (value) => {
+    setSelectedMonth(value);
+    if (value) {
+      setPeriod(''); // Clear period when selecting specific month
+    }
+  };
+
+  const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  
+  const formatMonthLabel = (monthStr) => {
+    if (!monthStr) return '';
+    const [year, month] = monthStr.split('-');
+    return `${monthNames[parseInt(month) - 1]} ${year}`;
+  };
+
+  const getPeriodLabel = () => {
+    if (selectedMonth) return formatMonthLabel(selectedMonth);
+    switch (period) {
+      case 'month': return 'Este Mes';
+      case '6months': return 'Últimos 6 Meses';
+      default: return 'Todo el Tiempo';
+    }
+  };
+
+  if (loading && !stats) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="loading-spinner"></div>
@@ -68,15 +112,15 @@ export default function DashboardPage() {
     { name: 'Lease', value: stats.finance_breakdown.lease || 0, color: '#10b981' }
   ].filter(item => item.value > 0) : [];
 
-  const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   const monthlySalesData = stats?.monthly_sales?.map(item => ({
     month: monthNames[parseInt(item.month.split('-')[1]) - 1] || item.month,
     ventas: item.sales
   })) || [];
 
   // Calculate conversion rate
-  const conversionRate = stats?.total_clients > 0 
-    ? ((stats.sales / stats.total_clients) * 100).toFixed(1) 
+  const totalClientsForRate = stats?.total_clients_all || stats?.total_clients || 0;
+  const conversionRate = totalClientsForRate > 0 
+    ? ((stats.sales / totalClientsForRate) * 100).toFixed(1) 
     : 0;
 
   // Calculate appointment completion rate
@@ -87,16 +131,53 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6" data-testid="dashboard-page">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Header with Filters */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{t('dashboard.title')}</h1>
-          <p className="text-slate-500 mt-1">Resumen general del CRM</p>
+          <p className="text-slate-500 mt-1">
+            Mostrando: <span className="font-medium text-blue-600">{getPeriodLabel()}</span>
+          </p>
         </div>
-        <div className="text-right text-sm text-slate-500">
-          {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        
+        {/* Period Filters */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <Filter className="w-4 h-4" />
+            <span>Filtrar:</span>
+          </div>
+          
+          <Select value={period} onValueChange={handlePeriodChange}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todo el Tiempo</SelectItem>
+              <SelectItem value="6months">Últimos 6 Meses</SelectItem>
+              <SelectItem value="month">Este Mes</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={selectedMonth} onValueChange={handleMonthChange}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Mes específico" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">-- Ninguno --</SelectItem>
+              {availableMonths.map((m) => (
+                <SelectItem key={m} value={m}>{formatMonthLabel(m)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
+
+      {/* Loading overlay */}
+      {loading && (
+        <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50">
+          <div className="loading-spinner"></div>
+        </div>
+      )}
 
       {/* Main Stat Cards - Row 1 */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -108,7 +189,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-slate-900">{stats?.total_clients || 0}</p>
-                <p className="text-xs text-slate-500">Clientes Total</p>
+                <p className="text-xs text-slate-500">Clientes {selectedMonth || period !== 'all' ? '(Período)' : 'Total'}</p>
               </div>
             </div>
           </CardContent>
@@ -136,7 +217,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-slate-900">{stats?.sales || 0}</p>
-                <p className="text-xs text-slate-500">Ventas Total</p>
+                <p className="text-xs text-slate-500">Ventas {selectedMonth || period !== 'all' ? '(Período)' : 'Total'}</p>
               </div>
             </div>
           </CardContent>
@@ -150,7 +231,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-slate-900">{stats?.sales_month || 0}</p>
-                <p className="text-xs text-slate-500">Ventas (Mes)</p>
+                <p className="text-xs text-slate-500">Ventas (Mes Actual)</p>
               </div>
             </div>
           </CardContent>
@@ -305,7 +386,7 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             ) : (
               <div className="h-64 flex items-center justify-center text-slate-400">
-                Sin ventas registradas
+                Sin ventas en este período
               </div>
             )}
           </CardContent>
@@ -342,7 +423,7 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             ) : (
               <div className="h-64 flex items-center justify-center text-slate-400">
-                {t('common.noData')}
+                Sin citas en este período
               </div>
             )}
           </CardContent>
