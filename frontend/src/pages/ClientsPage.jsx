@@ -2829,15 +2829,6 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onRefresh }) {
       toast.error('Error al eliminar documento');
     }
   };
-        params: updateData
-      });
-      toast.success(`${docType === 'id' ? 'ID' : 'Income proof'} document removed`);
-      setShowDeleteConfirm(null);
-      onRefresh();
-    } catch (error) {
-      toast.error('Failed to remove document');
-    }
-  };
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
