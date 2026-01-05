@@ -2345,7 +2345,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                                       ))}
                                     </SelectContent>
                                   </Select>
-                                  <Select value={editCosignerRecordData.bank_deposit_type} onValueChange={(v) => setEditCosignerRecordData({ ...editCosignerRecordData, bank_deposit_type: v })}>
+                                  <Select value={editCosignerRecordData.bank_deposit_type} onValueChange={(v) => setEditCosignerRecordData({ ...editCosignerRecordData, bank_deposit_type: v, direct_deposit_amount: v !== 'Deposito Directo' ? '' : editCosignerRecordData.direct_deposit_amount })}>
                                     <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Tipo Depósito" /></SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value="Deposito Directo">Deposito Directo</SelectItem>
@@ -2353,6 +2353,13 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                                     </SelectContent>
                                   </Select>
                                 </div>
+
+                                {/* Direct Deposit Amount */}
+                                {editCosignerRecordData.bank_deposit_type === 'Deposito Directo' && (
+                                  <div className="mb-3">
+                                    <Input placeholder="Monto Depósito Directo $" value={editCosignerRecordData.direct_deposit_amount || ''} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, direct_deposit_amount: e.target.value })} className="h-8 text-sm max-w-xs" />
+                                  </div>
+                                )}
 
                                 {/* Credit & Auto */}
                                 <div className="grid grid-cols-3 gap-2 mb-3">
@@ -2368,24 +2375,38 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                                   <Input placeholder="Auto Loan" value={editCosignerRecordData.auto_loan} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, auto_loan: e.target.value })} className="h-8 text-sm" />
                                 </div>
 
-                                {/* Down Payment */}
-                                <div className="flex items-center gap-2 mb-3">
-                                  <span className="text-xs text-slate-500">Down:</span>
-                                  {['Cash', 'Tarjeta', 'Trade'].map((type) => (
-                                    <div key={type} className="flex items-center gap-1">
-                                      <Checkbox
-                                        checked={editCosignerRecordData.down_payment_type === type}
-                                        onCheckedChange={(checked) => setEditCosignerRecordData({ ...editCosignerRecordData, down_payment_type: checked ? type : '' })}
-                                      />
-                                      <Label className="text-xs">{type}</Label>
-                                    </div>
-                                  ))}
-                                  {editCosignerRecordData.down_payment_type === 'Cash' && (
-                                    <Input placeholder="$" value={editCosignerRecordData.down_payment_cash} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, down_payment_cash: e.target.value })} className="h-7 w-20 text-sm" />
-                                  )}
-                                  {editCosignerRecordData.down_payment_type === 'Tarjeta' && (
-                                    <Input placeholder="$" value={editCosignerRecordData.down_payment_card} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, down_payment_card: e.target.value })} className="h-7 w-20 text-sm" />
-                                  )}
+                                {/* Down Payment - Multi-select */}
+                                <div className="mb-3">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-xs text-slate-500">Down (puede seleccionar varios):</span>
+                                    {['Cash', 'Tarjeta', 'Trade'].map((type) => (
+                                      <div key={type} className="flex items-center gap-1">
+                                        <Checkbox
+                                          checked={(editCosignerRecordData.down_payment_types || (editCosignerRecordData.down_payment_type ? editCosignerRecordData.down_payment_type.split(', ') : [])).includes(type)}
+                                          onCheckedChange={(checked) => {
+                                            const currentTypes = editCosignerRecordData.down_payment_types || (editCosignerRecordData.down_payment_type ? editCosignerRecordData.down_payment_type.split(', ').filter(t => t) : []);
+                                            const newTypes = checked ? [...currentTypes, type] : currentTypes.filter(t => t !== type);
+                                            setEditCosignerRecordData({ 
+                                              ...editCosignerRecordData, 
+                                              down_payment_types: newTypes,
+                                              down_payment_type: newTypes.join(', '),
+                                              down_payment_cash: !newTypes.includes('Cash') ? '' : editCosignerRecordData.down_payment_cash,
+                                              down_payment_card: !newTypes.includes('Tarjeta') ? '' : editCosignerRecordData.down_payment_card
+                                            });
+                                          }}
+                                        />
+                                        <Label className="text-xs">{type}</Label>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {(editCosignerRecordData.down_payment_types || (editCosignerRecordData.down_payment_type ? editCosignerRecordData.down_payment_type.split(', ') : [])).includes('Cash') && (
+                                      <Input placeholder="Monto Cash $" value={editCosignerRecordData.down_payment_cash || ''} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, down_payment_cash: e.target.value })} className="h-7 w-28 text-sm" />
+                                    )}
+                                    {(editCosignerRecordData.down_payment_types || (editCosignerRecordData.down_payment_type ? editCosignerRecordData.down_payment_type.split(', ') : [])).includes('Tarjeta') && (
+                                      <Input placeholder="Monto Tarjeta $" value={editCosignerRecordData.down_payment_card || ''} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, down_payment_card: e.target.value })} className="h-7 w-28 text-sm" />
+                                    )}
+                                  </div>
                                 </div>
 
                                 {/* Action Buttons */}
