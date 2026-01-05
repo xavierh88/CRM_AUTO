@@ -811,6 +811,45 @@ async def delete_record_comment(record_id: str, comment_id: str, current_user: d
     await db.record_comments.delete_one({"id": comment_id})
     return {"message": "Comment deleted"}
 
+# ==================== CLIENT COMMENTS/NOTES ROUTES ====================
+
+@api_router.get("/clients/{client_id}/comments")
+async def get_client_comments(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Get all comments/notes for a client"""
+    comments = await db.client_comments.find(
+        {"client_id": client_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    return comments
+
+@api_router.post("/clients/{client_id}/comments")
+async def add_client_comment(client_id: str, comment: str = Form(...), current_user: dict = Depends(get_current_user)):
+    """Add a comment/note to a client"""
+    now = datetime.now(timezone.utc).isoformat()
+    comment_doc = {
+        "id": str(uuid.uuid4()),
+        "client_id": client_id,
+        "comment": comment,
+        "user_id": current_user["id"],
+        "user_name": current_user.get("name", current_user.get("email", "Unknown")),
+        "created_at": now
+    }
+    await db.client_comments.insert_one(comment_doc)
+    return {k: v for k, v in comment_doc.items() if k != "_id"}
+
+@api_router.delete("/clients/{client_id}/comments/{comment_id}")
+async def delete_client_comment(client_id: str, comment_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a client comment (only by the author or admin)"""
+    comment = await db.client_comments.find_one({"id": comment_id, "client_id": client_id})
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    
+    if comment["user_id"] != current_user["id"] and current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Can only delete your own comments")
+    
+    await db.client_comments.delete_one({"id": comment_id})
+    return {"message": "Comment deleted"}
+
 # ==================== APPOINTMENTS ROUTES ====================
 
 @api_router.post("/appointments", response_model=AppointmentResponse)
