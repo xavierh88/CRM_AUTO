@@ -1003,88 +1003,135 @@ async def search_client_by_phone(phone: str, current_user: dict = Depends(get_cu
 # ==================== DASHBOARD ROUTES ====================
 
 @api_router.get("/dashboard/stats")
-async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
+async def get_dashboard_stats(
+    current_user: dict = Depends(get_current_user),
+    period: str = "all",  # "all", "6months", "month", or specific "YYYY-MM"
+    month: str = None  # Optional specific month in format "YYYY-MM"
+):
     # Base query - admin sees all, salesperson sees their own
     base_query = {} if current_user["role"] == "admin" else {"salesperson_id": current_user["id"]}
     
-    # Total clients
-    total_clients = await db.clients.count_documents({"is_deleted": {"$ne": True}})
+    # Calculate date filters based on period
+    now = datetime.now(timezone.utc)
+    date_filter = {}
     
-    # New clients this month
-    first_of_month = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if month:  # Specific month selected (e.g., "2026-01")
+        year, mon = month.split("-")
+        start_date = datetime(int(year), int(mon), 1, tzinfo=timezone.utc)
+        if int(mon) == 12:
+            end_date = datetime(int(year) + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            end_date = datetime(int(year), int(mon) + 1, 1, tzinfo=timezone.utc)
+        date_filter = {"$gte": start_date.isoformat(), "$lt": end_date.isoformat()}
+    elif period == "month":  # Current month
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        date_filter = {"$gte": start_date.isoformat()}
+    elif period == "6months":  # Last 6 months
+        start_date = now - timedelta(days=180)
+        date_filter = {"$gte": start_date.isoformat()}
+    # else "all" - no date filter
+    
+    # Build queries with date filter
+    clients_query = {"is_deleted": {"$ne": True}}
+    if date_filter:
+        clients_query["created_at"] = date_filter
+    
+    # Total clients (filtered by period)
+    total_clients = await db.clients.count_documents(clients_query)
+    
+    # Total clients overall (for reference)
+    total_clients_all = await db.clients.count_documents({"is_deleted": {"$ne": True}})
+    
+    # New clients this month (always current month for comparison)
+    first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     new_clients_month = await db.clients.count_documents({
         "is_deleted": {"$ne": True},
         "created_at": {"$gte": first_of_month.isoformat()}
     })
     
+    # Appointments query with date filter
+    appt_query = {**base_query}
+    if date_filter:
+        appt_query["created_at"] = date_filter
+    
     # Appointments by status
     appt_stats = await db.appointments.aggregate([
-        {"$match": base_query},
+        {"$match": appt_query},
         {"$group": {"_id": "$status", "count": {"$sum": 1}}}
     ]).to_list(100)
     
     appointment_counts = {stat["_id"]: stat["count"] for stat in appt_stats}
     
-    # Documents status
+    # Documents status (not filtered by date - shows current state)
     docs_complete = await db.clients.count_documents({"id_uploaded": True, "income_proof_uploaded": True, "is_deleted": {"$ne": True}})
     docs_pending = await db.clients.count_documents({"$or": [{"id_uploaded": False}, {"income_proof_uploaded": False}], "is_deleted": {"$ne": True}})
     
-    # Sales count (financiado or lease)
+    # Sales count with date filter
     sales_query = {"finance_status": {"$in": ["financiado", "lease"]}, "is_deleted": {"$ne": True}}
     if base_query:
         sales_query.update(base_query)
+    if date_filter:
+        sales_query["created_at"] = date_filter
     sales_count = await db.user_records.count_documents(sales_query)
     
     # Sales this month
-    sales_month = await db.user_records.count_documents({
-        **sales_query,
+    sales_month_query = {
+        "finance_status": {"$in": ["financiado", "lease"]}, 
+        "is_deleted": {"$ne": True},
         "created_at": {"$gte": first_of_month.isoformat()}
-    })
+    }
+    if base_query:
+        sales_month_query.update(base_query)
+    sales_month = await db.user_records.count_documents(sales_month_query)
     
     # Today's appointments
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = now.strftime("%Y-%m-%d")
     today_appointments = await db.appointments.count_documents({"date": today, **base_query})
     
     # This week's appointments
-    from datetime import timedelta
-    week_start = (datetime.now(timezone.utc) - timedelta(days=datetime.now(timezone.utc).weekday())).strftime("%Y-%m-%d")
-    week_end = (datetime.now(timezone.utc) + timedelta(days=6-datetime.now(timezone.utc).weekday())).strftime("%Y-%m-%d")
+    week_start = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
+    week_end = (now + timedelta(days=6-now.weekday())).strftime("%Y-%m-%d")
     week_appointments = await db.appointments.count_documents({
         "date": {"$gte": week_start, "$lte": week_end},
         **base_query
     })
     
-    # Total records
+    # Total records with date filter
     records_query = {"is_deleted": {"$ne": True}}
     if base_query:
         records_query.update(base_query)
+    if date_filter:
+        records_query["created_at"] = date_filter
     total_records = await db.user_records.count_documents(records_query)
     
     # Co-signers count
     total_cosigners = await db.cosigner_relations.count_documents({})
     
     # Recent activity - clients contacted in last 7 days
-    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    week_ago = (now - timedelta(days=7)).isoformat()
     active_clients = await db.clients.count_documents({
         "is_deleted": {"$ne": True},
         "last_contact": {"$gte": week_ago}
     })
     
-    # Finance type breakdown
+    # Finance type breakdown with date filter
+    finance_match = {"finance_status": {"$in": ["financiado", "lease"]}, "is_deleted": {"$ne": True}}
+    if date_filter:
+        finance_match["created_at"] = date_filter
     finance_stats = await db.user_records.aggregate([
-        {"$match": {"finance_status": {"$in": ["financiado", "lease"]}, "is_deleted": {"$ne": True}}},
+        {"$match": finance_match},
         {"$group": {"_id": "$finance_status", "count": {"$sum": 1}}}
     ]).to_list(10)
     finance_breakdown = {stat["_id"]: stat["count"] for stat in finance_stats}
     
-    # Monthly sales trend (last 6 months)
-    six_months_ago = datetime.now(timezone.utc) - timedelta(days=180)
+    # Monthly sales trend (last 6 months or based on period)
+    trend_start = now - timedelta(days=180)
     monthly_sales = await db.user_records.aggregate([
         {
             "$match": {
                 "finance_status": {"$in": ["financiado", "lease"]},
                 "is_deleted": {"$ne": True},
-                "created_at": {"$gte": six_months_ago.isoformat()}
+                "created_at": {"$gte": trend_start.isoformat()}
             }
         },
         {
@@ -1094,10 +1141,19 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
             }
         },
         {"$sort": {"_id": 1}}
-    ]).to_list(6)
+    ]).to_list(12)
+    
+    # Get available months for filter dropdown
+    available_months = await db.user_records.aggregate([
+        {"$match": {"is_deleted": {"$ne": True}}},
+        {"$group": {"_id": {"$substr": ["$created_at", 0, 7]}}},
+        {"$sort": {"_id": -1}},
+        {"$limit": 12}
+    ]).to_list(12)
     
     return {
         "total_clients": total_clients,
+        "total_clients_all": total_clients_all,
         "new_clients_month": new_clients_month,
         "appointments": {
             "agendado": appointment_counts.get("agendado", 0),
@@ -1119,7 +1175,9 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         "total_cosigners": total_cosigners,
         "active_clients": active_clients,
         "finance_breakdown": finance_breakdown,
-        "monthly_sales": [{"month": s["_id"], "sales": s["count"]} for s in monthly_sales]
+        "monthly_sales": [{"month": s["_id"], "sales": s["count"]} for s in monthly_sales],
+        "available_months": [m["_id"] for m in available_months],
+        "current_period": month or period
     }
 
 @api_router.get("/dashboard/salesperson-performance")
