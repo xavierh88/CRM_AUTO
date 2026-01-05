@@ -648,7 +648,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     // Self employed
     self_employed: false,
     // Bank info
-    bank: '', bank_deposit_type: '',
+    bank: '', bank_deposit_type: '', direct_deposit_amount: '',
     // Vehicle & finance
     auto: '', credit: '', auto_loan: '', auto_loan_bank: '',
     // Down payment (now supports multiple selections)
