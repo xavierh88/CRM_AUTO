@@ -1233,49 +1233,230 @@ function RecordCard({
       <div className={`bg-white rounded-lg border p-4 ${isPurple ? 'border-purple-200' : 'border-blue-200'}`}>
         <h5 className="font-medium text-slate-700 mb-3">Edit Record</h5>
         
-        {/* Checklist */}
-        <div className="flex gap-4 mb-3 flex-wrap">
-          {['dl', 'checks', 'ssn', 'itin'].map((field) => (
-            <div key={field} className="flex items-center gap-2">
-              <Checkbox
-                checked={editData[field]}
-                onCheckedChange={(checked) => setEditData({ ...editData, [field]: checked })}
-              />
-              <Label className="text-sm uppercase">{field}</Label>
+        {/* ID Section */}
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center gap-3">
+            <Checkbox
+              checked={editData.has_id}
+              onCheckedChange={(checked) => setEditData({ ...editData, has_id: checked, id_type: checked ? editData.id_type : '' })}
+              id="edit-has_id"
+            />
+            <Label htmlFor="edit-has_id" className="font-medium">ID</Label>
+          </div>
+          {editData.has_id && (
+            <Select value={editData.id_type || ''} onValueChange={(value) => setEditData({ ...editData, id_type: value })}>
+              <SelectTrigger className="max-w-xs">
+                <SelectValue placeholder="Seleccionar tipo de ID" />
+              </SelectTrigger>
+              <SelectContent>
+                {configLists?.id_type?.map((item) => (
+                  <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        {/* POI Section */}
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center gap-3">
+            <Checkbox
+              checked={editData.has_poi}
+              onCheckedChange={(checked) => setEditData({ ...editData, has_poi: checked, poi_type: checked ? editData.poi_type : '' })}
+              id="edit-has_poi"
+            />
+            <Label htmlFor="edit-has_poi" className="font-medium">POI (Proof of Income)</Label>
+          </div>
+          {editData.has_poi && (
+            <Select value={editData.poi_type || ''} onValueChange={(value) => setEditData({ ...editData, poi_type: value })}>
+              <SelectTrigger className="max-w-xs">
+                <SelectValue placeholder="Seleccionar tipo de POI" />
+              </SelectTrigger>
+              <SelectContent>
+                {configLists?.poi_type?.map((item) => (
+                  <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        {/* Other Checkboxes */}
+        <div className="flex flex-wrap gap-4 mb-4">
+          <div className="flex items-center gap-2">
+            <Checkbox checked={editData.ssn} onCheckedChange={(checked) => setEditData({ ...editData, ssn: checked })} id="edit-ssn" />
+            <Label htmlFor="edit-ssn">SSN</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox checked={editData.itin} onCheckedChange={(checked) => setEditData({ ...editData, itin: checked })} id="edit-itin" />
+            <Label htmlFor="edit-itin">ITIN</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox checked={editData.self_employed} onCheckedChange={(checked) => setEditData({ ...editData, self_employed: checked })} id="edit-self_employed" />
+            <Label htmlFor="edit-self_employed">Self Employed</Label>
+          </div>
+        </div>
+
+        {/* POR Section */}
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center gap-3">
+            <Checkbox
+              checked={editData.has_por}
+              onCheckedChange={(checked) => setEditData({ ...editData, has_por: checked, por_types: checked ? editData.por_types : [] })}
+              id="edit-has_por"
+            />
+            <Label htmlFor="edit-has_por" className="font-medium">POR (Proof of Residence)</Label>
+          </div>
+          {editData.has_por && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 ml-6">
+              {configLists?.por_type?.map((item) => (
+                <div key={item.id} className="flex items-center gap-2">
+                  <Checkbox
+                    checked={(editData.por_types || []).includes(item.name)}
+                    onCheckedChange={(checked) => {
+                      const current = editData.por_types || [];
+                      setEditData({
+                        ...editData,
+                        por_types: checked 
+                          ? [...current, item.name]
+                          : current.filter(t => t !== item.name)
+                      });
+                    }}
+                  />
+                  <Label className="text-sm">{item.name}</Label>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
-        
-        {/* Info fields with dropdowns */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-          <Select value={editData.auto || ''} onValueChange={(value) => setEditData({ ...editData, auto: value })}>
-            <SelectTrigger>
-              <SelectValue placeholder="Auto" />
-            </SelectTrigger>
-            <SelectContent className="max-h-60">
-              {configLists?.cars?.map((car) => (
-                <SelectItem key={car.id} value={car.name}>{car.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Input placeholder="Credit" value={editData.credit} onChange={(e) => setEditData({ ...editData, credit: e.target.value })} />
-          <Select value={editData.bank || ''} onValueChange={(value) => setEditData({ ...editData, bank: value })}>
-            <SelectTrigger>
-              <SelectValue placeholder="Bank" />
-            </SelectTrigger>
-            <SelectContent className="max-h-60">
-              {configLists?.banks?.map((bank) => (
-                <SelectItem key={bank.id} value={bank.name}>{bank.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Input placeholder="Auto Loan" value={editData.auto_loan} onChange={(e) => setEditData({ ...editData, auto_loan: e.target.value })} />
+
+        {/* Bank Section */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          <div>
+            <Label className="form-label mb-1 block text-xs">Bank</Label>
+            <Select value={editData.bank || ''} onValueChange={(value) => setEditData({ ...editData, bank: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar banco" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                {configLists?.banks?.map((bank) => (
+                  <SelectItem key={bank.id} value={bank.name}>{bank.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="form-label mb-1 block text-xs">Tipo de Depósito</Label>
+            <Select value={editData.bank_deposit_type || ''} onValueChange={(value) => setEditData({ ...editData, bank_deposit_type: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Deposito Directo">Deposito Directo</SelectItem>
+                <SelectItem value="No deposito directo">No deposito directo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <Input placeholder="Down Payment" value={editData.down_payment} onChange={(e) => setEditData({ ...editData, down_payment: e.target.value })} />
+
+        {/* Cosigner Alert */}
+        {editData.bank_deposit_type === 'No deposito directo' && editData.has_poi && editData.poi_type === 'Cash' && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 flex items-start gap-2">
+            <span className="text-amber-600">⚠️</span>
+            <div>
+              <p className="font-medium text-amber-800 text-sm">Atención</p>
+              <p className="text-xs text-amber-700">Va a necesitar un Cosigner o probar ingreso adicional.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Auto, Credit, Auto Loan */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+          <div>
+            <Label className="form-label mb-1 block text-xs">Auto</Label>
+            <Select value={editData.auto || ''} onValueChange={(value) => setEditData({ ...editData, auto: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Auto" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                {configLists?.cars?.map((car) => (
+                  <SelectItem key={car.id} value={car.name}>{car.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="form-label mb-1 block text-xs">Credit</Label>
+            <Input placeholder="Score" value={editData.credit || ''} onChange={(e) => setEditData({ ...editData, credit: e.target.value })} />
+          </div>
+          <div>
+            <Label className="form-label mb-1 block text-xs">Auto Loan</Label>
+            <Input placeholder="Monto" value={editData.auto_loan || ''} onChange={(e) => setEditData({ ...editData, auto_loan: e.target.value })} />
+          </div>
+        </div>
+
+        {/* Down Payment Section */}
+        <div className="border rounded-lg p-3 mb-4">
+          <Label className="form-label mb-2 block font-medium text-sm">Down Payment</Label>
+          <div className="flex flex-wrap gap-4 mb-3">
+            {['Cash', 'Tarjeta', 'Trade'].map((type) => (
+              <div key={type} className="flex items-center gap-2">
+                <Checkbox
+                  checked={editData.down_payment_type === type}
+                  onCheckedChange={(checked) => setEditData({ 
+                    ...editData, 
+                    down_payment_type: checked ? type : '',
+                    down_payment_cash: type !== 'Cash' ? '' : editData.down_payment_cash,
+                    down_payment_card: type !== 'Tarjeta' ? '' : editData.down_payment_card
+                  })}
+                />
+                <Label>{type}</Label>
+              </div>
+            ))}
+          </div>
+
+          {editData.down_payment_type === 'Cash' && (
+            <Input placeholder="Monto en Cash $0.00" value={editData.down_payment_cash || ''} onChange={(e) => setEditData({ ...editData, down_payment_cash: e.target.value })} className="max-w-xs" />
+          )}
+
+          {editData.down_payment_type === 'Tarjeta' && (
+            <Input placeholder="Monto en Tarjeta $0.00" value={editData.down_payment_card || ''} onChange={(e) => setEditData({ ...editData, down_payment_card: e.target.value })} className="max-w-xs" />
+          )}
+
+          {editData.down_payment_type === 'Trade' && (
+            <div className="space-y-3 p-3 bg-slate-50 rounded-lg">
+              <h5 className="font-medium text-sm">🚗 Vehículo en Trade</h5>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <Input placeholder="Make" value={editData.trade_make || ''} onChange={(e) => setEditData({ ...editData, trade_make: e.target.value })} />
+                <Input placeholder="Model" value={editData.trade_model || ''} onChange={(e) => setEditData({ ...editData, trade_model: e.target.value })} />
+                <Input placeholder="Year" value={editData.trade_year || ''} onChange={(e) => setEditData({ ...editData, trade_year: e.target.value })} />
+                <Select value={editData.trade_title || ''} onValueChange={(value) => setEditData({ ...editData, trade_title: value })}>
+                  <SelectTrigger><SelectValue placeholder="Title" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Clean Title">Clean Title</SelectItem>
+                    <SelectItem value="Salvaged">Salvaged</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input placeholder="Miles" value={editData.trade_miles || ''} onChange={(e) => setEditData({ ...editData, trade_miles: e.target.value })} />
+                <Select value={editData.trade_plate || ''} onValueChange={(value) => setEditData({ ...editData, trade_plate: value })}>
+                  <SelectTrigger><SelectValue placeholder="Plate" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CA">CA</SelectItem>
+                    <SelectItem value="Out of State">Out of State</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Input placeholder="Estimated Value $0.00" value={editData.trade_estimated_value || ''} onChange={(e) => setEditData({ ...editData, trade_estimated_value: e.target.value })} />
+            </div>
+          )}
+        </div>
+
+        {/* Dealer */}
+        <div className="mb-4">
+          <Label className="form-label mb-1 block text-xs">Dealer</Label>
           <Select value={editData.dealer || ''} onValueChange={(value) => setEditData({ ...editData, dealer: value })}>
-            <SelectTrigger>
-              <SelectValue placeholder="Dealer" />
+            <SelectTrigger className="max-w-xs">
+              <SelectValue placeholder="Seleccionar dealer" />
             </SelectTrigger>
             <SelectContent>
               {configLists?.dealers?.map((dealer) => (
@@ -1285,10 +1466,10 @@ function RecordCard({
           </Select>
         </div>
 
-        {/* Sold Status */}
-        <div className="mb-3">
-          <Label className="form-label mb-2 block">Sold</Label>
-          <Select value={editData.finance_status} onValueChange={(value) => setEditData({ ...editData, finance_status: value })}>
+        {/* Finance Status */}
+        <div className="mb-4">
+          <Label className="form-label mb-1 block text-xs">Finance Status</Label>
+          <Select value={editData.finance_status || 'no'} onValueChange={(value) => setEditData({ ...editData, finance_status: value })}>
             <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
@@ -1302,14 +1483,14 @@ function RecordCard({
 
         {/* Vehicle Info */}
         {(editData.finance_status === 'financiado' || editData.finance_status === 'lease') && (
-          <div className="bg-amber-50 rounded-lg p-3 mb-3 border border-amber-200">
-            <Label className="form-label mb-2 block text-amber-700">Vehicle Information</Label>
+          <div className="bg-blue-50 rounded-lg p-3 mb-4 border border-blue-200">
+            <Label className="form-label mb-2 block text-blue-700 text-sm">Vehicle Information</Label>
             <div className="grid grid-cols-2 gap-3">
-              <Input placeholder="Make" value={editData.vehicle_make} onChange={(e) => setEditData({ ...editData, vehicle_make: e.target.value })} />
-              <Input placeholder="Year" value={editData.vehicle_year} onChange={(e) => setEditData({ ...editData, vehicle_year: e.target.value })} />
+              <Input placeholder="Make" value={editData.vehicle_make || ''} onChange={(e) => setEditData({ ...editData, vehicle_make: e.target.value })} />
+              <Input placeholder="Year" value={editData.vehicle_year || ''} onChange={(e) => setEditData({ ...editData, vehicle_year: e.target.value })} />
             </div>
             <div className="grid grid-cols-3 gap-3 mt-3">
-              <Select value={editData.sale_month} onValueChange={(value) => setEditData({ ...editData, sale_month: value })}>
+              <Select value={editData.sale_month || ''} onValueChange={(value) => setEditData({ ...editData, sale_month: value })}>
                 <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
                 <SelectContent>
                   {[...Array(12)].map((_, i) => (
@@ -1317,7 +1498,7 @@ function RecordCard({
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={editData.sale_day} onValueChange={(value) => setEditData({ ...editData, sale_day: value })}>
+              <Select value={editData.sale_day || ''} onValueChange={(value) => setEditData({ ...editData, sale_day: value })}>
                 <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
                 <SelectContent>
                   {[...Array(31)].map((_, i) => (
@@ -1325,7 +1506,7 @@ function RecordCard({
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={editData.sale_year} onValueChange={(value) => setEditData({ ...editData, sale_year: value })}>
+              <Select value={editData.sale_year || ''} onValueChange={(value) => setEditData({ ...editData, sale_year: value })}>
                 <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
                 <SelectContent>
                   {[2024, 2025, 2026].map((year) => (
