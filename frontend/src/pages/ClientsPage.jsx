@@ -1680,7 +1680,7 @@ function RecordCard({
 }
 
 // Co-Signers Section Component
-function CoSignersSection({ clientId, cosigners, onRefresh }) {
+function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
   const { t } = useTranslation();
   const [showAdd, setShowAdd] = useState(false);
   const [addMode, setAddMode] = useState('search'); // 'search' or 'new'
@@ -1689,6 +1689,26 @@ function CoSignersSection({ clientId, cosigners, onRefresh }) {
   const [newCosigner, setNewCosigner] = useState({
     first_name: '', last_name: '', phone: '', email: '', address: '', apartment: ''
   });
+  // Co-signer profile view state
+  const [viewingCosigner, setViewingCosigner] = useState(null);
+  const [cosignerRecords, setCosignerRecords] = useState([]);
+  const [showRecordForm, setShowRecordForm] = useState(false);
+  const [newCosignerRecord, setNewCosignerRecord] = useState(null);
+
+  const emptyCosignerRecord = {
+    has_id: false, id_type: '',
+    has_poi: false, poi_type: '',
+    ssn: false, itin: false, self_employed: false,
+    has_por: false, por_types: [],
+    bank: '', bank_deposit_type: '',
+    auto: '', credit: '', auto_loan: '',
+    down_payment_type: '', down_payment_cash: '', down_payment_card: '',
+    trade_make: '', trade_model: '', trade_year: '', trade_title: '',
+    trade_miles: '', trade_plate: '', trade_estimated_value: '',
+    dealer: '', finance_status: 'no',
+    vehicle_make: '', vehicle_year: '',
+    sale_month: '', sale_day: '', sale_year: ''
+  };
 
   const searchByPhone = async () => {
     try {
@@ -1723,9 +1743,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh }) {
       return;
     }
     try {
-      // Create new client as co-signer
       const clientRes = await axios.post(`${API}/clients`, newCosigner);
-      // Link as co-signer
       await axios.post(`${API}/cosigners`, {
         buyer_client_id: clientId,
         cosigner_client_id: clientRes.data.id
@@ -1750,6 +1768,51 @@ function CoSignersSection({ clientId, cosigners, onRefresh }) {
     }
   };
 
+  // View co-signer profile and load their records
+  const viewCosignerProfile = async (cosigner) => {
+    setViewingCosigner(cosigner);
+    try {
+      const response = await axios.get(`${API}/user-records/client/${cosigner.id}`);
+      setCosignerRecords(response.data);
+    } catch (error) {
+      console.error('Error loading co-signer records:', error);
+      setCosignerRecords([]);
+    }
+  };
+
+  const closeCosignerProfile = () => {
+    setViewingCosigner(null);
+    setCosignerRecords([]);
+    setShowRecordForm(false);
+    setNewCosignerRecord(null);
+  };
+
+  const openRecordForm = () => {
+    setNewCosignerRecord({ ...emptyCosignerRecord });
+    setShowRecordForm(true);
+  };
+
+  const saveCosignerRecord = async () => {
+    if (!viewingCosigner || !newCosignerRecord) return;
+    try {
+      await axios.post(`${API}/user-records`, {
+        client_id: viewingCosigner.id,
+        ...newCosignerRecord,
+        sale_month: newCosignerRecord.sale_month ? parseInt(newCosignerRecord.sale_month) : null,
+        sale_day: newCosignerRecord.sale_day ? parseInt(newCosignerRecord.sale_day) : null,
+        sale_year: newCosignerRecord.sale_year ? parseInt(newCosignerRecord.sale_year) : null
+      });
+      toast.success('Record saved for co-signer');
+      setShowRecordForm(false);
+      setNewCosignerRecord(null);
+      // Reload co-signer records
+      const response = await axios.get(`${API}/user-records/client/${viewingCosigner.id}`);
+      setCosignerRecords(response.data);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save record');
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -1766,20 +1829,282 @@ function CoSignersSection({ clientId, cosigners, onRefresh }) {
       {cosigners.length > 0 && (
         <div className="space-y-2 mb-3">
           {cosigners.map((relation) => (
-            <div key={relation.id} className="flex items-center justify-between bg-white rounded-lg border border-purple-200 p-3">
-              <div className="flex items-center gap-3">
-                <span className="cosigner-badge">CO-SIGNER</span>
-                <div>
-                  <span className="font-medium">{relation.cosigner?.first_name} {relation.cosigner?.last_name}</span>
-                  <div className="text-sm text-slate-400">
-                    {relation.cosigner?.phone}
-                    {relation.cosigner?.email && ` • ${relation.cosigner?.email}`}
+            <div key={relation.id} className="bg-white rounded-lg border border-purple-200 overflow-hidden">
+              {/* Co-signer Header - Clickable */}
+              <div 
+                className="flex items-center justify-between p-3 cursor-pointer hover:bg-purple-50 transition-colors"
+                onClick={() => viewCosignerProfile(relation.cosigner)}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="cosigner-badge">CO-SIGNER</span>
+                  <div>
+                    <span className="font-medium text-purple-700 hover:underline">
+                      {relation.cosigner?.first_name} {relation.cosigner?.last_name}
+                    </span>
+                    <div className="text-sm text-slate-400">
+                      {relation.cosigner?.phone}
+                      {relation.cosigner?.email && ` • ${relation.cosigner?.email}`}
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <ChevronRight className="w-4 h-4 text-purple-400" />
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    onClick={(e) => { e.stopPropagation(); removeCosigner(relation.id); }}
+                  >
+                    <Trash2 className="w-4 h-4 text-slate-400" />
+                  </Button>
+                </div>
               </div>
-              <Button size="sm" variant="ghost" onClick={() => removeCosigner(relation.id)}>
-                <Trash2 className="w-4 h-4 text-slate-400" />
-              </Button>
+
+              {/* Co-signer Profile Expanded View */}
+              {viewingCosigner?.id === relation.cosigner?.id && (
+                <div className="border-t border-purple-200 bg-purple-50/50 p-4">
+                  {/* Profile Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h5 className="font-semibold text-purple-800">
+                        Perfil: {viewingCosigner.first_name} {viewingCosigner.last_name}
+                      </h5>
+                      <p className="text-sm text-slate-500">
+                        {viewingCosigner.phone} • {viewingCosigner.email || 'Sin email'}
+                      </p>
+                      {viewingCosigner.address && (
+                        <p className="text-xs text-slate-400">{viewingCosigner.address}</p>
+                      )}
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={closeCosignerProfile}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  {/* Co-signer Records Section */}
+                  <div className="bg-white rounded-lg border border-purple-200 p-3">
+                    <div className="flex items-center justify-between mb-3">
+                      <h6 className="font-medium text-slate-700 flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Records ({cosignerRecords.length})
+                      </h6>
+                      {!showRecordForm && (
+                        <Button size="sm" variant="outline" onClick={openRecordForm}>
+                          <Plus className="w-3 h-3 mr-1" />
+                          Agregar Record
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Existing Records for Co-signer */}
+                    {cosignerRecords.length > 0 && !showRecordForm && (
+                      <div className="space-y-2 mb-3">
+                        {cosignerRecords.map((rec) => (
+                          <div key={rec.id} className="bg-slate-50 rounded p-2 text-sm">
+                            <div className="flex flex-wrap gap-1 mb-1">
+                              {rec.has_id && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">ID: {rec.id_type}</span>}
+                              {rec.has_poi && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">POI: {rec.poi_type}</span>}
+                              {rec.ssn && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">SSN</span>}
+                              {rec.itin && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">ITIN</span>}
+                              {rec.self_employed && <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-xs">Self Employed</span>}
+                            </div>
+                            <div className="text-slate-500 text-xs">
+                              {rec.bank && `Bank: ${rec.bank}`}
+                              {rec.credit && ` • Credit: ${rec.credit}`}
+                              {rec.down_payment_type && ` • Down: ${rec.down_payment_type}`}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {cosignerRecords.length === 0 && !showRecordForm && (
+                      <p className="text-sm text-slate-400 italic">No hay records para este co-signer</p>
+                    )}
+
+                    {/* Add Record Form for Co-signer */}
+                    {showRecordForm && newCosignerRecord && (
+                      <div className="space-y-3 mt-3 p-3 bg-slate-50 rounded-lg border">
+                        <h6 className="font-medium text-slate-700 text-sm">Nuevo Record para Co-signer</h6>
+                        
+                        {/* ID & POI Row */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={newCosignerRecord.has_id}
+                                onCheckedChange={(checked) => setNewCosignerRecord({ ...newCosignerRecord, has_id: checked })}
+                                id="cs-has_id"
+                              />
+                              <Label htmlFor="cs-has_id" className="text-sm font-medium">ID</Label>
+                            </div>
+                            {newCosignerRecord.has_id && (
+                              <Select value={newCosignerRecord.id_type} onValueChange={(v) => setNewCosignerRecord({ ...newCosignerRecord, id_type: v })}>
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder="Tipo ID" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {configLists?.id_type?.map((item) => (
+                                    <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={newCosignerRecord.has_poi}
+                                onCheckedChange={(checked) => setNewCosignerRecord({ ...newCosignerRecord, has_poi: checked })}
+                                id="cs-has_poi"
+                              />
+                              <Label htmlFor="cs-has_poi" className="text-sm font-medium">POI</Label>
+                            </div>
+                            {newCosignerRecord.has_poi && (
+                              <Select value={newCosignerRecord.poi_type} onValueChange={(v) => setNewCosignerRecord({ ...newCosignerRecord, poi_type: v })}>
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder="Tipo POI" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {configLists?.poi_type?.map((item) => (
+                                    <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Checkboxes Row */}
+                        <div className="flex flex-wrap gap-3">
+                          <div className="flex items-center gap-1">
+                            <Checkbox checked={newCosignerRecord.ssn} onCheckedChange={(c) => setNewCosignerRecord({ ...newCosignerRecord, ssn: c })} id="cs-ssn" />
+                            <Label htmlFor="cs-ssn" className="text-xs">SSN</Label>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Checkbox checked={newCosignerRecord.itin} onCheckedChange={(c) => setNewCosignerRecord({ ...newCosignerRecord, itin: c })} id="cs-itin" />
+                            <Label htmlFor="cs-itin" className="text-xs">ITIN</Label>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Checkbox checked={newCosignerRecord.self_employed} onCheckedChange={(c) => setNewCosignerRecord({ ...newCosignerRecord, self_employed: c })} id="cs-se" />
+                            <Label htmlFor="cs-se" className="text-xs">Self Employed</Label>
+                          </div>
+                        </div>
+
+                        {/* POR */}
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              checked={newCosignerRecord.has_por}
+                              onCheckedChange={(checked) => setNewCosignerRecord({ ...newCosignerRecord, has_por: checked })}
+                              id="cs-has_por"
+                            />
+                            <Label htmlFor="cs-has_por" className="text-sm font-medium">POR</Label>
+                          </div>
+                          {newCosignerRecord.has_por && (
+                            <div className="flex flex-wrap gap-2 ml-5">
+                              {configLists?.por_type?.map((item) => (
+                                <div key={item.id} className="flex items-center gap-1">
+                                  <Checkbox
+                                    checked={(newCosignerRecord.por_types || []).includes(item.name)}
+                                    onCheckedChange={(checked) => {
+                                      const current = newCosignerRecord.por_types || [];
+                                      setNewCosignerRecord({
+                                        ...newCosignerRecord,
+                                        por_types: checked ? [...current, item.name] : current.filter(t => t !== item.name)
+                                      });
+                                    }}
+                                  />
+                                  <Label className="text-xs">{item.name}</Label>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Bank Row */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <Select value={newCosignerRecord.bank} onValueChange={(v) => setNewCosignerRecord({ ...newCosignerRecord, bank: v })}>
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="Bank" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-48">
+                              {configLists?.banks?.map((b) => (
+                                <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select value={newCosignerRecord.bank_deposit_type} onValueChange={(v) => setNewCosignerRecord({ ...newCosignerRecord, bank_deposit_type: v })}>
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="Tipo Depósito" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Deposito Directo">Deposito Directo</SelectItem>
+                              <SelectItem value="No deposito directo">No deposito directo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Credit & Auto */}
+                        <div className="grid grid-cols-3 gap-2">
+                          <Input placeholder="Credit" value={newCosignerRecord.credit} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, credit: e.target.value })} className="h-8 text-sm" />
+                          <Select value={newCosignerRecord.auto} onValueChange={(v) => setNewCosignerRecord({ ...newCosignerRecord, auto: v })}>
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="Auto" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-48">
+                              {configLists?.cars?.map((c) => (
+                                <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input placeholder="Auto Loan" value={newCosignerRecord.auto_loan} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, auto_loan: e.target.value })} className="h-8 text-sm" />
+                        </div>
+
+                        {/* Down Payment Compact */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-500">Down:</span>
+                          {['Cash', 'Tarjeta', 'Trade'].map((type) => (
+                            <div key={type} className="flex items-center gap-1">
+                              <Checkbox
+                                checked={newCosignerRecord.down_payment_type === type}
+                                onCheckedChange={(checked) => setNewCosignerRecord({ ...newCosignerRecord, down_payment_type: checked ? type : '' })}
+                              />
+                              <Label className="text-xs">{type}</Label>
+                            </div>
+                          ))}
+                          {newCosignerRecord.down_payment_type === 'Cash' && (
+                            <Input placeholder="$" value={newCosignerRecord.down_payment_cash} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, down_payment_cash: e.target.value })} className="h-7 w-20 text-sm" />
+                          )}
+                          {newCosignerRecord.down_payment_type === 'Tarjeta' && (
+                            <Input placeholder="$" value={newCosignerRecord.down_payment_card} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, down_payment_card: e.target.value })} className="h-7 w-20 text-sm" />
+                          )}
+                        </div>
+
+                        {/* Trade-in details compact */}
+                        {newCosignerRecord.down_payment_type === 'Trade' && (
+                          <div className="grid grid-cols-3 gap-2 p-2 bg-white rounded border text-xs">
+                            <Input placeholder="Make" value={newCosignerRecord.trade_make} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_make: e.target.value })} className="h-7 text-xs" />
+                            <Input placeholder="Model" value={newCosignerRecord.trade_model} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_model: e.target.value })} className="h-7 text-xs" />
+                            <Input placeholder="Year" value={newCosignerRecord.trade_year} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_year: e.target.value })} className="h-7 text-xs" />
+                            <Input placeholder="Miles" value={newCosignerRecord.trade_miles} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_miles: e.target.value })} className="h-7 text-xs" />
+                            <Input placeholder="Est. Value" value={newCosignerRecord.trade_estimated_value} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_estimated_value: e.target.value })} className="h-7 text-xs" />
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-2 pt-2">
+                          <Button size="sm" variant="outline" onClick={() => { setShowRecordForm(false); setNewCosignerRecord(null); }}>
+                            Cancelar
+                          </Button>
+                          <Button size="sm" onClick={saveCosignerRecord}>
+                            Guardar Record
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
