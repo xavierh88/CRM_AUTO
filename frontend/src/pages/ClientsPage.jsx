@@ -1792,8 +1792,19 @@ function RecordCard({
               SOLD - {record.finance_status}
             </span>
           )}
+          {/* Show collaborator badge if exists */}
+          {record.collaborator_name && (
+            <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1">
+              <Users className="w-3 h-3" />
+              {record.collaborator_name}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1">
+          {/* Email Report button */}
+          <Button size="sm" variant="ghost" onClick={() => setShowEmailDialog(true)} title="Enviar Reporte por Email" className="relative">
+            <Mail className="w-4 h-4 text-green-500" />
+          </Button>
           {/* Comments button with counter */}
           <Button size="sm" variant="ghost" onClick={openCommentsDialog} title="Comentarios" className="relative">
             <MessageCircle className="w-4 h-4 text-blue-400" />
