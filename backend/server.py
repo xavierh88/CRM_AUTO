@@ -967,6 +967,335 @@ async def delete_client_comment(client_id: str, comment_id: str, current_user: d
     await db.client_comments.delete_one({"id": comment_id})
     return {"message": "Comment deleted"}
 
+# ==================== SALESPERSONS LIST & EMAIL REPORT ====================
+
+@api_router.get("/salespersons")
+async def get_salespersons(current_user: dict = Depends(get_current_user)):
+    """Get list of all approved salespersons for collaborator selection"""
+    users = await db.users.find(
+        {"status": "approved", "role": {"$in": ["salesperson", "admin"]}},
+        {"_id": 0, "id": 1, "name": 1, "email": 1}
+    ).to_list(100)
+    return users
+
+class EmailReportRequest(BaseModel):
+    emails: List[str]
+    record_id: str
+    client_id: str
+    include_documents: bool = True
+
+@api_router.post("/send-record-report")
+async def send_record_report(request: EmailReportRequest, current_user: dict = Depends(get_current_user)):
+    """Send record report via email to specified addresses"""
+    
+    # Get record data
+    record = await db.user_records.find_one({"id": request.record_id}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="Record not found")
+    
+    # Get client data
+    client = await db.clients.find_one({"id": request.client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Build email body
+    email_body = f"""
+<html>
+<head>
+<style>
+body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+.header {{ background: #2563eb; color: white; padding: 20px; text-align: center; }}
+.section {{ background: #f8fafc; padding: 15px; margin: 10px 0; border-radius: 8px; }}
+.section-title {{ color: #1e40af; font-weight: bold; margin-bottom: 10px; border-bottom: 2px solid #3b82f6; padding-bottom: 5px; }}
+.info-row {{ padding: 5px 0; }}
+.label {{ color: #64748b; font-weight: 500; }}
+.value {{ color: #1e293b; }}
+.badge {{ display: inline-block; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin: 2px; }}
+.badge-warning {{ background: #fef3c7; color: #92400e; }}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>📋 Reporte de Cliente</h1>
+<p>Generado por: {current_user.get('name', current_user.get('email'))}</p>
+</div>
+
+<div class="section">
+<div class="section-title">👤 Información del Cliente</div>
+<div class="info-row"><span class="label">Nombre:</span> <span class="value">{client.get('first_name', '')} {client.get('last_name', '')}</span></div>
+<div class="info-row"><span class="label">Teléfono:</span> <span class="value">{client.get('phone', 'N/A')}</span></div>
+<div class="info-row"><span class="label">Email:</span> <span class="value">{client.get('email', 'N/A')}</span></div>
+<div class="info-row"><span class="label">Dirección:</span> <span class="value">{client.get('address', 'N/A')} {client.get('apartment', '')}</span></div>
+</div>
+
+<div class="section">
+<div class="section-title">📄 Documentación</div>
+<div class="info-row">
+"""
+    
+    # ID Information
+    if record.get('has_id'):
+        email_body += f'<span class="badge">✓ ID: {record.get("id_type", "Sí")}</span> '
+    else:
+        email_body += '<span class="badge badge-warning">✗ Sin ID</span> '
+    
+    # POI Information
+    if record.get('has_poi'):
+        email_body += f'<span class="badge">✓ POI: {record.get("poi_type", "Sí")}</span> '
+    else:
+        email_body += '<span class="badge badge-warning">✗ Sin POI</span> '
+    
+    # SSN/ITIN
+    if record.get('ssn'):
+        email_body += '<span class="badge">✓ SSN</span> '
+    if record.get('itin'):
+        email_body += '<span class="badge">✓ ITIN</span> '
+    if record.get('self_employed'):
+        email_body += '<span class="badge badge-warning">Self Employed</span> '
+    
+    # POR Information
+    if record.get('has_por'):
+        por_types = record.get('por_types', [])
+        por_str = ', '.join(por_types) if por_types else 'Sí'
+        email_body += f'<span class="badge">✓ POR: {por_str}</span> '
+    
+    email_body += """
+</div>
+</div>
+
+<div class="section">
+<div class="section-title">🏦 Información Bancaria y Financiera</div>
+"""
+    
+    if record.get('bank'):
+        email_body += f'<div class="info-row"><span class="label">Banco:</span> <span class="value">{record.get("bank")}</span></div>'
+    if record.get('bank_deposit_type'):
+        email_body += f'<div class="info-row"><span class="label">Tipo de Depósito:</span> <span class="value">{record.get("bank_deposit_type")}</span></div>'
+    if record.get('direct_deposit_amount'):
+        email_body += f'<div class="info-row"><span class="label">Monto Depósito Directo:</span> <span class="value">${record.get("direct_deposit_amount")}</span></div>'
+    if record.get('credit'):
+        email_body += f'<div class="info-row"><span class="label">Credit Score:</span> <span class="value">{record.get("credit")}</span></div>'
+    if record.get('auto_loan'):
+        email_body += f'<div class="info-row"><span class="label">Auto Loan:</span> <span class="value">${record.get("auto_loan")}</span></div>'
+    
+    email_body += """
+</div>
+
+<div class="section">
+<div class="section-title">🚗 Vehículo de Interés</div>
+"""
+    
+    if record.get('auto'):
+        email_body += f'<div class="info-row"><span class="label">Auto:</span> <span class="value">{record.get("auto")}</span></div>'
+    if record.get('dealer'):
+        email_body += f'<div class="info-row"><span class="label">Dealer:</span> <span class="value">{record.get("dealer")}</span></div>'
+    
+    email_body += """
+</div>
+
+<div class="section">
+<div class="section-title">💰 Down Payment</div>
+"""
+    
+    if record.get('down_payment_type'):
+        email_body += f'<div class="info-row"><span class="label">Tipo:</span> <span class="value">{record.get("down_payment_type")}</span></div>'
+    if record.get('down_payment_cash'):
+        email_body += f'<div class="info-row"><span class="label">Efectivo:</span> <span class="value">${record.get("down_payment_cash")}</span></div>'
+    if record.get('down_payment_card'):
+        email_body += f'<div class="info-row"><span class="label">Tarjeta:</span> <span class="value">${record.get("down_payment_card")}</span></div>'
+    
+    # Trade-in info
+    if record.get('trade_make'):
+        email_body += f"""
+<div class="info-row"><span class="label">Trade-in:</span> <span class="value">{record.get('trade_make', '')} {record.get('trade_model', '')} {record.get('trade_year', '')}</span></div>
+<div class="info-row"><span class="label">Title:</span> <span class="value">{record.get('trade_title', 'N/A')}</span></div>
+<div class="info-row"><span class="label">Millas:</span> <span class="value">{record.get('trade_miles', 'N/A')}</span></div>
+<div class="info-row"><span class="label">Valor Estimado:</span> <span class="value">${record.get('trade_estimated_value', 'N/A')}</span></div>
+"""
+    
+    email_body += """
+</div>
+"""
+    
+    # Documents status
+    if request.include_documents:
+        email_body += """
+<div class="section">
+<div class="section-title">📎 Documentos del Cliente</div>
+"""
+        if client.get('id_uploaded'):
+            email_body += '<div class="info-row"><span class="badge">✓ ID Subido</span></div>'
+        else:
+            email_body += '<div class="info-row"><span class="badge badge-warning">✗ ID Pendiente</span></div>'
+        
+        if client.get('income_proof_uploaded'):
+            email_body += '<div class="info-row"><span class="badge">✓ Comprobante de Ingresos Subido</span></div>'
+        else:
+            email_body += '<div class="info-row"><span class="badge badge-warning">✗ Comprobante de Ingresos Pendiente</span></div>'
+        
+        if client.get('residence_proof_uploaded'):
+            email_body += '<div class="info-row"><span class="badge">✓ Comprobante de Residencia Subido</span></div>'
+        else:
+            email_body += '<div class="info-row"><span class="badge badge-warning">✗ Comprobante de Residencia Pendiente</span></div>'
+        
+        email_body += """
+</div>
+"""
+    
+    # Finance status
+    if record.get('finance_status') and record.get('finance_status') != 'no':
+        email_body += f"""
+<div class="section">
+<div class="section-title">✅ Estado de Financiamiento</div>
+<div class="info-row"><span class="label">Estado:</span> <span class="value" style="color: green; font-weight: bold;">{record.get('finance_status').upper()}</span></div>
+"""
+        if record.get('vehicle_make'):
+            email_body += f'<div class="info-row"><span class="label">Vehículo:</span> <span class="value">{record.get("vehicle_make")} {record.get("vehicle_year", "")}</span></div>'
+        if record.get('sale_month') and record.get('sale_day') and record.get('sale_year'):
+            email_body += f'<div class="info-row"><span class="label">Fecha de Venta:</span> <span class="value">{record.get("sale_month")}/{record.get("sale_day")}/{record.get("sale_year")}</span></div>'
+        email_body += """
+</div>
+"""
+    
+    # Collaborator info
+    if record.get('collaborator_name'):
+        email_body += f"""
+<div class="section">
+<div class="section-title">👥 Colaborador</div>
+<div class="info-row"><span class="label">Trabajando con:</span> <span class="value">{record.get('collaborator_name')}</span></div>
+</div>
+"""
+    
+    email_body += f"""
+<div style="text-align: center; padding: 20px; color: #64748b; font-size: 12px;">
+<p>Este reporte fue generado automáticamente desde DealerCRM</p>
+<p>Vendedor: {record.get('salesperson_name', 'N/A')}</p>
+<p>Fecha: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC</p>
+</div>
+</body>
+</html>
+"""
+    
+    # Send email using SMTP
+    smtp_email = os.environ.get('SMTP_EMAIL')
+    smtp_password = os.environ.get('SMTP_PASSWORD')
+    
+    if not smtp_email or not smtp_password:
+        raise HTTPException(status_code=500, detail="Email configuration not set. Please configure SMTP_EMAIL and SMTP_PASSWORD.")
+    
+    try:
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        
+        for recipient_email in request.emails:
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = f"📋 Reporte de Cliente: {client.get('first_name', '')} {client.get('last_name', '')}"
+            msg['From'] = smtp_email
+            msg['To'] = recipient_email.strip()
+            
+            html_part = MIMEText(email_body, 'html')
+            msg.attach(html_part)
+            
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                server.login(smtp_email, smtp_password)
+                server.sendmail(smtp_email, recipient_email.strip(), msg.as_string())
+        
+        return {"message": f"Reporte enviado exitosamente a {len(request.emails)} destinatario(s)", "sent_to": request.emails}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error sending email: {str(e)}")
+
+# ==================== NOTIFICATIONS SYSTEM ====================
+
+@api_router.post("/notifications/collaborator")
+async def send_collaborator_notification(
+    record_id: str,
+    action: str,  # record_updated, appointment_created, appointment_changed, comment_added
+    details: str = "",
+    current_user: dict = Depends(get_current_user)
+):
+    """Send notification to collaborator about record changes"""
+    
+    record = await db.user_records.find_one({"id": record_id}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="Record not found")
+    
+    # Get client info
+    client = await db.clients.find_one({"id": record.get("client_id")}, {"_id": 0})
+    client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}" if client else "Cliente"
+    
+    # Determine who to notify (the other person)
+    notify_user_id = None
+    if record.get('collaborator_id') and record.get('collaborator_id') != current_user['id']:
+        notify_user_id = record.get('collaborator_id')
+    elif record.get('salesperson_id') != current_user['id']:
+        notify_user_id = record.get('salesperson_id')
+    
+    if not notify_user_id:
+        return {"message": "No collaborator to notify"}
+    
+    # Get user to notify
+    notify_user = await db.users.find_one({"id": notify_user_id}, {"_id": 0})
+    if not notify_user or not notify_user.get('email'):
+        return {"message": "Collaborator has no email configured"}
+    
+    # Action messages
+    action_messages = {
+        "record_updated": f"actualizó el record del cliente {client_name}",
+        "appointment_created": f"creó una cita para el cliente {client_name}",
+        "appointment_changed": f"modificó la cita del cliente {client_name}",
+        "comment_added": f"agregó un comentario al record de {client_name}",
+        "collaborator_added": f"te agregó como colaborador en el record de {client_name}"
+    }
+    
+    action_text = action_messages.get(action, f"realizó una acción en el record de {client_name}")
+    
+    # Send email notification
+    smtp_email = os.environ.get('SMTP_EMAIL')
+    smtp_password = os.environ.get('SMTP_PASSWORD')
+    
+    if smtp_email and smtp_password:
+        try:
+            import smtplib
+            from email.mime.multipart import MIMEMultipart
+            from email.mime.text import MIMEText
+            
+            email_body = f"""
+<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+<div style="background: #3b82f6; color: white; padding: 20px; text-align: center;">
+<h2>🔔 Notificación de Colaboración</h2>
+</div>
+<div style="padding: 20px;">
+<p>Hola {notify_user.get('name', notify_user.get('email'))},</p>
+<p><strong>{current_user.get('name', current_user.get('email'))}</strong> {action_text}.</p>
+{f'<p style="background: #f1f5f9; padding: 10px; border-radius: 5px;">{details}</p>' if details else ''}
+<p>Ingresa a DealerCRM para ver los detalles.</p>
+<p style="color: #64748b; font-size: 12px;">Este es un mensaje automático del sistema de colaboración.</p>
+</div>
+</body>
+</html>
+"""
+            
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = f"🔔 {current_user.get('name', 'Usuario')} {action_text}"
+            msg['From'] = smtp_email
+            msg['To'] = notify_user.get('email')
+            
+            html_part = MIMEText(email_body, 'html')
+            msg.attach(html_part)
+            
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                server.login(smtp_email, smtp_password)
+                server.sendmail(smtp_email, notify_user.get('email'), msg.as_string())
+            
+            return {"message": "Notification sent", "notified": notify_user.get('email')}
+        except Exception as e:
+            print(f"Failed to send collaborator notification: {e}")
+            return {"message": "Notification failed", "error": str(e)}
+    
+    return {"message": "Email not configured"}
+
 # ==================== APPOINTMENTS ROUTES ====================
 
 @api_router.post("/appointments", response_model=AppointmentResponse)
