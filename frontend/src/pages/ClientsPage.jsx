@@ -662,9 +662,9 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     // Bank info
     bank: '', bank_deposit_type: '',
     // Vehicle & finance
-    auto: '', credit: '', auto_loan: '', 
-    // Down payment
-    down_payment: '', down_payment_type: '', down_payment_cash: '', down_payment_card: '',
+    auto: '', credit: '', auto_loan: '', auto_loan_bank: '',
+    // Down payment (now supports multiple selections)
+    down_payment: '', down_payment_types: [], down_payment_cash: '', down_payment_card: '',
     // Trade-in details
     trade_make: '', trade_model: '', trade_year: '', trade_title: '', 
     trade_miles: '', trade_plate: '', trade_estimated_value: '',
