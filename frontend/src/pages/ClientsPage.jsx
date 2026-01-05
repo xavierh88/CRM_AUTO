@@ -1366,14 +1366,29 @@ function RecordCard({
   const isOwner = record.salesperson_id === currentUserId;
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
+  const [commentsCount, setCommentsCount] = useState(record.comments_count || 0);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
+
+  // Load comment count on mount
+  useEffect(() => {
+    const fetchCommentsCount = async () => {
+      try {
+        const response = await axios.get(`${API}/user-records/${record.id}/comments`);
+        setCommentsCount(response.data.length);
+      } catch (error) {
+        console.error('Error fetching comments count:', error);
+      }
+    };
+    fetchCommentsCount();
+  }, [record.id]);
 
   const loadComments = async () => {
     setLoadingComments(true);
     try {
       const response = await axios.get(`${API}/user-records/${record.id}/comments`);
       setComments(response.data);
+      setCommentsCount(response.data.length);
     } catch (error) {
       console.error('Error loading comments:', error);
     } finally {
