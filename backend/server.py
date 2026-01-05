@@ -248,6 +248,10 @@ class ClientResponse(BaseModel):
     apartment: Optional[str] = None
     id_uploaded: bool = False
     income_proof_uploaded: bool = False
+    residence_proof_uploaded: bool = False
+    id_file_url: Optional[str] = None
+    income_proof_file_url: Optional[str] = None
+    residence_proof_file_url: Optional[str] = None
     last_record_date: Optional[str] = None  # Date of last record created (not last_contact)
     created_at: str
     created_by: str
