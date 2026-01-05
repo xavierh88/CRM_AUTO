@@ -1603,35 +1603,42 @@ function RecordCard({
           </div>
         </div>
 
-        {/* Down Payment Section */}
+        {/* Down Payment Section - Multi-select */}
         <div className="border rounded-lg p-3 mb-4">
-          <Label className="form-label mb-2 block font-medium text-sm">Down Payment</Label>
+          <Label className="form-label mb-2 block font-medium text-sm">Down Payment (puede seleccionar varios)</Label>
           <div className="flex flex-wrap gap-4 mb-3">
             {['Cash', 'Tarjeta', 'Trade'].map((type) => (
               <div key={type} className="flex items-center gap-2">
                 <Checkbox
-                  checked={editData.down_payment_type === type}
-                  onCheckedChange={(checked) => setEditData({ 
-                    ...editData, 
-                    down_payment_type: checked ? type : '',
-                    down_payment_cash: type !== 'Cash' ? '' : editData.down_payment_cash,
-                    down_payment_card: type !== 'Tarjeta' ? '' : editData.down_payment_card
-                  })}
+                  checked={(editData.down_payment_types || (editData.down_payment_type ? editData.down_payment_type.split(', ') : [])).includes(type)}
+                  onCheckedChange={(checked) => {
+                    const currentTypes = editData.down_payment_types || (editData.down_payment_type ? editData.down_payment_type.split(', ') : []);
+                    const newTypes = checked 
+                      ? [...currentTypes.filter(t => t), type]
+                      : currentTypes.filter(t => t !== type);
+                    setEditData({ 
+                      ...editData, 
+                      down_payment_types: newTypes,
+                      down_payment_type: newTypes.join(', '),
+                      down_payment_cash: !newTypes.includes('Cash') ? '' : editData.down_payment_cash,
+                      down_payment_card: !newTypes.includes('Tarjeta') ? '' : editData.down_payment_card
+                    });
+                  }}
                 />
                 <Label>{type}</Label>
               </div>
             ))}
           </div>
 
-          {editData.down_payment_type === 'Cash' && (
-            <Input placeholder="Monto en Cash $0.00" value={editData.down_payment_cash || ''} onChange={(e) => setEditData({ ...editData, down_payment_cash: e.target.value })} className="max-w-xs" />
+          {(editData.down_payment_types || (editData.down_payment_type ? editData.down_payment_type.split(', ') : [])).includes('Cash') && (
+            <Input placeholder="Monto en Cash $0.00" value={editData.down_payment_cash || ''} onChange={(e) => setEditData({ ...editData, down_payment_cash: e.target.value })} className="max-w-xs mb-2" />
           )}
 
-          {editData.down_payment_type === 'Tarjeta' && (
-            <Input placeholder="Monto en Tarjeta $0.00" value={editData.down_payment_card || ''} onChange={(e) => setEditData({ ...editData, down_payment_card: e.target.value })} className="max-w-xs" />
+          {(editData.down_payment_types || (editData.down_payment_type ? editData.down_payment_type.split(', ') : [])).includes('Tarjeta') && (
+            <Input placeholder="Monto en Tarjeta $0.00" value={editData.down_payment_card || ''} onChange={(e) => setEditData({ ...editData, down_payment_card: e.target.value })} className="max-w-xs mb-2" />
           )}
 
-          {editData.down_payment_type === 'Trade' && (
+          {(editData.down_payment_types || (editData.down_payment_type ? editData.down_payment_type.split(', ') : [])).includes('Trade') && (
             <div className="space-y-3 p-3 bg-slate-50 rounded-lg">
               <h5 className="font-medium text-sm">🚗 Vehículo en Trade</h5>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
