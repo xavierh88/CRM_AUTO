@@ -2727,7 +2727,16 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onRefresh }) {
     address: client.address || '',
     apartment: client.apartment || ''
   });
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null); // 'id' or 'income'
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null); // 'id', 'income', or 'residence'
+  const [uploading, setUploading] = useState(null); // 'id', 'income', or 'residence'
+  const [clientDocs, setClientDocs] = useState({
+    id_uploaded: client.id_uploaded || false,
+    income_proof_uploaded: client.income_proof_uploaded || false,
+    residence_proof_uploaded: client.residence_proof_uploaded || false,
+    id_file_url: client.id_file_url || null,
+    income_proof_file_url: client.income_proof_file_url || null,
+    residence_proof_file_url: client.residence_proof_file_url || null
+  });
 
   const handleSave = async () => {
     try {
@@ -2741,13 +2750,85 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onRefresh }) {
     }
   };
 
+  const handleUploadDocument = async (docType, file) => {
+    if (!file) return;
+    
+    setUploading(docType);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('doc_type', docType);
+      
+      const response = await axios.post(`${API}/clients/${client.id}/documents/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      // Update local state
+      if (docType === 'id') {
+        setClientDocs(prev => ({ ...prev, id_uploaded: true, id_file_url: response.data.file_url }));
+      } else if (docType === 'income') {
+        setClientDocs(prev => ({ ...prev, income_proof_uploaded: true, income_proof_file_url: response.data.file_url }));
+      } else if (docType === 'residence') {
+        setClientDocs(prev => ({ ...prev, residence_proof_uploaded: true, residence_proof_file_url: response.data.file_url }));
+      }
+      
+      toast.success('Documento subido correctamente');
+      onRefresh();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al subir documento');
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  const handleDownloadDocument = async (docType) => {
+    try {
+      const response = await axios.get(`${API}/clients/${client.id}/documents/download/${docType}`, {
+        responseType: 'blob'
+      });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${client.first_name}_${client.last_name}_${docType}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error('Error al descargar documento');
+    }
+  };
+
   const handleDeleteDocument = async (docType) => {
     try {
       const updateData = docType === 'id' 
         ? { id_uploaded: false }
-        : { income_proof_uploaded: false };
+        : docType === 'income' 
+        ? { income_proof_uploaded: false }
+        : { residence_proof_uploaded: false };
       
       await axios.put(`${API}/clients/${client.id}/documents`, null, {
+        params: updateData
+      });
+      
+      // Update local state
+      if (docType === 'id') {
+        setClientDocs(prev => ({ ...prev, id_uploaded: false, id_file_url: null }));
+      } else if (docType === 'income') {
+        setClientDocs(prev => ({ ...prev, income_proof_uploaded: false, income_proof_file_url: null }));
+      } else {
+        setClientDocs(prev => ({ ...prev, residence_proof_uploaded: false, residence_proof_file_url: null }));
+      }
+      
+      toast.success(`Documento ${docType === 'id' ? 'ID' : docType === 'income' ? 'Comprobante de Ingresos' : 'Comprobante de Residencia'} eliminado`);
+      setShowDeleteConfirm(null);
+      onRefresh();
+    } catch (error) {
+      toast.error('Error al eliminar documento');
+    }
+  };
         params: updateData
       });
       toast.success(`${docType === 'id' ? 'ID' : 'Income proof'} document removed`);
