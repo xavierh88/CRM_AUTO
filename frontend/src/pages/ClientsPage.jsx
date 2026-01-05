@@ -2597,28 +2597,42 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                           <Input placeholder="Auto Loan" value={newCosignerRecord.auto_loan} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, auto_loan: e.target.value })} className="h-8 text-sm" />
                         </div>
 
-                        {/* Down Payment Compact */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-slate-500">Down:</span>
-                          {['Cash', 'Tarjeta', 'Trade'].map((type) => (
-                            <div key={type} className="flex items-center gap-1">
-                              <Checkbox
-                                checked={newCosignerRecord.down_payment_type === type}
-                                onCheckedChange={(checked) => setNewCosignerRecord({ ...newCosignerRecord, down_payment_type: checked ? type : '' })}
-                              />
-                              <Label className="text-xs">{type}</Label>
-                            </div>
-                          ))}
-                          {newCosignerRecord.down_payment_type === 'Cash' && (
-                            <Input placeholder="$" value={newCosignerRecord.down_payment_cash} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, down_payment_cash: e.target.value })} className="h-7 w-20 text-sm" />
-                          )}
-                          {newCosignerRecord.down_payment_type === 'Tarjeta' && (
-                            <Input placeholder="$" value={newCosignerRecord.down_payment_card} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, down_payment_card: e.target.value })} className="h-7 w-20 text-sm" />
-                          )}
+                        {/* Down Payment - Multi-select */}
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs text-slate-500">Down (puede seleccionar varios):</span>
+                            {['Cash', 'Tarjeta', 'Trade'].map((type) => (
+                              <div key={type} className="flex items-center gap-1">
+                                <Checkbox
+                                  checked={(newCosignerRecord.down_payment_types || []).includes(type)}
+                                  onCheckedChange={(checked) => {
+                                    const currentTypes = newCosignerRecord.down_payment_types || [];
+                                    const newTypes = checked ? [...currentTypes, type] : currentTypes.filter(t => t !== type);
+                                    setNewCosignerRecord({ 
+                                      ...newCosignerRecord, 
+                                      down_payment_types: newTypes,
+                                      down_payment_type: newTypes.join(', '),
+                                      down_payment_cash: !newTypes.includes('Cash') ? '' : newCosignerRecord.down_payment_cash,
+                                      down_payment_card: !newTypes.includes('Tarjeta') ? '' : newCosignerRecord.down_payment_card
+                                    });
+                                  }}
+                                />
+                                <Label className="text-xs">{type}</Label>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {(newCosignerRecord.down_payment_types || []).includes('Cash') && (
+                              <Input placeholder="Monto Cash $" value={newCosignerRecord.down_payment_cash || ''} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, down_payment_cash: e.target.value })} className="h-7 w-28 text-sm" />
+                            )}
+                            {(newCosignerRecord.down_payment_types || []).includes('Tarjeta') && (
+                              <Input placeholder="Monto Tarjeta $" value={newCosignerRecord.down_payment_card || ''} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, down_payment_card: e.target.value })} className="h-7 w-28 text-sm" />
+                            )}
+                          </div>
                         </div>
 
                         {/* Trade-in details compact */}
-                        {newCosignerRecord.down_payment_type === 'Trade' && (
+                        {(newCosignerRecord.down_payment_types || []).includes('Trade') && (
                           <div className="grid grid-cols-3 gap-2 p-2 bg-white rounded border text-xs">
                             <Input placeholder="Make" value={newCosignerRecord.trade_make} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_make: e.target.value })} className="h-7 text-xs" />
                             <Input placeholder="Model" value={newCosignerRecord.trade_model} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_model: e.target.value })} className="h-7 text-xs" />
