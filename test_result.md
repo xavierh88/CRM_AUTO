@@ -170,6 +170,42 @@ backend:
         - comment: "✅ TESTED: Both scheduler endpoints working correctly. GET /api/scheduler/status returns status info. POST /api/scheduler/run-now manually triggers marketing SMS job. Admin-only access enforced."
 
 frontend:
+  - task: "Remove document status circles from client cards"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/ClientsPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Removed CheckCircle2 and XCircle icons that were showing document upload status next to Last Contact in client cards"
+
+  - task: "Direct Deposit Amount Input"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/ClientsPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Added input field for monto when Deposito Directo is selected in Bank Deposit Type. Field shows in both New Record and Edit Record forms"
+
+  - task: "Document Management in Client Info Modal"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/ClientsPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Added upload/download/delete buttons for each document type. Added new Residence Proof document type with house icon"
+
   - task: "Address Autocomplete component"
     implemented: true
     working: true
