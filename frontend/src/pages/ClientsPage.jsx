@@ -614,7 +614,7 @@ export default function ClientsPage() {
 }
 
 // User Records Section Component
-function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAppointmentSMS, configLists }) {
+function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAppointmentSMS, configLists, salespersons }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [showAddRecord, setShowAddRecord] = useState(false);
