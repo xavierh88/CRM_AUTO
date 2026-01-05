@@ -35,11 +35,44 @@ export default function ClientsPage() {
   const [cosigners, setCosigners] = useState({});
   const [inboxClient, setInboxClient] = useState(null); // For SMS inbox dialog
   
+  // Config lists for dropdowns (shared across components)
+  const [configLists, setConfigLists] = useState({ 
+    banks: [], dealers: [], cars: [], 
+    id_type: [], poi_type: [], por_type: [] 
+  });
+  
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const clientsPerPage = 10;
   
   const isAdmin = user?.role === 'admin';
+  
+  // Fetch config lists on mount
+  useEffect(() => {
+    const fetchConfigLists = async () => {
+      try {
+        const [banksRes, dealersRes, carsRes, idTypesRes, poiTypesRes, porTypesRes] = await Promise.all([
+          axios.get(`${API}/config-lists/bank`),
+          axios.get(`${API}/config-lists/dealer`),
+          axios.get(`${API}/config-lists/car`),
+          axios.get(`${API}/config-lists/id_type`).catch(() => ({ data: [] })),
+          axios.get(`${API}/config-lists/poi_type`).catch(() => ({ data: [] })),
+          axios.get(`${API}/config-lists/por_type`).catch(() => ({ data: [] }))
+        ]);
+        setConfigLists({
+          banks: banksRes.data,
+          dealers: dealersRes.data,
+          cars: carsRes.data,
+          id_type: idTypesRes.data,
+          poi_type: poiTypesRes.data,
+          por_type: porTypesRes.data
+        });
+      } catch (error) {
+        console.error('Failed to fetch config lists:', error);
+      }
+    };
+    fetchConfigLists();
+  }, []);
   
   const deleteClient = async (clientId) => {
     if (!window.confirm('¿Está seguro de eliminar este cliente? Se moverá a la papelera.')) return;
