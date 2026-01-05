@@ -1906,6 +1906,56 @@ function RecordCard({
         </div>
       )}
 
+      {/* Email Report Dialog */}
+      {showEmailDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowEmailDialog(false)}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Mail className="w-5 h-5 text-green-500" />
+                Enviar Reporte por Email
+              </h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowEmailDialog(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Destinatarios (separar con comas)</Label>
+                <Input
+                  placeholder="email1@ejemplo.com, email2@ejemplo.com"
+                  value={emailAddresses}
+                  onChange={(e) => setEmailAddresses(e.target.value)}
+                  className="mt-1"
+                />
+                <p className="text-xs text-slate-400 mt-1">Puede enviar a múltiples emails separándolos por comas</p>
+              </div>
+              
+              <div className="bg-slate-50 p-3 rounded-lg text-sm">
+                <p className="font-medium mb-2">El reporte incluirá:</p>
+                <ul className="text-slate-600 space-y-1 text-xs">
+                  <li>• Información del cliente (nombre, teléfono, email, dirección)</li>
+                  <li>• Datos del record (ID, POI, SSN, banco, crédito, etc.)</li>
+                  <li>• Down Payment y detalles de Trade-in</li>
+                  <li>• Estado de documentos subidos</li>
+                  <li>• Estado de financiamiento</li>
+                </ul>
+              </div>
+              
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowEmailDialog(false)} className="flex-1">
+                  Cancelar
+                </Button>
+                <Button onClick={sendEmailReport} disabled={sendingEmail} className="flex-1 bg-green-600 hover:bg-green-700">
+                  {sendingEmail ? 'Enviando...' : 'Enviar Reporte'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Checklist - New format */}
       <div className="flex gap-3 mb-3 flex-wrap">
         {record.has_id && (
