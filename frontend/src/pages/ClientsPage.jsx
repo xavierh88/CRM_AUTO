@@ -35,6 +35,12 @@ export default function ClientsPage() {
   const [cosigners, setCosigners] = useState({});
   const [inboxClient, setInboxClient] = useState(null); // For SMS inbox dialog
   
+  // Client notes/comments state
+  const [notesClient, setNotesClient] = useState(null);
+  const [clientNotes, setClientNotes] = useState([]);
+  const [newClientNote, setNewClientNote] = useState('');
+  const [loadingNotes, setLoadingNotes] = useState(false);
+  
   // Config lists for dropdowns (shared across components)
   const [configLists, setConfigLists] = useState({ 
     banks: [], dealers: [], cars: [], 
