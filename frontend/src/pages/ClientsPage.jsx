@@ -716,8 +716,9 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
       auto: record.auto || '',
       credit: record.credit || '',
       auto_loan: record.auto_loan || '',
-      // Down Payment
+      // Down Payment - support for multi-select
       down_payment_type: record.down_payment_type || '',
+      down_payment_types: record.down_payment_types || (record.down_payment_type ? record.down_payment_type.split(', ').filter(t => t) : []),
       down_payment_cash: record.down_payment_cash || '',
       down_payment_card: record.down_payment_card || '',
       // Trade-in
