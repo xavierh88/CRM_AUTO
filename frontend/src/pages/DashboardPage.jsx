@@ -158,12 +158,12 @@ export default function DashboardPage() {
             </SelectContent>
           </Select>
           
-          <Select value={selectedMonth} onValueChange={handleMonthChange}>
+          <Select value={selectedMonth || "none"} onValueChange={(v) => handleMonthChange(v === "none" ? "" : v)}>
             <SelectTrigger className="w-36">
               <SelectValue placeholder="Mes específico" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">-- Ninguno --</SelectItem>
+              <SelectItem value="none">-- Ninguno --</SelectItem>
               {availableMonths.map((m) => (
                 <SelectItem key={m} value={m}>{formatMonthLabel(m)}</SelectItem>
               ))}
