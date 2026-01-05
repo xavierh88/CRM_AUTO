@@ -392,6 +392,7 @@ export default function ClientsPage() {
                       clientId={client.id}
                       cosigners={cosigners[client.id] || []}
                       onRefresh={() => fetchClientRecords(client.id)}
+                      configLists={configLists}
                     />
                   </div>
                 </CollapsibleContent>
