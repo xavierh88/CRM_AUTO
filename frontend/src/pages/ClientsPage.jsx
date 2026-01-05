@@ -1810,7 +1810,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
       setShowRecordForm(false);
       setNewCosignerRecord(null);
       // Reload co-signer records
-      const response = await axios.get(`${API}/user-records/client/${viewingCosigner.id}`);
+      const response = await axios.get(`${API}/user-records?client_id=${viewingCosigner.id}`);
       setCosignerRecords(response.data);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to save record');
