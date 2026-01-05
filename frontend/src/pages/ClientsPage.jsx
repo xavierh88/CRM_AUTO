@@ -398,18 +398,6 @@ export default function ClientsPage() {
                           <p className="text-sm font-medium text-slate-600">{formatDate(client.last_record_date)}</p>
                         </div>
                       )}
-                      <div className="flex items-center gap-2">
-                        {client.id_uploaded ? (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                        ) : (
-                          <XCircle className="w-5 h-5 text-slate-300" />
-                        )}
-                        {client.income_proof_uploaded ? (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                        ) : (
-                          <XCircle className="w-5 h-5 text-slate-300" />
-                        )}
-                      </div>
                       <Button
                         variant="ghost"
                         size="icon"
