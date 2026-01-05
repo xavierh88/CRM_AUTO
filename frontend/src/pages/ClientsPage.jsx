@@ -1231,6 +1231,52 @@ function RecordCard({
   onEdit, onDelete, isEditing, editData, setEditData, onSaveEdit, onCancelEdit, configLists 
 }) {
   const isOwner = record.salesperson_id === currentUserId;
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
+
+  const loadComments = async () => {
+    setLoadingComments(true);
+    try {
+      const response = await axios.get(`${API}/user-records/${record.id}/comments`);
+      setComments(response.data);
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const openCommentsDialog = () => {
+    setShowComments(true);
+    loadComments();
+  };
+
+  const addComment = async () => {
+    if (!newComment.trim()) return;
+    try {
+      const formData = new FormData();
+      formData.append('comment', newComment);
+      await axios.post(`${API}/user-records/${record.id}/comments`, formData);
+      setNewComment('');
+      loadComments();
+      toast.success('Comentario agregado');
+    } catch (error) {
+      toast.error('Error al agregar comentario');
+    }
+  };
+
+  const deleteComment = async (commentId) => {
+    if (!window.confirm('¿Eliminar este comentario?')) return;
+    try {
+      await axios.delete(`${API}/user-records/${record.id}/comments/${commentId}`);
+      loadComments();
+      toast.success('Comentario eliminado');
+    } catch (error) {
+      toast.error('Error al eliminar comentario');
+    }
+  };
 
   if (isEditing) {
     return (
