@@ -1208,20 +1208,27 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
             </div>
           </div>
 
-          {/* Down Payment Section */}
+          {/* Down Payment Section - Multi-select */}
           <div className="border rounded-lg p-3 mb-4">
-            <Label className="form-label mb-2 block font-medium">Down Payment</Label>
+            <Label className="form-label mb-2 block font-medium">Down Payment (puede seleccionar varios)</Label>
             <div className="flex flex-wrap gap-4 mb-3">
               {['Cash', 'Tarjeta', 'Trade'].map((type) => (
                 <div key={type} className="flex items-center gap-2">
                   <Checkbox
-                    checked={newRecord.down_payment_type === type}
-                    onCheckedChange={(checked) => setNewRecord({ 
-                      ...newRecord, 
-                      down_payment_type: checked ? type : '',
-                      down_payment_cash: type !== 'Cash' ? '' : newRecord.down_payment_cash,
-                      down_payment_card: type !== 'Tarjeta' ? '' : newRecord.down_payment_card
-                    })}
+                    checked={(newRecord.down_payment_types || []).includes(type)}
+                    onCheckedChange={(checked) => {
+                      const currentTypes = newRecord.down_payment_types || [];
+                      const newTypes = checked 
+                        ? [...currentTypes, type]
+                        : currentTypes.filter(t => t !== type);
+                      setNewRecord({ 
+                        ...newRecord, 
+                        down_payment_types: newTypes,
+                        down_payment_type: newTypes.join(', '), // For backward compatibility
+                        down_payment_cash: !newTypes.includes('Cash') ? '' : newRecord.down_payment_cash,
+                        down_payment_card: !newTypes.includes('Tarjeta') ? '' : newRecord.down_payment_card
+                      });
+                    }}
                     id={`new-dp_${type}`}
                   />
                   <Label htmlFor={`new-dp_${type}`}>{type}</Label>
@@ -1229,25 +1236,25 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
               ))}
             </div>
 
-            {newRecord.down_payment_type === 'Cash' && (
+            {(newRecord.down_payment_types || []).includes('Cash') && (
               <Input
                 placeholder="Monto en Cash $0.00"
                 value={newRecord.down_payment_cash}
                 onChange={(e) => setNewRecord({ ...newRecord, down_payment_cash: e.target.value })}
-                className="max-w-xs"
+                className="max-w-xs mb-2"
               />
             )}
 
-            {newRecord.down_payment_type === 'Tarjeta' && (
+            {(newRecord.down_payment_types || []).includes('Tarjeta') && (
               <Input
                 placeholder="Monto en Tarjeta $0.00"
                 value={newRecord.down_payment_card}
                 onChange={(e) => setNewRecord({ ...newRecord, down_payment_card: e.target.value })}
-                className="max-w-xs"
+                className="max-w-xs mb-2"
               />
             )}
 
-            {newRecord.down_payment_type === 'Trade' && (
+            {(newRecord.down_payment_types || []).includes('Trade') && (
               <div className="space-y-3 p-3 bg-slate-50 rounded-lg">
                 <h5 className="font-medium text-sm flex items-center gap-1">🚗 Vehículo en Trade</h5>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
