@@ -1789,11 +1789,95 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
     setCosignerRecords([]);
     setShowRecordForm(false);
     setNewCosignerRecord(null);
+    setEditingCosignerRecord(null);
+    setEditCosignerRecordData(null);
   };
 
   const openRecordForm = () => {
     setNewCosignerRecord({ ...emptyCosignerRecord });
     setShowRecordForm(true);
+    setEditingCosignerRecord(null);
+  };
+
+  // Edit co-signer record
+  const [editingCosignerRecord, setEditingCosignerRecord] = useState(null);
+  const [editCosignerRecordData, setEditCosignerRecordData] = useState(null);
+
+  const startEditCosignerRecord = (record) => {
+    setEditingCosignerRecord(record.id);
+    setEditCosignerRecordData({
+      has_id: record.has_id || false,
+      id_type: record.id_type || '',
+      has_poi: record.has_poi || false,
+      poi_type: record.poi_type || '',
+      ssn: record.ssn || false,
+      itin: record.itin || false,
+      self_employed: record.self_employed || false,
+      has_por: record.has_por || false,
+      por_types: record.por_types || [],
+      bank: record.bank || '',
+      bank_deposit_type: record.bank_deposit_type || '',
+      auto: record.auto || '',
+      credit: record.credit || '',
+      auto_loan: record.auto_loan || '',
+      down_payment_type: record.down_payment_type || '',
+      down_payment_cash: record.down_payment_cash || '',
+      down_payment_card: record.down_payment_card || '',
+      trade_make: record.trade_make || '',
+      trade_model: record.trade_model || '',
+      trade_year: record.trade_year || '',
+      trade_title: record.trade_title || '',
+      trade_miles: record.trade_miles || '',
+      trade_plate: record.trade_plate || '',
+      trade_estimated_value: record.trade_estimated_value || '',
+      dealer: record.dealer || '',
+      finance_status: record.finance_status || 'no',
+      vehicle_make: record.vehicle_make || '',
+      vehicle_year: record.vehicle_year || '',
+      sale_month: record.sale_month?.toString() || '',
+      sale_day: record.sale_day?.toString() || '',
+      sale_year: record.sale_year?.toString() || ''
+    });
+    setShowRecordForm(false);
+  };
+
+  const saveEditCosignerRecord = async () => {
+    if (!editingCosignerRecord || !editCosignerRecordData || !viewingCosigner) return;
+    try {
+      await axios.put(`${API}/user-records/${editingCosignerRecord}`, {
+        client_id: viewingCosigner.id,
+        ...editCosignerRecordData,
+        sale_month: editCosignerRecordData.sale_month ? parseInt(editCosignerRecordData.sale_month) : null,
+        sale_day: editCosignerRecordData.sale_day ? parseInt(editCosignerRecordData.sale_day) : null,
+        sale_year: editCosignerRecordData.sale_year ? parseInt(editCosignerRecordData.sale_year) : null
+      });
+      toast.success('Record actualizado');
+      setEditingCosignerRecord(null);
+      setEditCosignerRecordData(null);
+      // Reload records
+      const response = await axios.get(`${API}/user-records?client_id=${viewingCosigner.id}`);
+      setCosignerRecords(response.data);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al actualizar');
+    }
+  };
+
+  const cancelEditCosignerRecord = () => {
+    setEditingCosignerRecord(null);
+    setEditCosignerRecordData(null);
+  };
+
+  const deleteCosignerRecord = async (recordId) => {
+    if (!window.confirm('¿Está seguro de eliminar este record?')) return;
+    try {
+      await axios.delete(`${API}/user-records/${recordId}`);
+      toast.success('Record eliminado');
+      // Reload records
+      const response = await axios.get(`${API}/user-records?client_id=${viewingCosigner.id}`);
+      setCosignerRecords(response.data);
+    } catch (error) {
+      toast.error('Error al eliminar record');
+    }
   };
 
   const saveCosignerRecord = async () => {
