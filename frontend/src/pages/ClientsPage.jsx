@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import { 
   Plus, Search, Info, Calendar, ChevronDown, ChevronRight, 
-  Send, Trash2, CheckCircle2, XCircle, UserPlus, Phone, RefreshCw, MessageSquare
+  Send, Trash2, CheckCircle2, XCircle, UserPlus, Phone, RefreshCw, MessageSquare,
+  X, FileText
 } from 'lucide-react';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import SmsInboxDialog from '../components/SmsInboxDialog';
