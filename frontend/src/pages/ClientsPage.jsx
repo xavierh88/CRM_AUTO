@@ -461,6 +461,7 @@ export default function ClientsPage() {
                       onRefresh={() => fetchClientRecords(client.id)}
                       sendAppointmentSMS={sendAppointmentSMS}
                       configLists={configLists}
+                      salespersons={salespersons}
                     />
 
                     {/* Co-Signers */}
