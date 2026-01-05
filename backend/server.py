@@ -273,6 +273,7 @@ class UserRecordCreate(BaseModel):
     # Bank info with deposit type
     bank: Optional[str] = None
     bank_deposit_type: Optional[str] = None  # Deposito Directo, No deposito directo
+    direct_deposit_amount: Optional[str] = None  # Amount when Deposito Directo is selected
     # Other fields
     auto: Optional[str] = None
     credit: Optional[str] = None
