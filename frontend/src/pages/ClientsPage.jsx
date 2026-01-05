@@ -1987,19 +1987,156 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                     {cosignerRecords.length > 0 && !showRecordForm && (
                       <div className="space-y-2 mb-3">
                         {cosignerRecords.map((rec) => (
-                          <div key={rec.id} className="bg-slate-50 rounded p-2 text-sm">
-                            <div className="flex flex-wrap gap-1 mb-1">
-                              {rec.has_id && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">ID: {rec.id_type}</span>}
-                              {rec.has_poi && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">POI: {rec.poi_type}</span>}
-                              {rec.ssn && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">SSN</span>}
-                              {rec.itin && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">ITIN</span>}
-                              {rec.self_employed && <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-xs">Self Employed</span>}
-                            </div>
-                            <div className="text-slate-500 text-xs">
-                              {rec.bank && `Bank: ${rec.bank}`}
-                              {rec.credit && ` • Credit: ${rec.credit}`}
-                              {rec.down_payment_type && ` • Down: ${rec.down_payment_type}`}
-                            </div>
+                          <div key={rec.id}>
+                            {editingCosignerRecord === rec.id ? (
+                              /* Edit Form for this record */
+                              <div className="bg-slate-50 rounded-lg p-3 border border-purple-200">
+                                <h6 className="font-medium text-slate-700 text-sm mb-3">Editar Record</h6>
+                                
+                                {/* ID & POI Row */}
+                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <Checkbox
+                                        checked={editCosignerRecordData.has_id}
+                                        onCheckedChange={(checked) => setEditCosignerRecordData({ ...editCosignerRecordData, has_id: checked })}
+                                      />
+                                      <Label className="text-sm font-medium">ID</Label>
+                                    </div>
+                                    {editCosignerRecordData.has_id && (
+                                      <Select value={editCosignerRecordData.id_type} onValueChange={(v) => setEditCosignerRecordData({ ...editCosignerRecordData, id_type: v })}>
+                                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Tipo ID" /></SelectTrigger>
+                                        <SelectContent>
+                                          {configLists?.id_type?.map((item) => (
+                                            <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    )}
+                                  </div>
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <Checkbox
+                                        checked={editCosignerRecordData.has_poi}
+                                        onCheckedChange={(checked) => setEditCosignerRecordData({ ...editCosignerRecordData, has_poi: checked })}
+                                      />
+                                      <Label className="text-sm font-medium">POI</Label>
+                                    </div>
+                                    {editCosignerRecordData.has_poi && (
+                                      <Select value={editCosignerRecordData.poi_type} onValueChange={(v) => setEditCosignerRecordData({ ...editCosignerRecordData, poi_type: v })}>
+                                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Tipo POI" /></SelectTrigger>
+                                        <SelectContent>
+                                          {configLists?.poi_type?.map((item) => (
+                                            <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Checkboxes */}
+                                <div className="flex flex-wrap gap-3 mb-3">
+                                  <div className="flex items-center gap-1">
+                                    <Checkbox checked={editCosignerRecordData.ssn} onCheckedChange={(c) => setEditCosignerRecordData({ ...editCosignerRecordData, ssn: c })} />
+                                    <Label className="text-xs">SSN</Label>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Checkbox checked={editCosignerRecordData.itin} onCheckedChange={(c) => setEditCosignerRecordData({ ...editCosignerRecordData, itin: c })} />
+                                    <Label className="text-xs">ITIN</Label>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Checkbox checked={editCosignerRecordData.self_employed} onCheckedChange={(c) => setEditCosignerRecordData({ ...editCosignerRecordData, self_employed: c })} />
+                                    <Label className="text-xs">Self Employed</Label>
+                                  </div>
+                                </div>
+
+                                {/* Bank Row */}
+                                <div className="grid grid-cols-2 gap-2 mb-3">
+                                  <Select value={editCosignerRecordData.bank} onValueChange={(v) => setEditCosignerRecordData({ ...editCosignerRecordData, bank: v })}>
+                                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Bank" /></SelectTrigger>
+                                    <SelectContent className="max-h-48">
+                                      {configLists?.banks?.map((b) => (
+                                        <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Select value={editCosignerRecordData.bank_deposit_type} onValueChange={(v) => setEditCosignerRecordData({ ...editCosignerRecordData, bank_deposit_type: v })}>
+                                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Tipo Depósito" /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Deposito Directo">Deposito Directo</SelectItem>
+                                      <SelectItem value="No deposito directo">No deposito directo</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                {/* Credit & Auto */}
+                                <div className="grid grid-cols-3 gap-2 mb-3">
+                                  <Input placeholder="Credit" value={editCosignerRecordData.credit} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, credit: e.target.value })} className="h-8 text-sm" />
+                                  <Select value={editCosignerRecordData.auto} onValueChange={(v) => setEditCosignerRecordData({ ...editCosignerRecordData, auto: v })}>
+                                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Auto" /></SelectTrigger>
+                                    <SelectContent className="max-h-48">
+                                      {configLists?.cars?.map((c) => (
+                                        <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Input placeholder="Auto Loan" value={editCosignerRecordData.auto_loan} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, auto_loan: e.target.value })} className="h-8 text-sm" />
+                                </div>
+
+                                {/* Down Payment */}
+                                <div className="flex items-center gap-2 mb-3">
+                                  <span className="text-xs text-slate-500">Down:</span>
+                                  {['Cash', 'Tarjeta', 'Trade'].map((type) => (
+                                    <div key={type} className="flex items-center gap-1">
+                                      <Checkbox
+                                        checked={editCosignerRecordData.down_payment_type === type}
+                                        onCheckedChange={(checked) => setEditCosignerRecordData({ ...editCosignerRecordData, down_payment_type: checked ? type : '' })}
+                                      />
+                                      <Label className="text-xs">{type}</Label>
+                                    </div>
+                                  ))}
+                                  {editCosignerRecordData.down_payment_type === 'Cash' && (
+                                    <Input placeholder="$" value={editCosignerRecordData.down_payment_cash} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, down_payment_cash: e.target.value })} className="h-7 w-20 text-sm" />
+                                  )}
+                                  {editCosignerRecordData.down_payment_type === 'Tarjeta' && (
+                                    <Input placeholder="$" value={editCosignerRecordData.down_payment_card} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, down_payment_card: e.target.value })} className="h-7 w-20 text-sm" />
+                                  )}
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-2 pt-2">
+                                  <Button size="sm" variant="outline" onClick={cancelEditCosignerRecord}>Cancelar</Button>
+                                  <Button size="sm" onClick={saveEditCosignerRecord}>Guardar Cambios</Button>
+                                </div>
+                              </div>
+                            ) : (
+                              /* Display Record */
+                              <div className="bg-slate-50 rounded p-2 text-sm flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex flex-wrap gap-1 mb-1">
+                                    {rec.has_id && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">ID: {rec.id_type}</span>}
+                                    {rec.has_poi && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">POI: {rec.poi_type}</span>}
+                                    {rec.ssn && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">SSN</span>}
+                                    {rec.itin && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">ITIN</span>}
+                                    {rec.self_employed && <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-xs">Self Employed</span>}
+                                  </div>
+                                  <div className="text-slate-500 text-xs">
+                                    {rec.bank && `Bank: ${rec.bank}`}
+                                    {rec.credit && ` • Credit: ${rec.credit}`}
+                                    {rec.down_payment_type && ` • Down: ${rec.down_payment_type}`}
+                                  </div>
+                                </div>
+                                <div className="flex gap-1 ml-2">
+                                  <Button size="sm" variant="ghost" onClick={() => startEditCosignerRecord(rec)} className="h-7 w-7 p-0">
+                                    <RefreshCw className="w-3 h-3 text-slate-400" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => deleteCosignerRecord(rec.id)} className="h-7 w-7 p-0">
+                                    <Trash2 className="w-3 h-3 text-red-400" />
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
