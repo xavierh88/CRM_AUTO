@@ -18,15 +18,19 @@ class CRMAPITester:
         self.tests_passed = 0
         self.failed_tests = []
 
-    def run_test(self, name, method, endpoint, expected_status, data=None, use_admin=False):
+    def run_test(self, name, method, endpoint, expected_status, data=None, use_admin=False, files=None):
         """Run a single API test"""
         url = f"{self.base_url}/{endpoint}"
-        headers = {'Content-Type': 'application/json'}
+        headers = {}
         
         # Use admin token if specified and available
         token = self.admin_token if use_admin and self.admin_token else self.token
         if token:
             headers['Authorization'] = f'Bearer {token}'
+
+        # Only set Content-Type for JSON requests, not for file uploads
+        if not files:
+            headers['Content-Type'] = 'application/json'
 
         self.tests_run += 1
         print(f"\n🔍 Testing {name}...")
@@ -35,7 +39,12 @@ class CRMAPITester:
             if method == 'GET':
                 response = requests.get(url, headers=headers)
             elif method == 'POST':
-                response = requests.post(url, json=data, headers=headers)
+                if files:
+                    # For file uploads, don't set Content-Type header
+                    headers.pop('Content-Type', None)
+                    response = requests.post(url, data=data, files=files, headers=headers)
+                else:
+                    response = requests.post(url, json=data, headers=headers)
             elif method == 'PUT':
                 response = requests.put(url, json=data, headers=headers)
             elif method == 'DELETE':
