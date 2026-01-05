@@ -305,6 +305,9 @@ class UserRecordCreate(BaseModel):
     sale_day: Optional[int] = None
     sale_year: Optional[int] = None
     previous_record_id: Optional[str] = None  # For "New Opportunity" - links to previous record
+    # Collaborator - shared user working on this record
+    collaborator_id: Optional[str] = None
+    collaborator_name: Optional[str] = None
     # Legacy fields for backward compatibility
     dl: Optional[bool] = None
     checks: Optional[bool] = None
