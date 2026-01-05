@@ -1146,7 +1146,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
             </div>
             <div>
               <Label className="form-label mb-1 block">Tipo de Depósito</Label>
-              <Select value={newRecord.bank_deposit_type} onValueChange={(value) => setNewRecord({ ...newRecord, bank_deposit_type: value })}>
+              <Select value={newRecord.bank_deposit_type} onValueChange={(value) => setNewRecord({ ...newRecord, bank_deposit_type: value, direct_deposit_amount: value !== 'Deposito Directo' ? '' : newRecord.direct_deposit_amount })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar tipo" />
                 </SelectTrigger>
@@ -1157,6 +1157,19 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
               </Select>
             </div>
           </div>
+
+          {/* Direct Deposit Amount - shown when Deposito Directo is selected */}
+          {newRecord.bank_deposit_type === 'Deposito Directo' && (
+            <div className="mb-4">
+              <Label className="form-label mb-1 block">Monto de Depósito Directo</Label>
+              <Input
+                placeholder="$0.00"
+                value={newRecord.direct_deposit_amount || ''}
+                onChange={(e) => setNewRecord({ ...newRecord, direct_deposit_amount: e.target.value })}
+                className="max-w-xs"
+              />
+            </div>
+          )}
 
           {/* Cosigner Alert */}
           {newRecord.bank_deposit_type === 'No deposito directo' && newRecord.has_poi && newRecord.poi_type === 'Cash' && (
