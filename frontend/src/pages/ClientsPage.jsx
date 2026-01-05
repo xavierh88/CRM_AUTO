@@ -730,6 +730,9 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
       sale_month: record.sale_month?.toString() || '',
       sale_day: record.sale_day?.toString() || '',
       sale_year: record.sale_year?.toString() || '',
+      // Collaborator
+      collaborator_id: record.collaborator_id || null,
+      collaborator_name: record.collaborator_name || null,
       // Legacy fields for backward compatibility
       dl: record.dl || false,
       checks: record.checks || false,
@@ -739,6 +742,9 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 
   const handleSaveEditRecord = async () => {
     try {
+      const previousCollaborator = userRecords[clientId]?.find(r => r.id === editingRecord)?.collaborator_id;
+      const newCollaborator = editRecordData.collaborator_id;
+      
       await axios.put(`${API}/user-records/${editingRecord}`, {
         client_id: clientId,
         ...editRecordData,
@@ -746,6 +752,24 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
         sale_day: editRecordData.sale_day ? parseInt(editRecordData.sale_day) : null,
         sale_year: editRecordData.sale_year ? parseInt(editRecordData.sale_year) : null
       });
+      
+      // Send notification to collaborator if changed or if there's a collaborator
+      if (newCollaborator && newCollaborator !== previousCollaborator) {
+        // New collaborator added - notify them
+        try {
+          await axios.post(`${API}/notifications/collaborator?record_id=${editingRecord}&action=collaborator_added`);
+        } catch (e) {
+          console.log('Notification failed:', e);
+        }
+      } else if (newCollaborator) {
+        // Existing collaborator - notify about update
+        try {
+          await axios.post(`${API}/notifications/collaborator?record_id=${editingRecord}&action=record_updated`);
+        } catch (e) {
+          console.log('Notification failed:', e);
+        }
+      }
+      
       setEditingRecord(null);
       setEditRecordData(null);
       onRefresh();
