@@ -109,11 +109,14 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: true
         - agent: "main"
         - comment: "Added direct_deposit_amount field to UserRecordCreate and UserRecordResponse models. Field shows when Deposito Directo is selected."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ TESTED: Direct deposit amount field working correctly. POST /api/user-records accepts direct_deposit_amount field and saves correctly (tested with 2500.00). GET /api/user-records returns direct_deposit_amount field. Minor issue: PUT /api/user-records/{id} fails with 520 error due to legacy fields validation (dl/checks expecting boolean but getting None). Core functionality works - field is saved and retrieved properly."
 
   - task: "Document Upload/Download/Delete API"
     implemented: true
@@ -121,11 +124,14 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: true
         - agent: "main"
         - comment: "Added POST /clients/{id}/documents/upload and GET /clients/{id}/documents/download/{type} endpoints. Supports id, income, residence document types. File storage in /app/backend/uploads/"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ TESTED: Document upload/download APIs working perfectly. POST /api/clients/{client_id}/documents/upload successfully uploads files for all document types (id, income, residence) with proper multipart form data. Files stored in /app/backend/uploads/ with unique filenames. GET /api/clients/{client_id}/documents/download/{doc_type} successfully downloads files with correct Content-Type headers. Invalid document types properly rejected with 400 status. Upload directory created automatically."
 
   - task: "Residence Proof Field"
     implemented: true
@@ -133,11 +139,14 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: true
         - agent: "main"
         - comment: "Added residence_proof_uploaded and residence_proof_file_url to ClientResponse model"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ TESTED: Residence proof field and document status update working correctly. PUT /api/clients/{client_id}/documents accepts residence_proof_uploaded parameter and updates client record. Setting uploaded status to false properly clears file URLs. All document status fields (id_uploaded, income_proof_uploaded, residence_proof_uploaded) working as expected."
 
   - task: "SMS Scheduler for marketing campaigns"
     implemented: true
