@@ -91,6 +91,49 @@ export default function ClientsPage() {
     }
   };
 
+  // Client notes functions
+  const openClientNotes = async (client) => {
+    setNotesClient(client);
+    setLoadingNotes(true);
+    try {
+      const response = await axios.get(`${API}/clients/${client.id}/comments`);
+      setClientNotes(response.data);
+    } catch (error) {
+      console.error('Error loading client notes:', error);
+      setClientNotes([]);
+    } finally {
+      setLoadingNotes(false);
+    }
+  };
+
+  const addClientNote = async () => {
+    if (!newClientNote.trim() || !notesClient) return;
+    try {
+      const formData = new FormData();
+      formData.append('comment', newClientNote);
+      await axios.post(`${API}/clients/${notesClient.id}/comments`, formData);
+      setNewClientNote('');
+      // Reload notes
+      const response = await axios.get(`${API}/clients/${notesClient.id}/comments`);
+      setClientNotes(response.data);
+      toast.success('Nota agregada');
+    } catch (error) {
+      toast.error('Error al agregar nota');
+    }
+  };
+
+  const deleteClientNote = async (noteId) => {
+    if (!window.confirm('¿Eliminar esta nota?')) return;
+    try {
+      await axios.delete(`${API}/clients/${notesClient.id}/comments/${noteId}`);
+      const response = await axios.get(`${API}/clients/${notesClient.id}/comments`);
+      setClientNotes(response.data);
+      toast.success('Nota eliminada');
+    } catch (error) {
+      toast.error('Error al eliminar nota');
+    }
+  };
+
   const [newClient, setNewClient] = useState({
     first_name: '', last_name: '', phone: '', email: '', address: '', apartment: ''
   });
