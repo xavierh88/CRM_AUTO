@@ -1176,72 +1176,115 @@ class CRMAPITester:
         if not self.client_id:
             return False
             
-        # Create a simple test file content
+        # Create a simple test file
         import io
-        test_file_content = b"This is a test ID document content"
+        test_file_content = b"This is a test ID document content for testing purposes"
+        test_file = io.BytesIO(test_file_content)
         
-        # For testing, we'll simulate the multipart form data
-        # In a real scenario, we'd use requests with files parameter
+        files = {
+            'file': ('test_id_document.pdf', test_file, 'application/pdf')
+        }
+        data = {
+            'doc_type': 'id'
+        }
+        
         success, response = self.run_test(
-            "Upload ID Document (Simulated)",
+            "Upload ID Document",
             "POST",
             f"clients/{self.client_id}/documents/upload",
             200,
-            data={
-                "doc_type": "id",
-                "file_content": "test_id_document.pdf"
-            }
+            data=data,
+            files=files
         )
-        return success and 'message' in response
+        
+        if success and 'message' in response:
+            print(f"✅ ID document uploaded successfully")
+            return True
+        return False
 
     def test_document_upload_income(self):
         """Test document upload API for income document"""
         if not self.client_id:
             return False
             
+        import io
+        test_file_content = b"This is a test income proof document for testing purposes"
+        test_file = io.BytesIO(test_file_content)
+        
+        files = {
+            'file': ('test_income_document.pdf', test_file, 'application/pdf')
+        }
+        data = {
+            'doc_type': 'income'
+        }
+        
         success, response = self.run_test(
-            "Upload Income Document (Simulated)",
+            "Upload Income Document",
             "POST",
             f"clients/{self.client_id}/documents/upload",
             200,
-            data={
-                "doc_type": "income",
-                "file_content": "test_income_document.pdf"
-            }
+            data=data,
+            files=files
         )
-        return success and 'message' in response
+        
+        if success and 'message' in response:
+            print(f"✅ Income document uploaded successfully")
+            return True
+        return False
 
     def test_document_upload_residence(self):
         """Test document upload API for residence document"""
         if not self.client_id:
             return False
             
+        import io
+        test_file_content = b"This is a test residence proof document for testing purposes"
+        test_file = io.BytesIO(test_file_content)
+        
+        files = {
+            'file': ('test_residence_document.pdf', test_file, 'application/pdf')
+        }
+        data = {
+            'doc_type': 'residence'
+        }
+        
         success, response = self.run_test(
-            "Upload Residence Document (Simulated)",
+            "Upload Residence Document",
             "POST",
             f"clients/{self.client_id}/documents/upload",
             200,
-            data={
-                "doc_type": "residence",
-                "file_content": "test_residence_document.pdf"
-            }
+            data=data,
+            files=files
         )
-        return success and 'message' in response
+        
+        if success and 'message' in response:
+            print(f"✅ Residence document uploaded successfully")
+            return True
+        return False
 
     def test_document_upload_invalid_type(self):
         """Test document upload API with invalid document type"""
         if not self.client_id:
             return False
             
+        import io
+        test_file_content = b"This is a test document with invalid type"
+        test_file = io.BytesIO(test_file_content)
+        
+        files = {
+            'file': ('test_invalid_document.pdf', test_file, 'application/pdf')
+        }
+        data = {
+            'doc_type': 'invalid_type'
+        }
+        
         success, response = self.run_test(
             "Upload Invalid Document Type (Should Fail)",
             "POST",
             f"clients/{self.client_id}/documents/upload",
             400,  # Should fail with bad request
-            data={
-                "doc_type": "invalid_type",
-                "file_content": "test_document.pdf"
-            }
+            data=data,
+            files=files
         )
         return success
 
