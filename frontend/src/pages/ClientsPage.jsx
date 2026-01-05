@@ -41,6 +41,9 @@ export default function ClientsPage() {
   const [newClientNote, setNewClientNote] = useState('');
   const [loadingNotes, setLoadingNotes] = useState(false);
   
+  // Salespersons list for collaborator selection
+  const [salespersons, setSalespersons] = useState([]);
+  
   // Config lists for dropdowns (shared across components)
   const [configLists, setConfigLists] = useState({ 
     banks: [], dealers: [], cars: [], 
