@@ -2563,7 +2563,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                               ))}
                             </SelectContent>
                           </Select>
-                          <Select value={newCosignerRecord.bank_deposit_type} onValueChange={(v) => setNewCosignerRecord({ ...newCosignerRecord, bank_deposit_type: v })}>
+                          <Select value={newCosignerRecord.bank_deposit_type} onValueChange={(v) => setNewCosignerRecord({ ...newCosignerRecord, bank_deposit_type: v, direct_deposit_amount: v !== 'Deposito Directo' ? '' : newCosignerRecord.direct_deposit_amount })}>
                             <SelectTrigger className="h-8 text-sm">
                               <SelectValue placeholder="Tipo Depósito" />
                             </SelectTrigger>
@@ -2573,6 +2573,13 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {/* Direct Deposit Amount */}
+                        {newCosignerRecord.bank_deposit_type === 'Deposito Directo' && (
+                          <div>
+                            <Input placeholder="Monto Depósito Directo $" value={newCosignerRecord.direct_deposit_amount || ''} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, direct_deposit_amount: e.target.value })} className="h-8 text-sm max-w-xs" />
+                          </div>
+                        )}
 
                         {/* Credit & Auto */}
                         <div className="grid grid-cols-3 gap-2">
