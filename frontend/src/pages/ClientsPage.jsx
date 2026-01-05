@@ -2439,10 +2439,27 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                                     {rec.itin && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">ITIN</span>}
                                     {rec.self_employed && <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-xs">Self Employed</span>}
                                   </div>
-                                  <div className="text-slate-500 text-xs">
-                                    {rec.bank && `Bank: ${rec.bank}`}
-                                    {rec.credit && ` • Credit: ${rec.credit}`}
-                                    {rec.down_payment_type && ` • Down: ${rec.down_payment_type}`}
+                                  <div className="text-slate-500 text-xs space-y-0.5">
+                                    <div>
+                                      {rec.bank && `Bank: ${rec.bank}`}
+                                      {rec.bank_deposit_type && ` (${rec.bank_deposit_type})`}
+                                      {rec.bank_deposit_type === 'Deposito Directo' && rec.direct_deposit_amount && ` - $${rec.direct_deposit_amount}`}
+                                    </div>
+                                    <div>
+                                      {rec.credit && `Credit: ${rec.credit}`}
+                                      {rec.auto && ` • Auto: ${rec.auto}`}
+                                      {rec.auto_loan && ` • Auto Loan: $${rec.auto_loan}`}
+                                    </div>
+                                    {rec.down_payment_type && (
+                                      <div>
+                                        Down: {rec.down_payment_type}
+                                        {rec.down_payment_type.includes('Cash') && rec.down_payment_cash && ` (Cash: $${rec.down_payment_cash})`}
+                                        {rec.down_payment_type.includes('Tarjeta') && rec.down_payment_card && ` (Tarjeta: $${rec.down_payment_card})`}
+                                      </div>
+                                    )}
+                                    {rec.down_payment_type && rec.down_payment_type.includes('Trade') && rec.trade_make && (
+                                      <div>Trade: {rec.trade_make} {rec.trade_model} {rec.trade_year} {rec.trade_estimated_value && `- Est: $${rec.trade_estimated_value}`}</div>
+                                    )}
                                   </div>
                                 </div>
                                 <div className="flex gap-1 ml-2">
