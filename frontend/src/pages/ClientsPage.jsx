@@ -567,13 +567,51 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
   const handleEditRecord = (record) => {
     setEditingRecord(record.id);
     setEditRecordData({
-      dl: record.dl, checks: record.checks, ssn: record.ssn, itin: record.itin,
-      auto: record.auto || '', credit: record.credit || '', bank: record.bank || '',
-      auto_loan: record.auto_loan || '', down_payment: record.down_payment || '',
-      dealer: record.dealer || '', finance_status: record.finance_status || 'no',
-      vehicle_make: record.vehicle_make || '', vehicle_year: record.vehicle_year || '',
-      sale_month: record.sale_month?.toString() || '', sale_day: record.sale_day?.toString() || '',
-      sale_year: record.sale_year?.toString() || ''
+      // New ID fields
+      has_id: record.has_id || false,
+      id_type: record.id_type || '',
+      // New POI fields
+      has_poi: record.has_poi || false,
+      poi_type: record.poi_type || '',
+      // Other checks
+      ssn: record.ssn || false,
+      itin: record.itin || false,
+      self_employed: record.self_employed || false,
+      // New POR fields
+      has_por: record.has_por || false,
+      por_types: record.por_types || [],
+      // Bank info
+      bank: record.bank || '',
+      bank_deposit_type: record.bank_deposit_type || '',
+      // Other fields
+      auto: record.auto || '',
+      credit: record.credit || '',
+      auto_loan: record.auto_loan || '',
+      // Down Payment
+      down_payment_type: record.down_payment_type || '',
+      down_payment_cash: record.down_payment_cash || '',
+      down_payment_card: record.down_payment_card || '',
+      // Trade-in
+      trade_make: record.trade_make || '',
+      trade_model: record.trade_model || '',
+      trade_year: record.trade_year || '',
+      trade_title: record.trade_title || '',
+      trade_miles: record.trade_miles || '',
+      trade_plate: record.trade_plate || '',
+      trade_estimated_value: record.trade_estimated_value || '',
+      // Dealer
+      dealer: record.dealer || '',
+      // Finance status
+      finance_status: record.finance_status || 'no',
+      vehicle_make: record.vehicle_make || '',
+      vehicle_year: record.vehicle_year || '',
+      sale_month: record.sale_month?.toString() || '',
+      sale_day: record.sale_day?.toString() || '',
+      sale_year: record.sale_year?.toString() || '',
+      // Legacy fields for backward compatibility
+      dl: record.dl || false,
+      checks: record.checks || false,
+      down_payment: record.down_payment || ''
     });
   };
 
