@@ -101,8 +101,44 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
-user_problem_statement: CRM for car dealerships - Dashboard, Agenda and Address Autocomplete improvements
+user_problem_statement: CRM for car dealerships - Record form enhancements, Document management, UI improvements
 backend:
+  - task: "Direct Deposit Amount Field"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Added direct_deposit_amount field to UserRecordCreate and UserRecordResponse models. Field shows when Deposito Directo is selected."
+
+  - task: "Document Upload/Download/Delete API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Added POST /clients/{id}/documents/upload and GET /clients/{id}/documents/download/{type} endpoints. Supports id, income, residence document types. File storage in /app/backend/uploads/"
+
+  - task: "Residence Proof Field"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Added residence_proof_uploaded and residence_proof_file_url to ClientResponse model"
+
   - task: "SMS Scheduler for marketing campaigns"
     implemented: true
     working: true
