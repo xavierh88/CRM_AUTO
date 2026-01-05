@@ -1917,20 +1917,26 @@ function RecordCard({
         )}
         {record.auto_loan && <div><span className="text-slate-400">Auto Loan:</span> {record.auto_loan}</div>}
         {record.dealer && <div><span className="text-slate-400">Dealer:</span> {record.dealer}</div>}
-        {/* Down Payment */}
+        {/* Down Payment - supports multiple selections */}
         {record.down_payment_type && (
           <div>
             <span className="text-slate-400">Down:</span> {record.down_payment_type}
-            {record.down_payment_type === 'Cash' && record.down_payment_cash && ` - $${record.down_payment_cash}`}
-            {record.down_payment_type === 'Tarjeta' && record.down_payment_card && ` - $${record.down_payment_card}`}
+            {record.down_payment_type.includes('Cash') && record.down_payment_cash && ` (Cash: $${record.down_payment_cash})`}
+            {record.down_payment_type.includes('Tarjeta') && record.down_payment_card && ` (Tarjeta: $${record.down_payment_card})`}
+          </div>
+        )}
+        {/* Direct Deposit Amount */}
+        {record.bank_deposit_type === 'Deposito Directo' && record.direct_deposit_amount && (
+          <div>
+            <span className="text-slate-400">Depósito Directo:</span> ${record.direct_deposit_amount}
           </div>
         )}
         {/* Legacy down_payment for old records */}
         {!record.down_payment_type && record.down_payment && <div><span className="text-slate-400">Down:</span> ${record.down_payment}</div>}
       </div>
 
-      {/* Trade-in Details */}
-      {record.down_payment_type === 'Trade' && record.trade_make && (
+      {/* Trade-in Details - supports multi-select */}
+      {record.down_payment_type && record.down_payment_type.includes('Trade') && record.trade_make && (
         <div className="mt-2 p-2 bg-slate-50 rounded text-xs">
           <span className="font-medium">Trade:</span> {record.trade_make} {record.trade_model} {record.trade_year}
           {record.trade_title && ` • ${record.trade_title}`}
