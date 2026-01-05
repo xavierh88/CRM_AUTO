@@ -2935,66 +2935,167 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onRefresh }) {
             </div>
           )}
 
-          {/* Document Status */}
+          {/* Document Status with Upload/Download/Delete */}
           <div>
             <Label className="form-label">{t('clients.documents')}</Label>
             <div className="space-y-2 mt-2">
               {/* ID Document */}
               <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
                 <div className="flex items-center gap-2">
-                  {client.id_uploaded ? (
+                  {clientDocs.id_uploaded ? (
                     <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                   ) : (
                     <XCircle className="w-5 h-5 text-slate-300" />
                   )}
                   <span className="text-sm">{t('clients.idUploaded')}</span>
                 </div>
-                {client.id_uploaded && (
-                  showDeleteConfirm === 'id' ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-red-600">Confirm delete?</span>
-                      <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument('id')}>
-                        Yes
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
-                        No
-                      </Button>
-                    </div>
+                <div className="flex items-center gap-1">
+                  {clientDocs.id_uploaded ? (
+                    showDeleteConfirm === 'id' ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-red-600">¿Eliminar?</span>
+                        <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument('id')}>
+                          Sí
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
+                          No
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="ghost" onClick={() => handleDownloadDocument('id')} title="Descargar">
+                          <Download className="w-4 h-4 text-blue-500" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm('id')} title="Eliminar">
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                        </Button>
+                      </>
+                    )
                   ) : (
-                    <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm('id')}>
-                      <Trash2 className="w-4 h-4 text-red-400" />
-                    </Button>
-                  )
-                )}
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleUploadDocument('id', e.target.files[0])}
+                        disabled={uploading === 'id'}
+                      />
+                      <Button size="sm" variant="outline" asChild disabled={uploading === 'id'}>
+                        <span>
+                          <Upload className="w-4 h-4 mr-1" />
+                          {uploading === 'id' ? 'Subiendo...' : 'Subir'}
+                        </span>
+                      </Button>
+                    </label>
+                  )}
+                </div>
               </div>
               
               {/* Income Proof */}
               <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
                 <div className="flex items-center gap-2">
-                  {client.income_proof_uploaded ? (
+                  {clientDocs.income_proof_uploaded ? (
                     <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                   ) : (
                     <XCircle className="w-5 h-5 text-slate-300" />
                   )}
                   <span className="text-sm">{t('clients.incomeProof')}</span>
                 </div>
-                {client.income_proof_uploaded && (
-                  showDeleteConfirm === 'income' ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-red-600">Confirm delete?</span>
-                      <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument('income')}>
-                        Yes
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
-                        No
-                      </Button>
-                    </div>
+                <div className="flex items-center gap-1">
+                  {clientDocs.income_proof_uploaded ? (
+                    showDeleteConfirm === 'income' ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-red-600">¿Eliminar?</span>
+                        <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument('income')}>
+                          Sí
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
+                          No
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="ghost" onClick={() => handleDownloadDocument('income')} title="Descargar">
+                          <Download className="w-4 h-4 text-blue-500" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm('income')} title="Eliminar">
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                        </Button>
+                      </>
+                    )
                   ) : (
-                    <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm('income')}>
-                      <Trash2 className="w-4 h-4 text-red-400" />
-                    </Button>
-                  )
-                )}
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleUploadDocument('income', e.target.files[0])}
+                        disabled={uploading === 'income'}
+                      />
+                      <Button size="sm" variant="outline" asChild disabled={uploading === 'income'}>
+                        <span>
+                          <Upload className="w-4 h-4 mr-1" />
+                          {uploading === 'income' ? 'Subiendo...' : 'Subir'}
+                        </span>
+                      </Button>
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              {/* Residence Proof */}
+              <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  {clientDocs.residence_proof_uploaded ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-slate-300" />
+                  )}
+                  <div className="flex items-center gap-1">
+                    <Home className="w-4 h-4 text-slate-400" />
+                    <span className="text-sm">Comprobante de Residencia</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  {clientDocs.residence_proof_uploaded ? (
+                    showDeleteConfirm === 'residence' ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-red-600">¿Eliminar?</span>
+                        <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument('residence')}>
+                          Sí
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
+                          No
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="ghost" onClick={() => handleDownloadDocument('residence')} title="Descargar">
+                          <Download className="w-4 h-4 text-blue-500" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm('residence')} title="Eliminar">
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                        </Button>
+                      </>
+                    )
+                  ) : (
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleUploadDocument('residence', e.target.files[0])}
+                        disabled={uploading === 'residence'}
+                      />
+                      <Button size="sm" variant="outline" asChild disabled={uploading === 'residence'}>
+                        <span>
+                          <Upload className="w-4 h-4 mr-1" />
+                          {uploading === 'residence' ? 'Subiendo...' : 'Subir'}
+                        </span>
+                      </Button>
+                    </label>
+                  )}
+                </div>
               </div>
             </div>
           </div>
