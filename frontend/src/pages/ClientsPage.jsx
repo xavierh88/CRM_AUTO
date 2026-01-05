@@ -1759,9 +1759,14 @@ function RecordCard({
           )}
         </div>
         <div className="flex items-center gap-1">
-          {/* Comments button */}
-          <Button size="sm" variant="ghost" onClick={openCommentsDialog} title="Comentarios">
+          {/* Comments button with counter */}
+          <Button size="sm" variant="ghost" onClick={openCommentsDialog} title="Comentarios" className="relative">
             <MessageCircle className="w-4 h-4 text-blue-400" />
+            {commentsCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                {commentsCount}
+              </span>
+            )}
           </Button>
           {/* Edit button - available to all */}
           <Button size="sm" variant="ghost" onClick={() => onEdit(record)} title="Edit">
