@@ -1591,6 +1591,10 @@ function RecordCard({
           )}
         </div>
         <div className="flex items-center gap-1">
+          {/* Comments button */}
+          <Button size="sm" variant="ghost" onClick={openCommentsDialog} title="Comentarios">
+            <MessageCircle className="w-4 h-4 text-blue-400" />
+          </Button>
           {/* Edit button - available to all */}
           <Button size="sm" variant="ghost" onClick={() => onEdit(record)} title="Edit">
             <RefreshCw className="w-4 h-4 text-slate-400" />
@@ -1616,6 +1620,72 @@ function RecordCard({
           )}
         </div>
       </div>
+
+      {/* Comments Dialog */}
+      {showComments && (
+        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex items-center justify-between mb-3">
+            <h6 className="font-medium text-blue-700 flex items-center gap-2">
+              <MessageCircle className="w-4 h-4" />
+              Comentarios ({comments.length})
+            </h6>
+            <Button size="sm" variant="ghost" onClick={() => setShowComments(false)} className="h-6 w-6 p-0">
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Add Comment */}
+          <div className="flex gap-2 mb-3">
+            <Input
+              placeholder="Escribir comentario..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addComment()}
+              className="flex-1 h-8 text-sm"
+            />
+            <Button size="sm" onClick={addComment} disabled={!newComment.trim()}>
+              Agregar
+            </Button>
+          </div>
+
+          {/* Comments List */}
+          {loadingComments ? (
+            <p className="text-sm text-slate-400">Cargando...</p>
+          ) : comments.length === 0 ? (
+            <p className="text-sm text-slate-400 italic">No hay comentarios aún</p>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {comments.map((comment) => (
+                <div key={comment.id} className="bg-white rounded p-2 border border-blue-100">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm text-slate-700">{comment.comment}</p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        <span className="font-medium text-blue-600">{comment.user_name}</span>
+                        {' • '}
+                        {new Date(comment.created_at).toLocaleString('es-ES', { 
+                          day: '2-digit', month: 'short', year: 'numeric', 
+                          hour: '2-digit', minute: '2-digit' 
+                        })}
+                      </p>
+                    </div>
+                    {(comment.user_id === currentUserId) && (
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={() => deleteComment(comment.id)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Trash2 className="w-3 h-3 text-red-400" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Checklist - New format */}
       <div className="flex gap-3 mb-3 flex-wrap">
