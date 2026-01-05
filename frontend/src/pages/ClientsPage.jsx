@@ -60,13 +60,14 @@ export default function ClientsPage() {
   useEffect(() => {
     const fetchConfigLists = async () => {
       try {
-        const [banksRes, dealersRes, carsRes, idTypesRes, poiTypesRes, porTypesRes] = await Promise.all([
+        const [banksRes, dealersRes, carsRes, idTypesRes, poiTypesRes, porTypesRes, salespersonsRes] = await Promise.all([
           axios.get(`${API}/config-lists/bank`),
           axios.get(`${API}/config-lists/dealer`),
           axios.get(`${API}/config-lists/car`),
           axios.get(`${API}/config-lists/id_type`).catch(() => ({ data: [] })),
           axios.get(`${API}/config-lists/poi_type`).catch(() => ({ data: [] })),
-          axios.get(`${API}/config-lists/por_type`).catch(() => ({ data: [] }))
+          axios.get(`${API}/config-lists/por_type`).catch(() => ({ data: [] })),
+          axios.get(`${API}/salespersons`).catch(() => ({ data: [] }))
         ]);
         setConfigLists({
           banks: banksRes.data,
@@ -76,6 +77,7 @@ export default function ClientsPage() {
           poi_type: poiTypesRes.data,
           por_type: porTypesRes.data
         });
+        setSalespersons(salespersonsRes.data);
       } catch (error) {
         console.error('Failed to fetch config lists:', error);
       }
