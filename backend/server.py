@@ -366,6 +366,9 @@ class UserRecordResponse(BaseModel):
     is_deleted: bool = False
     previous_record_id: Optional[str] = None
     opportunity_number: int = 1
+    # Collaborator
+    collaborator_id: Optional[str] = None
+    collaborator_name: Optional[str] = None
     # Legacy fields
     dl: bool = False
     checks: bool = False
