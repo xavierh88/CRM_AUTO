@@ -209,6 +209,19 @@ export default function ClientsPage() {
     }
   };
 
+  const sendDocumentsEmail = async (client) => {
+    if (!client.email) {
+      toast.error('El cliente no tiene email registrado');
+      return;
+    }
+    try {
+      await axios.post(`${API}/email/send-documents-link?client_id=${client.id}`);
+      toast.success(`Link de documentos enviado a ${client.email}`);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al enviar email');
+    }
+  };
+
   const sendAppointmentSMS = async (clientId, appointmentId) => {
     try {
       await axios.post(`${API}/sms/send-appointment-link?client_id=${clientId}&appointment_id=${appointmentId}`);
