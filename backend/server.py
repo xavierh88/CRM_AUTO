@@ -1276,7 +1276,7 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
 """
     
     # Send email using SMTP
-    smtp_email = os.environ.get('SMTP_EMAIL')
+    smtp_email = os.environ.get('SMTP_USER') or os.environ.get('SMTP_EMAIL')
     smtp_password = os.environ.get('SMTP_PASSWORD')
     
     if not smtp_email or not smtp_password:
@@ -1953,7 +1953,7 @@ Sus documentos están protegidos y solo serán utilizados para su proceso.</p>
 """
     
     # Send email using SMTP
-    smtp_email = os.environ.get('SMTP_EMAIL')
+    smtp_email = os.environ.get('SMTP_USER') or os.environ.get('SMTP_EMAIL')
     smtp_password = os.environ.get('SMTP_PASSWORD')
     
     if not smtp_email or not smtp_password:
