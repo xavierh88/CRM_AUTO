@@ -1852,6 +1852,143 @@ async def send_documents_sms(client_id: str, record_id: str, current_user: dict 
     
     return {"message": "Documents SMS sent successfully", "phone": client["phone"], "twilio_sid": result.get("sid"), "link": document_link}
 
+@api_router.post("/email/send-documents-link")
+async def send_documents_email(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Send Email with documents upload link - Alternative to SMS"""
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    if not client.get("email"):
+        raise HTTPException(status_code=400, detail="El cliente no tiene email registrado")
+    
+    # Generate public link token (use client_id as record_id since we're sending from client info)
+    token = await create_public_link(client_id, client_id, "documents")
+    
+    # Get base URL from environment or use default
+    base_url = os.environ.get('FRONTEND_URL', os.environ.get('REACT_APP_BACKEND_URL', '').replace('/api', ''))
+    if not base_url:
+        base_url = 'https://work-1-hxroqbnbaygfdbdd.prod-runtime.all-hands.dev'
+    document_link = f"{base_url}/c/docs/{token}"
+    
+    # Create email content
+    client_name = f"{client['first_name']} {client['last_name']}"
+    salesperson_name = current_user.get('name', current_user.get('email', 'Su vendedor'))
+    
+    email_body = f"""
+<html>
+<head>
+<style>
+body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }}
+.container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+.header {{ background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+.content {{ background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }}
+.button {{ display: inline-block; background: #22c55e; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 20px 0; }}
+.button:hover {{ background: #16a34a; }}
+.documents-list {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }}
+.doc-item {{ padding: 10px 0; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; }}
+.doc-item:last-child {{ border-bottom: none; }}
+.doc-icon {{ margin-right: 10px; }}
+.footer {{ text-align: center; padding: 20px; color: #64748b; font-size: 12px; }}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1 style="margin: 0;">📄 Suba sus Documentos</h1>
+<p style="margin: 10px 0 0 0; opacity: 0.9;">DealerCRM</p>
+</div>
+<div class="content">
+<p>Hola <strong>{client_name}</strong>,</p>
+<p>{salesperson_name} le solicita que suba los siguientes documentos para continuar con su proceso:</p>
+
+<div class="documents-list">
+<div class="doc-item">
+<span class="doc-icon">🪪</span>
+<div>
+<strong>Identificación (ID)</strong><br>
+<span style="color: #64748b; font-size: 14px;">Licencia de conducir, Pasaporte, o ID estatal</span>
+</div>
+</div>
+<div class="doc-item">
+<span class="doc-icon">💵</span>
+<div>
+<strong>Comprobante de Ingresos</strong><br>
+<span style="color: #64748b; font-size: 14px;">Pay stub, declaración de impuestos, o carta de empleo</span>
+</div>
+</div>
+<div class="doc-item">
+<span class="doc-icon">🏠</span>
+<div>
+<strong>Comprobante de Residencia</strong><br>
+<span style="color: #64748b; font-size: 14px;">Factura de servicios, estado de cuenta bancario</span>
+</div>
+</div>
+</div>
+
+<p style="text-align: center;">
+<a href="{document_link}" class="button">Subir Documentos</a>
+</p>
+
+<p style="color: #64748b; font-size: 14px;">
+<strong>Nota:</strong> Puede subir múltiples archivos por cada documento. Se combinarán automáticamente en un solo PDF.
+</p>
+
+<p style="color: #64748b; font-size: 13px;">
+Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
+<a href="{document_link}" style="color: #3b82f6; word-break: break-all;">{document_link}</a>
+</p>
+</div>
+<div class="footer">
+<p>Este mensaje fue enviado automáticamente por DealerCRM.<br>
+Sus documentos están protegidos y solo serán utilizados para su proceso.</p>
+</div>
+</div>
+</body>
+</html>
+"""
+    
+    # Send email using SMTP
+    smtp_email = os.environ.get('SMTP_EMAIL')
+    smtp_password = os.environ.get('SMTP_PASSWORD')
+    
+    if not smtp_email or not smtp_password:
+        raise HTTPException(status_code=500, detail="Configuración de email no disponible. Contacte al administrador.")
+    
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"📄 {client_name} - Por favor suba sus documentos"
+        msg['From'] = smtp_email
+        msg['To'] = client['email']
+        
+        html_part = MIMEText(email_body, 'html')
+        msg.attach(html_part)
+        
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(smtp_email, smtp_password)
+            server.sendmail(smtp_email, client['email'], msg.as_string())
+        
+        # Log the email
+        email_log = {
+            "id": str(uuid.uuid4()),
+            "client_id": client_id,
+            "email": client['email'],
+            "message_type": "documents",
+            "link": document_link,
+            "status": "sent",
+            "sent_at": datetime.now(timezone.utc).isoformat(),
+            "sent_by": current_user["id"]
+        }
+        await db.email_logs.insert_one(email_log)
+        
+        return {"message": "Email enviado exitosamente", "email": client['email'], "link": document_link}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al enviar email: {str(e)}")
+
 @api_router.post("/sms/send-appointment-link")
 async def send_appointment_sms(client_id: str, appointment_id: str, current_user: dict = Depends(get_current_user)):
     """Send SMS with appointment scheduling/management link"""
