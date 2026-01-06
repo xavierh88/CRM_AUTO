@@ -3337,11 +3337,27 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onRefresh }) {
             </div>
           </div>
 
-          {/* SMS Actions */}
-          <div className="flex gap-3 pt-4 border-t">
-            <Button variant="outline" className="flex-1" onClick={onSendDocsSMS} data-testid="send-docs-sms-btn">
+          {/* Send Documents Link - SMS and Email */}
+          <div className="flex gap-2 pt-4 border-t">
+            <Button 
+              variant="outline" 
+              className="flex-1" 
+              onClick={onSendDocsSMS} 
+              data-testid="send-docs-sms-btn"
+              title="Enviar link por SMS (requiere aprobación A2P)"
+            >
               <Send className="w-4 h-4 mr-2" />
-              {t('clients.sendDocsSms')}
+              SMS
+            </Button>
+            <Button 
+              variant="default" 
+              className="flex-1 bg-green-600 hover:bg-green-700" 
+              onClick={() => onSendDocsEmail(client)}
+              data-testid="send-docs-email-btn"
+              title="Enviar link por Email"
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Email
             </Button>
           </div>
         </div>
