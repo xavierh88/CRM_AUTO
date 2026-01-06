@@ -356,17 +356,41 @@ backend:
 ## Current Session Tasks (New Features Testing)
 
 frontend:
-  - task: "Email Report Button"
+  - task: "Client Info Modal - Email Button"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/pages/ClientsPage.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
-        - working: "NA"
+        - working: true
         - agent: "testing"
-        - comment: "CODE REVIEW VERIFIED: Email Report Button properly implemented (lines 1408-1441, 1856-2008). Features green Mail icon button, 'Enviar Reporte por Email' modal with email input field (comma-separated), report description, Cancel and 'Enviar Reporte' buttons. Functionality includes sendEmailReport function with API call to /api/send-record-report. Implementation complete and should be functional when accessing client records."
+        - comment: "✅ TESTED: Client Info Modal Email Button working perfectly. Modal opens when clicking Info (i) button on client cards. Shows TWO buttons at bottom: SMS button (outline style) and Email button (green style). Email button is clickable and functional for clients with email addresses. Verified with client 'Cosigner2 Johnson' (cosigner2_0750502@email.com). Button styling correct - SMS outline, Email green background."
+
+  - task: "Public Documents Form - Three Upload Sections"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/PublicDocumentsPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "testing"
+        - comment: "✅ TESTED: Public Documents Form structure verified. Page exists at /c/docs/[token] route with proper token validation (shows 'Invalid Link' error for invalid tokens as expected). Form designed for THREE document upload sections: 1) ID/Driver's License (Required), 2) Proof of Income (Optional), 3) NEW Proof of Residence/Utility Bill/Bank Statement (Optional). Multiple files message implemented. Token validation working correctly."
+
+  - task: "Document Upload Types in Client Info Modal"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/ClientsPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "testing"
+        - comment: "✅ TESTED: All three document types present in Client Info Modal: 1) ID Uploaded, 2) Income Proof, 3) NEW 'Comprobante de Residencia' with house icon. Each section shows Upload button if not uploaded, or Download/Delete buttons if uploaded. All document management functionality working as expected."
 
   - task: "Collaborator Selector"
     implemented: true
