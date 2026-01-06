@@ -1187,6 +1187,84 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
 </div>
 """
     
+    # Co-signers section
+    if cosigners_data:
+        email_body += f"""
+<div class="section" style="background: #faf5ff; border: 1px solid #e9d5ff;">
+<div class="section-title" style="color: #7c3aed;">👥 Co-Signers ({len(cosigners_data)})</div>
+"""
+        for idx, cosigner in enumerate(cosigners_data, 1):
+            cs_info = cosigner['info']
+            cs_records = cosigner['records']
+            relationship = cosigner['relationship']
+            
+            email_body += f"""
+<div style="background: white; padding: 12px; margin: 10px 0; border-radius: 6px; border-left: 4px solid #8b5cf6;">
+<h4 style="margin: 0 0 10px 0; color: #6d28d9;">Co-Signer #{idx}: {cs_info.get('first_name', '')} {cs_info.get('last_name', '')} <span style="font-size: 12px; color: #a78bfa;">({relationship})</span></h4>
+<div class="info-row"><span class="label">Teléfono:</span> <span class="value">{cs_info.get('phone', 'N/A')}</span></div>
+<div class="info-row"><span class="label">Email:</span> <span class="value">{cs_info.get('email', 'N/A')}</span></div>
+<div class="info-row"><span class="label">Dirección:</span> <span class="value">{cs_info.get('address', 'N/A')} {cs_info.get('apartment', '')}</span></div>
+"""
+            # Co-signer documents status
+            email_body += '<div class="info-row" style="margin-top: 8px;"><span class="label">Documentos:</span> '
+            if cs_info.get('id_uploaded'):
+                email_body += '<span class="badge">✓ ID</span> '
+            else:
+                email_body += '<span class="badge badge-warning">✗ ID</span> '
+            if cs_info.get('income_proof_uploaded'):
+                email_body += '<span class="badge">✓ Ingresos</span> '
+            else:
+                email_body += '<span class="badge badge-warning">✗ Ingresos</span> '
+            if cs_info.get('residence_proof_uploaded'):
+                email_body += '<span class="badge">✓ Residencia</span> '
+            else:
+                email_body += '<span class="badge badge-warning">✗ Residencia</span> '
+            email_body += '</div>'
+            
+            # Co-signer records
+            if cs_records:
+                email_body += '<div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e9d5ff;">'
+                email_body += '<span class="label" style="display: block; margin-bottom: 5px;">Records del Co-Signer:</span>'
+                for rec in cs_records:
+                    email_body += '<div style="background: #faf5ff; padding: 8px; margin: 5px 0; border-radius: 4px; font-size: 13px;">'
+                    # ID/POI/SSN badges
+                    if rec.get('has_id'):
+                        email_body += f'<span class="badge">ID: {rec.get("id_type", "Sí")}</span> '
+                    if rec.get('has_poi'):
+                        email_body += f'<span class="badge">POI: {rec.get("poi_type", "Sí")}</span> '
+                    if rec.get('ssn'):
+                        email_body += '<span class="badge">SSN</span> '
+                    if rec.get('itin'):
+                        email_body += '<span class="badge">ITIN</span> '
+                    
+                    # Bank & Credit info
+                    details = []
+                    if rec.get('bank'):
+                        bank_info = rec.get('bank')
+                        if rec.get('bank_deposit_type'):
+                            bank_info += f" ({rec.get('bank_deposit_type')})"
+                        details.append(f"Bank: {bank_info}")
+                    if rec.get('credit'):
+                        details.append(f"Credit: {rec.get('credit')}")
+                    if rec.get('auto'):
+                        details.append(f"Auto: {rec.get('auto')}")
+                    if rec.get('down_payment_type'):
+                        dp_info = rec.get('down_payment_type')
+                        if rec.get('down_payment_cash'):
+                            dp_info += f" (Cash: ${rec.get('down_payment_cash')})"
+                        if rec.get('down_payment_card'):
+                            dp_info += f" (Tarjeta: ${rec.get('down_payment_card')})"
+                        details.append(f"Down: {dp_info}")
+                    
+                    if details:
+                        email_body += '<br><span style="color: #64748b; font-size: 12px;">' + ' • '.join(details) + '</span>'
+                    email_body += '</div>'
+                email_body += '</div>'
+            
+            email_body += '</div>'
+        
+        email_body += '</div>'
+    
     email_body += f"""
 <div style="text-align: center; padding: 20px; color: #64748b; font-size: 12px;">
 <p>Este reporte fue generado automáticamente desde DealerCRM</p>
