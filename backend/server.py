@@ -131,7 +131,7 @@ async def send_marketing_sms_job():
             # Generate appointment link
             token = generate_public_token(contact["id"], contact["id"], "marketing_appointment")
             base_url = os.environ.get('FRONTEND_URL', 'https://work-1-hxroqbnbaygfdbdd.prod-runtime.all-hands.dev')
-            appointment_link = f"{base_url}/c/schedule/{token}"
+            appointment_link = f"{base_url}/c/appointment/{token}"
             
             # Format message
             message = message_template.format(
