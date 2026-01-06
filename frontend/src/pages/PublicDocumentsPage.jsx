@@ -207,7 +207,7 @@ export default function PublicDocumentsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!idFile) {
+    if (idFiles.length === 0) {
       toast.error(t.pleaseUploadId);
       return;
     }
@@ -216,10 +216,22 @@ export default function PublicDocumentsPage() {
     
     try {
       const formData = new FormData();
-      formData.append('id_document', idFile);
-      if (incomeFile) {
-        formData.append('income_proof', incomeFile);
-      }
+      
+      // Append all ID files
+      idFiles.forEach((file, index) => {
+        formData.append('id_documents', file);
+      });
+      
+      // Append all income files
+      incomeFiles.forEach((file, index) => {
+        formData.append('income_documents', file);
+      });
+      
+      // Append all residence files
+      residenceFiles.forEach((file, index) => {
+        formData.append('residence_documents', file);
+      });
+      
       formData.append('language', language);
 
       await axios.post(`${API}/public/documents/${token}/upload`, formData, {
