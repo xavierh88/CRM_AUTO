@@ -81,3 +81,6 @@ urllib3==2.6.1
 uvicorn==0.25.0
 watchfiles==1.1.1
 yarl==1.22.0
+pillow==12.1.0
+pypdf==6.5.0
+reportlab==4.4.7
