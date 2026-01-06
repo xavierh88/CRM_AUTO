@@ -682,9 +682,9 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 
   const [newRecord, setNewRecord] = useState({ ...emptyRecord });
 
-  const handleCreateAppointment = async () => {
+  const handleCreateAppointment = async (sendMethod = 'sms') => {
     if (!appointmentData.date || !appointmentData.time) {
-      toast.error('Please fill date and time');
+      toast.error('Por favor complete fecha y hora');
       return;
     }
     try {
@@ -697,15 +697,20 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
         language: appointmentData.language
       });
       
-      // Send SMS automatically
-      await axios.post(`${API}/sms/send-appointment-link?client_id=${clientId}&appointment_id=${response.data.id}`);
+      // Send notification based on method selected
+      if (sendMethod === 'email') {
+        await axios.post(`${API}/email/send-appointment-link?client_id=${clientId}&appointment_id=${response.data.id}`);
+        toast.success('Cita creada y email enviado al cliente');
+      } else {
+        await axios.post(`${API}/sms/send-appointment-link?client_id=${clientId}&appointment_id=${response.data.id}`);
+        toast.success('Cita creada y SMS enviado al cliente');
+      }
       
       setShowAppointmentForm(null);
       setAppointmentData({ date: '', time: '', dealer: '', language: 'en' });
       onRefresh();
-      toast.success('Appointment created and SMS sent to client');
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create appointment');
+      toast.error(error.response?.data?.detail || 'Error al crear la cita');
     }
   };
 
