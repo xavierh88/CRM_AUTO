@@ -1035,14 +1035,19 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
                     <SelectItem value="es">Español</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-slate-400 mt-1">The client will receive SMS in this language</p>
+                <p className="text-xs text-slate-400 mt-1">El cliente recibirá la notificación en este idioma</p>
               </div>
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" onClick={() => setShowAppointmentForm(null)} className="flex-1">
-                  Cancel
+                  Cancelar
                 </Button>
-                <Button onClick={handleCreateAppointment} className="flex-1">
-                  Create & Send SMS
+                <Button onClick={() => handleCreateAppointment('sms')} variant="outline" className="flex-1">
+                  <Send className="w-4 h-4 mr-1" />
+                  Crear + SMS
+                </Button>
+                <Button onClick={() => handleCreateAppointment('email')} className="flex-1 bg-green-600 hover:bg-green-700">
+                  <Mail className="w-4 h-4 mr-1" />
+                  Crear + Email
                 </Button>
               </div>
             </div>
