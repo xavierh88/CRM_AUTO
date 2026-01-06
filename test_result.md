@@ -209,11 +209,14 @@ frontend:
     file: "/app/frontend/src/pages/ClientsPage.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: true
         - agent: "main"
         - comment: "Added upload/download/delete buttons for each document type. Added new Residence Proof document type with house icon"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ TESTED: Client Info Modal working perfectly. Successfully verified: 1) Modal opens when clicking Info (i) button, 2) Shows TWO buttons at bottom - SMS (outline style) and Email (green style), 3) THREE document sections present: ID Uploaded, Income Proof, and NEW 'Comprobante de Residencia' with house icon, 4) Email button clickable (client has email: cosigner2_0750502@email.com), 5) All upload/download buttons present for each document type. Modal functionality complete and working as expected."
 
   - task: "Address Autocomplete component"
     implemented: true
