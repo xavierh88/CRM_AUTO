@@ -1404,7 +1404,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 
 // Record Card Component
 function RecordCard({ 
-  record, appointments, getStatusBadge, sendAppointmentSMS, clientId, createAppointment, 
+  record, appointments, getStatusBadge, sendAppointmentSMS, sendAppointmentEmail, clientId, createAppointment, 
   updateAppointmentStatus, t, isPurple, onOpenAppointmentForm, currentUserId,
   onEdit, onDelete, isEditing, editData, setEditData, onSaveEdit, onCancelEdit, configLists, salespersons 
 }) {
