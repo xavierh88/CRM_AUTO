@@ -231,6 +231,15 @@ export default function ClientsPage() {
     }
   };
 
+  const sendAppointmentEmail = async (clientId, appointmentId) => {
+    try {
+      await axios.post(`${API}/email/send-appointment-link?client_id=${clientId}&appointment_id=${appointmentId}`);
+      toast.success('Email de cita enviado exitosamente');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al enviar email');
+    }
+  };
+
   // Search with debounce
   useEffect(() => {
     const timer = setTimeout(() => {
