@@ -949,6 +949,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
                     appointments={appointments}
                     getStatusBadge={getStatusBadge}
                     sendAppointmentSMS={sendAppointmentSMS}
+                    sendAppointmentEmail={sendAppointmentEmail}
                     clientId={clientId}
                     createAppointment={createAppointment}
                     updateAppointmentStatus={updateAppointmentStatus}
