@@ -998,6 +998,27 @@ async def send_record_report(request: EmailReportRequest, current_user: dict = D
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
+    # Get co-signers for this client
+    cosigner_relations = await db.cosigner_relations.find(
+        {"buyer_client_id": request.client_id, "is_deleted": {"$ne": True}},
+        {"_id": 0}
+    ).to_list(10)
+    
+    cosigners_data = []
+    for relation in cosigner_relations:
+        cosigner = await db.clients.find_one({"id": relation.get("cosigner_client_id")}, {"_id": 0})
+        if cosigner:
+            # Get co-signer's records
+            cosigner_records = await db.user_records.find(
+                {"client_id": cosigner.get("id"), "is_deleted": {"$ne": True}},
+                {"_id": 0}
+            ).sort("created_at", -1).to_list(5)
+            cosigners_data.append({
+                "info": cosigner,
+                "records": cosigner_records,
+                "relationship": relation.get("relationship", "Co-Signer")
+            })
+    
     # Build email body
     email_body = f"""
 <html>
