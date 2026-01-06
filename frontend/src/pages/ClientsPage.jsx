@@ -1902,8 +1902,11 @@ function RecordCard({
           {appointments[record.id] ? (
             <>
               {getStatusBadge(appointments[record.id].status)}
-              <Button size="sm" variant="ghost" onClick={() => sendAppointmentSMS(clientId, appointments[record.id].id)} title="Resend SMS">
-                <Send className="w-4 h-4" />
+              <Button size="sm" variant="ghost" onClick={() => sendAppointmentSMS(clientId, appointments[record.id].id)} title="Enviar SMS">
+                <Send className="w-4 h-4 text-blue-400" />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => sendAppointmentEmail(clientId, appointments[record.id].id)} title="Enviar Email">
+                <Mail className="w-4 h-4 text-green-500" />
               </Button>
             </>
           ) : (
