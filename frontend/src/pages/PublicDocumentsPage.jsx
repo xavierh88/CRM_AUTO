@@ -154,45 +154,54 @@ export default function PublicDocumentsPage() {
   };
 
   const handleFileChange = (e, type) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error(t.fileTooLarge);
-      return;
-    }
-
-    // Validate file type - images and PDF only
+    // Validate each file
+    const validFiles = [];
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-    if (!allowedTypes.includes(file.type)) {
-      toast.error(t.invalidFileType);
-      return;
+    
+    for (const file of files) {
+      // Validate file size (max 10MB per file)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`${file.name}: ${t.fileTooLarge}`);
+        continue;
+      }
+
+      // Validate file type
+      if (!allowedTypes.includes(file.type)) {
+        toast.error(`${file.name}: ${t.invalidFileType}`);
+        continue;
+      }
+      
+      validFiles.push(file);
     }
 
     if (type === 'id') {
-      setIdFile(file);
-      if (file.type.startsWith('image/')) {
-        setIdPreview(URL.createObjectURL(file));
-      } else {
-        setIdPreview(null); // PDF - no preview
-      }
-    } else {
-      setIncomeFile(file);
-      if (file.type.startsWith('image/')) {
-        setIncomePreview(URL.createObjectURL(file));
-      } else {
-        setIncomePreview(null); // PDF - no preview
-      }
+      setIdFiles(prev => [...prev, ...validFiles]);
+    } else if (type === 'income') {
+      setIncomeFiles(prev => [...prev, ...validFiles]);
+    } else if (type === 'residence') {
+      setResidenceFiles(prev => [...prev, ...validFiles]);
+    }
+  };
+
+  const removeFile = (type, index) => {
+    if (type === 'id') {
+      setIdFiles(prev => prev.filter((_, i) => i !== index));
+    } else if (type === 'income') {
+      setIncomeFiles(prev => prev.filter((_, i) => i !== index));
+    } else if (type === 'residence') {
+      setResidenceFiles(prev => prev.filter((_, i) => i !== index));
     }
   };
 
   const getFileIcon = (file) => {
     if (!file) return null;
     if (file.type === 'application/pdf') {
-      return <File className="w-10 h-10 text-red-500" />;
+      return <File className="w-6 h-6 text-red-500" />;
     }
-    return <Image className="w-10 h-10 text-blue-500" />;
+    return <Image className="w-6 h-6 text-blue-500" />;
   };
 
   const handleSubmit = async (e) => {
