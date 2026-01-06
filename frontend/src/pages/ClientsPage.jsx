@@ -2953,7 +2953,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
 }
 
 // Client Info Modal Component
-function ClientInfoModal({ client, onClose, onSendDocsSMS, onRefresh }) {
+function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRefresh }) {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
