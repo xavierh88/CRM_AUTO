@@ -111,11 +111,10 @@ export default function PublicDocumentsPage() {
   const [language, setLanguage] = useState('en');
   const t = translations[language];
   
-  // File states
-  const [idFile, setIdFile] = useState(null);
-  const [incomeFile, setIncomeFile] = useState(null);
-  const [idPreview, setIdPreview] = useState(null);
-  const [incomePreview, setIncomePreview] = useState(null);
+  // File states - now arrays for multiple files
+  const [idFiles, setIdFiles] = useState([]);
+  const [incomeFiles, setIncomeFiles] = useState([]);
+  const [residenceFiles, setResidenceFiles] = useState([]);
 
   useEffect(() => {
     validateToken();
