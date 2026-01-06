@@ -2803,20 +2803,158 @@ async def update_document_language_preference(token: str, data: DocumentLanguage
     return {"message": f"Language preference updated to {data.language}"}
 
 @api_router.post("/public/documents/{token}/upload")
-async def upload_public_documents(token: str):
-    """Handle document upload from client (public, no auth)"""
+async def upload_public_documents(
+    token: str,
+    id_documents: List[UploadFile] = File(default=[]),
+    income_documents: List[UploadFile] = File(default=[]),
+    residence_documents: List[UploadFile] = File(default=[]),
+    language: str = Form(default="en")
+):
+    """Handle document upload from client (public, no auth) - supports multiple files per type"""
+    from PIL import Image as PILImage
+    from pypdf import PdfReader, PdfWriter
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+    import io
+    
     link = await db.public_links.find_one({"token": token, "link_type": "documents"}, {"_id": 0})
     if not link:
         raise HTTPException(status_code=404, detail="Invalid link")
     
-    # For now, just mark as submitted (actual file upload would need more setup)
-    await db.user_records.update_one(
-        {"id": link["record_id"]},
-        {"$set": {
-            "documents_submitted": True,
-            "documents_submitted_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
+    client_id = link.get("client_id")
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Create uploads directory
+    upload_dir = Path(__file__).parent / "uploads" / "clients" / client_id
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    
+    async def combine_files_to_pdf(files: List[UploadFile], output_name: str) -> str:
+        """Combine multiple files (images/PDFs) into a single PDF"""
+        if not files:
+            return None
+        
+        pdf_writer = PdfWriter()
+        
+        for file in files:
+            content = await file.read()
+            await file.seek(0)  # Reset for potential reuse
+            
+            if file.content_type == 'application/pdf':
+                # Add PDF pages directly
+                try:
+                    pdf_reader = PdfReader(io.BytesIO(content))
+                    for page in pdf_reader.pages:
+                        pdf_writer.add_page(page)
+                except Exception as e:
+                    print(f"Error reading PDF {file.filename}: {e}")
+            elif file.content_type.startswith('image/'):
+                # Convert image to PDF page
+                try:
+                    img = PILImage.open(io.BytesIO(content))
+                    
+                    # Convert to RGB if necessary
+                    if img.mode in ('RGBA', 'LA', 'P'):
+                        background = PILImage.new('RGB', img.size, (255, 255, 255))
+                        if img.mode == 'P':
+                            img = img.convert('RGBA')
+                        background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                        img = background
+                    elif img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    
+                    # Create PDF from image
+                    img_buffer = io.BytesIO()
+                    
+                    # Calculate size to fit on letter page with margins
+                    page_width, page_height = letter
+                    margin = 36  # 0.5 inch margin
+                    max_width = page_width - 2 * margin
+                    max_height = page_height - 2 * margin
+                    
+                    # Scale image to fit
+                    img_width, img_height = img.size
+                    scale = min(max_width / img_width, max_height / img_height, 1.0)
+                    new_width = int(img_width * scale)
+                    new_height = int(img_height * scale)
+                    
+                    if scale < 1.0:
+                        img = img.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
+                    
+                    # Save as temporary PDF
+                    img_pdf_buffer = io.BytesIO()
+                    c = canvas.Canvas(img_pdf_buffer, pagesize=letter)
+                    
+                    # Center on page
+                    x = (page_width - img.width) / 2
+                    y = (page_height - img.height) / 2
+                    
+                    # Save image to buffer
+                    img.save(img_buffer, format='JPEG', quality=85)
+                    img_buffer.seek(0)
+                    
+                    # Draw image on PDF
+                    from reportlab.lib.utils import ImageReader
+                    c.drawImage(ImageReader(img_buffer), x, y, width=img.width, height=img.height)
+                    c.save()
+                    
+                    img_pdf_buffer.seek(0)
+                    img_reader = PdfReader(img_pdf_buffer)
+                    for page in img_reader.pages:
+                        pdf_writer.add_page(page)
+                except Exception as e:
+                    print(f"Error processing image {file.filename}: {e}")
+        
+        if len(pdf_writer.pages) == 0:
+            return None
+        
+        # Save combined PDF
+        output_path = upload_dir / f"{output_name}.pdf"
+        with open(output_path, 'wb') as f:
+            pdf_writer.write(f)
+        
+        return str(output_path)
+    
+    update_data = {
+        "documents_submitted": True,
+        "documents_submitted_at": datetime.now(timezone.utc).isoformat(),
+        "preferred_language": language
+    }
+    
+    # Process ID documents
+    if id_documents and len(id_documents) > 0 and id_documents[0].filename:
+        id_path = await combine_files_to_pdf(id_documents, "id_document")
+        if id_path:
+            update_data["id_uploaded"] = True
+            update_data["id_file_url"] = id_path
+    
+    # Process Income documents
+    if income_documents and len(income_documents) > 0 and income_documents[0].filename:
+        income_path = await combine_files_to_pdf(income_documents, "income_proof")
+        if income_path:
+            update_data["income_proof_uploaded"] = True
+            update_data["income_proof_file_url"] = income_path
+    
+    # Process Residence documents
+    if residence_documents and len(residence_documents) > 0 and residence_documents[0].filename:
+        residence_path = await combine_files_to_pdf(residence_documents, "residence_proof")
+        if residence_path:
+            update_data["residence_proof_uploaded"] = True
+            update_data["residence_proof_file_url"] = residence_path
+    
+    # Update client with document info
+    await db.clients.update_one({"id": client_id}, {"$set": update_data})
+    
+    # Also update record if exists
+    if link.get("record_id"):
+        await db.user_records.update_one(
+            {"id": link["record_id"]},
+            {"$set": {
+                "documents_submitted": True,
+                "documents_submitted_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
     
     # Mark link as used
     await db.public_links.update_one({"token": token}, {"$set": {"used": True}})
