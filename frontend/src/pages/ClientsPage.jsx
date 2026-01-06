@@ -538,6 +538,7 @@ export default function ClientsPage() {
           client={selectedClient} 
           onClose={() => setSelectedClient(null)}
           onSendDocsSMS={() => sendDocumentsSMS(selectedClient.id)}
+          onSendDocsEmail={() => sendDocumentsEmail(selectedClient)}
           onRefresh={fetchClients}
         />
       )}
