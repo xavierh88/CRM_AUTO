@@ -2054,6 +2054,154 @@ async def send_appointment_sms(client_id: str, appointment_id: str, current_user
     
     return {"message": "Appointment SMS sent successfully", "phone": client["phone"], "twilio_sid": result.get("sid")}
 
+@api_router.post("/email/send-appointment-link")
+async def send_appointment_email(client_id: str, appointment_id: str, current_user: dict = Depends(get_current_user)):
+    """Send Email with appointment management link - Alternative to SMS"""
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    if not client.get("email"):
+        raise HTTPException(status_code=400, detail="El cliente no tiene email registrado")
+    
+    appointment = await db.appointments.find_one({"id": appointment_id}, {"_id": 0})
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    # Generate public link token
+    token = await create_public_link(client_id, appointment_id, "appointment")
+    
+    # Update appointment with the token
+    await db.appointments.update_one({"id": appointment_id}, {"$set": {"public_token": token}})
+    
+    # Get base URL
+    base_url = os.environ.get('FRONTEND_URL', 'https://work-1-hxroqbnbaygfdbdd.prod-runtime.all-hands.dev')
+    appointment_link = f"{base_url}/c/appointment/{token}"
+    
+    # Build email content
+    client_name = f"{client['first_name']} {client['last_name']}"
+    salesperson_name = current_user.get('name', current_user.get('email', 'Su vendedor'))
+    date_str = appointment.get("date", "Por confirmar")
+    time_str = appointment.get("time", "")
+    dealer_str = appointment.get("dealer", "")
+    
+    email_body = f"""
+<html>
+<head>
+<style>
+body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }}
+.container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+.header {{ background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+.content {{ background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }}
+.appointment-box {{ background: white; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #8b5cf6; }}
+.detail-row {{ padding: 8px 0; border-bottom: 1px solid #f1f5f9; }}
+.detail-row:last-child {{ border-bottom: none; }}
+.label {{ color: #64748b; font-weight: 500; }}
+.value {{ color: #1e293b; font-weight: bold; }}
+.button {{ display: inline-block; background: #8b5cf6; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 10px 5px; }}
+.button:hover {{ background: #7c3aed; }}
+.button-secondary {{ background: #64748b; }}
+.footer {{ text-align: center; padding: 20px; color: #64748b; font-size: 12px; }}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1 style="margin: 0;">📅 Su Cita</h1>
+<p style="margin: 10px 0 0 0; opacity: 0.9;">DealerCRM</p>
+</div>
+<div class="content">
+<p>Hola <strong>{client_name}</strong>,</p>
+<p>{salesperson_name} le ha enviado los detalles de su cita:</p>
+
+<div class="appointment-box">
+<div class="detail-row">
+<span class="label">📅 Fecha:</span>
+<span class="value">{date_str}</span>
+</div>
+<div class="detail-row">
+<span class="label">🕐 Hora:</span>
+<span class="value">{time_str}</span>
+</div>
+<div class="detail-row">
+<span class="label">📍 Ubicación:</span>
+<span class="value">{dealer_str}</span>
+</div>
+</div>
+
+<p style="text-align: center;">
+<a href="{appointment_link}" class="button">Ver Detalles de la Cita</a>
+</p>
+
+<p style="text-align: center; color: #64748b; font-size: 14px;">
+Desde el link podrá ver los detalles, reprogramar o cancelar su cita.
+</p>
+
+<p style="color: #64748b; font-size: 13px;">
+Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
+<a href="{appointment_link}" style="color: #8b5cf6; word-break: break-all;">{appointment_link}</a>
+</p>
+</div>
+<div class="footer">
+<p>Este mensaje fue enviado automáticamente por DealerCRM.<br>
+Si tiene preguntas, contacte a su vendedor.</p>
+</div>
+</div>
+</body>
+</html>
+"""
+    
+    # Send email using SMTP
+    smtp_email = os.environ.get('SMTP_USER') or os.environ.get('SMTP_EMAIL')
+    smtp_password = os.environ.get('SMTP_PASSWORD')
+    
+    if not smtp_email or not smtp_password:
+        raise HTTPException(status_code=500, detail="Configuración de email no disponible. Contacte al administrador.")
+    
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"📅 {client_name} - Detalles de su cita para {date_str}"
+        msg['From'] = smtp_email
+        msg['To'] = client['email']
+        
+        html_part = MIMEText(email_body, 'html')
+        msg.attach(html_part)
+        
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(smtp_email, smtp_password)
+            server.sendmail(smtp_email, client['email'], msg.as_string())
+        
+        # Update appointment link_sent_at
+        await db.appointments.update_one(
+            {"id": appointment_id}, 
+            {"$set": {
+                "link_sent_at": datetime.now(timezone.utc).isoformat(),
+                "last_email_sent": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        # Log the email
+        email_log = {
+            "id": str(uuid.uuid4()),
+            "client_id": client_id,
+            "appointment_id": appointment_id,
+            "email": client['email'],
+            "message_type": "appointment",
+            "link": appointment_link,
+            "status": "sent",
+            "sent_at": datetime.now(timezone.utc).isoformat(),
+            "sent_by": current_user["id"]
+        }
+        await db.email_logs.insert_one(email_log)
+        
+        return {"message": "Email de cita enviado exitosamente", "email": client['email'], "link": appointment_link}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al enviar email: {str(e)}")
+
 @api_router.post("/sms/send-reminder")
 async def send_reminder_sms(client_id: str, record_id: str, current_user: dict = Depends(get_current_user)):
     """Send weekly reminder SMS for pending records"""
