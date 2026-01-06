@@ -350,26 +350,33 @@ export default function PublicDocumentsPage() {
                     accept="image/jpeg,image/png,image/webp,application/pdf"
                     onChange={(e) => handleFileChange(e, 'id')}
                     className="hidden"
+                    multiple
                   />
                   <label htmlFor="id-upload" className="cursor-pointer block text-center">
-                    {idFile ? (
+                    {idFiles.length > 0 ? (
                       <div className="space-y-2">
-                        {idPreview ? (
-                          <img src={idPreview} alt="ID Preview" className="max-h-32 mx-auto rounded" />
-                        ) : (
-                          <div className="flex justify-center">{getFileIcon(idFile)}</div>
-                        )}
-                        <p className="text-sm text-green-600 font-medium flex items-center justify-center gap-1">
-                          <CheckCircle2 className="w-4 h-4" />
-                          {idFile.name}
-                        </p>
-                        <p className="text-xs text-slate-400">{t.clickToChange}</p>
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          {idFiles.map((file, idx) => (
+                            <div key={idx} className="flex items-center gap-1 bg-green-50 px-2 py-1 rounded text-sm">
+                              {getFileIcon(file)}
+                              <span className="text-green-700 max-w-[100px] truncate">{file.name}</span>
+                              <button 
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); removeFile('id', idx); }}
+                                className="text-red-500 hover:text-red-700 ml-1"
+                              >×</button>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-green-600">{idFiles.length} {t.filesSelected}</p>
+                        <p className="text-xs text-slate-400">{t.clickToUpload} más archivos</p>
                       </div>
                     ) : (
                       <div className="py-4">
                         <Upload className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                         <p className="text-sm text-slate-500">{t.clickToUpload} {t.id}</p>
                         <p className="text-xs text-slate-400">{t.allowedFormats}</p>
+                        <p className="text-xs text-blue-500 mt-1">{t.multipleFiles}</p>
                       </div>
                     )}
                   </label>
@@ -389,26 +396,79 @@ export default function PublicDocumentsPage() {
                     accept="image/jpeg,image/png,image/webp,application/pdf"
                     onChange={(e) => handleFileChange(e, 'income')}
                     className="hidden"
+                    multiple
                   />
                   <label htmlFor="income-upload" className="cursor-pointer block text-center">
-                    {incomeFile ? (
+                    {incomeFiles.length > 0 ? (
                       <div className="space-y-2">
-                        {incomePreview ? (
-                          <img src={incomePreview} alt="Income Preview" className="max-h-32 mx-auto rounded" />
-                        ) : (
-                          <div className="flex justify-center">{getFileIcon(incomeFile)}</div>
-                        )}
-                        <p className="text-sm text-green-600 font-medium flex items-center justify-center gap-1">
-                          <CheckCircle2 className="w-4 h-4" />
-                          {incomeFile.name}
-                        </p>
-                        <p className="text-xs text-slate-400">{t.clickToChange}</p>
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          {incomeFiles.map((file, idx) => (
+                            <div key={idx} className="flex items-center gap-1 bg-green-50 px-2 py-1 rounded text-sm">
+                              {getFileIcon(file)}
+                              <span className="text-green-700 max-w-[100px] truncate">{file.name}</span>
+                              <button 
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); removeFile('income', idx); }}
+                                className="text-red-500 hover:text-red-700 ml-1"
+                              >×</button>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-green-600">{incomeFiles.length} {t.filesSelected}</p>
+                        <p className="text-xs text-slate-400">{t.clickToUpload} más archivos</p>
                       </div>
                     ) : (
                       <div className="py-4">
                         <Upload className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                         <p className="text-sm text-slate-500">{t.clickToUpload} {t.incomeProof}</p>
                         <p className="text-xs text-slate-400">{t.allowedFormats}</p>
+                        <p className="text-xs text-blue-500 mt-1">{t.multipleFiles}</p>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              {/* Residence Proof - NEW */}
+              <div className="space-y-2">
+                <Label htmlFor="residence-upload" className="flex items-center gap-2">
+                  <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-medium">{t.optional}</span>
+                  {t.residenceLabel}
+                </Label>
+                <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 hover:border-blue-400 transition-colors">
+                  <Input
+                    id="residence-upload"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    onChange={(e) => handleFileChange(e, 'residence')}
+                    className="hidden"
+                    multiple
+                  />
+                  <label htmlFor="residence-upload" className="cursor-pointer block text-center">
+                    {residenceFiles.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          {residenceFiles.map((file, idx) => (
+                            <div key={idx} className="flex items-center gap-1 bg-green-50 px-2 py-1 rounded text-sm">
+                              {getFileIcon(file)}
+                              <span className="text-green-700 max-w-[100px] truncate">{file.name}</span>
+                              <button 
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); removeFile('residence', idx); }}
+                                className="text-red-500 hover:text-red-700 ml-1"
+                              >×</button>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-green-600">{residenceFiles.length} {t.filesSelected}</p>
+                        <p className="text-xs text-slate-400">{t.clickToUpload} más archivos</p>
+                      </div>
+                    ) : (
+                      <div className="py-4">
+                        <Upload className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                        <p className="text-sm text-slate-500">{t.clickToUpload} {t.residenceProof}</p>
+                        <p className="text-xs text-slate-400">{t.allowedFormats}</p>
+                        <p className="text-xs text-blue-500 mt-1">{t.multipleFiles}</p>
                       </div>
                     )}
                   </label>
@@ -420,7 +480,7 @@ export default function PublicDocumentsPage() {
                 type="submit" 
                 className="w-full" 
                 size="lg"
-                disabled={submitting || !idFile}
+                disabled={submitting || idFiles.length === 0}
               >
                 {submitting ? (
                   <>
