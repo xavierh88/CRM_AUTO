@@ -910,6 +910,20 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     }
   };
 
+  const handleMarkFinanceStatus = async (recordId, status) => {
+    try {
+      await axios.put(`${API}/user-records/${recordId}`, {
+        client_id: clientId,
+        finance_status: status
+      });
+      onRefresh();
+      const statusText = status === 'financiado' ? 'Financiado' : status === 'lease' ? 'Lease' : status === 'no' ? 'No financiado' : status;
+      toast.success(`Finance status marcado como ${statusText}`);
+    } catch (error) {
+      toast.error('Error al actualizar el finance status');
+    }
+  };
+
   const handleDeleteRecord = async (recordId) => {
     if (!window.confirm('Are you sure you want to delete this record?')) return;
     try {
