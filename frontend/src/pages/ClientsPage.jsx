@@ -867,6 +867,9 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
       // Collaborator
       collaborator_id: record.collaborator_id || null,
       collaborator_name: record.collaborator_name || null,
+      // Commission fields
+      commission_percentage: record.commission_percentage || '',
+      commission_value: record.commission_value || '',
       // Legacy fields for backward compatibility
       dl: record.dl || false,
       checks: record.checks || false,
