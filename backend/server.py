@@ -385,6 +385,10 @@ class UserRecordResponse(BaseModel):
     collaborator_name: Optional[str] = None
     # Record status
     record_status: Optional[str] = None
+    # Commission fields (admin only)
+    commission_percentage: Optional[float] = None
+    commission_value: Optional[float] = None
+    commission_locked: Optional[bool] = False
     # Legacy fields
     dl: Optional[bool] = False
     checks: Optional[bool] = False
