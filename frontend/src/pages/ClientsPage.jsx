@@ -881,12 +881,18 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     try {
       const newCollaborator = editRecordData.collaborator_id;
       
+      // If admin is saving commission data, lock the record status
+      const shouldLock = isAdmin && editRecordData.commission_percentage && editRecordData.commission_value;
+      
       await axios.put(`${API}/user-records/${editingRecord}`, {
         client_id: clientId,
         ...editRecordData,
         sale_month: editRecordData.sale_month ? parseInt(editRecordData.sale_month) : null,
         sale_day: editRecordData.sale_day ? parseInt(editRecordData.sale_day) : null,
-        sale_year: editRecordData.sale_year ? parseInt(editRecordData.sale_year) : null
+        sale_year: editRecordData.sale_year ? parseInt(editRecordData.sale_year) : null,
+        commission_percentage: editRecordData.commission_percentage ? parseFloat(editRecordData.commission_percentage) : null,
+        commission_value: editRecordData.commission_value ? parseFloat(editRecordData.commission_value) : null,
+        commission_locked: shouldLock
       });
       
       // Send notification to collaborator if there's one assigned
