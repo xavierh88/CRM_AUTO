@@ -1385,10 +1385,48 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
               <Label className="form-label mb-1 block">Credit</Label>
               <Input placeholder="Score" value={newRecord.credit} onChange={(e) => setNewRecord({ ...newRecord, credit: e.target.value })} />
             </div>
-            <div>
-              <Label className="form-label mb-1 block">Auto Loan</Label>
-              <Input placeholder="Monto" value={newRecord.auto_loan} onChange={(e) => setNewRecord({ ...newRecord, auto_loan: e.target.value })} />
+          </div>
+
+          {/* Auto Loan Section */}
+          <div className="border rounded-lg p-3 mb-4">
+            <Label className="form-label mb-2 block font-medium">Auto Loan</Label>
+            <div className="flex flex-wrap gap-4 mb-3">
+              {['Paid', 'Late', 'On Time'].map((status) => (
+                <div key={status} className="flex items-center gap-2">
+                  <Checkbox
+                    checked={newRecord.auto_loan_status === status}
+                    onCheckedChange={(checked) => {
+                      setNewRecord({ 
+                        ...newRecord, 
+                        auto_loan_status: checked ? status : null,
+                        auto_loan_bank: checked && status === 'On Time' ? newRecord.auto_loan_bank : '',
+                        auto_loan_amount: checked && status === 'On Time' ? newRecord.auto_loan_amount : ''
+                      });
+                    }}
+                  />
+                  <span className="text-sm">{status}</span>
+                </div>
+              ))}
             </div>
+            {newRecord.auto_loan_status === 'On Time' && (
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                <div>
+                  <Label className="form-label mb-1 block text-xs">Banco</Label>
+                  <Select value={newRecord.auto_loan_bank || ''} onValueChange={(value) => setNewRecord({ ...newRecord, auto_loan_bank: value })}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar banco" /></SelectTrigger>
+                    <SelectContent>
+                      {configLists.banks.map((bank) => (
+                        <SelectItem key={bank} value={bank}>{bank}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="form-label mb-1 block text-xs">Monto</Label>
+                  <Input placeholder="$0.00" value={newRecord.auto_loan_amount || ''} onChange={(e) => setNewRecord({ ...newRecord, auto_loan_amount: e.target.value })} />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Down Payment Section - Multi-select */}
