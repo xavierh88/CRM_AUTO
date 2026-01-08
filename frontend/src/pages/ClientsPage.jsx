@@ -2058,35 +2058,75 @@ function RecordCard({
           </div>
         )}
 
-        {/* Collaborator Section */}
-        <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-          <Label className="form-label mb-2 block text-purple-700 text-sm flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Colaborador (Usuario compartido)
-          </Label>
-          <Select 
-            value={editData.collaborator_id || 'none'} 
-            onValueChange={(value) => {
-              const selectedUser = salespersons.find(s => s.id === value);
-              setEditData({ 
-                ...editData, 
-                collaborator_id: value === 'none' ? null : value,
-                collaborator_name: value === 'none' ? null : selectedUser?.name || selectedUser?.email
-              });
-            }}
-          >
-            <SelectTrigger className="max-w-xs">
-              <SelectValue placeholder="Seleccionar colaborador" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Sin colaborador</SelectItem>
-              {salespersons.filter(s => s.id !== currentUserId).map((sp) => (
-                <SelectItem key={sp.id} value={sp.id}>{sp.name || sp.email}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-purple-500 mt-1">El colaborador será notificado de los cambios en este record</p>
-        </div>
+        {/* Collaborator Section - Admin Only */}
+        {isAdmin && (
+          <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+            <Label className="form-label mb-2 block text-purple-700 text-sm flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Colaborador (Usuario compartido)
+            </Label>
+            <Select 
+              value={editData.collaborator_id || 'none'} 
+              onValueChange={(value) => {
+                const selectedUser = salespersons.find(s => s.id === value);
+                setEditData({ 
+                  ...editData, 
+                  collaborator_id: value === 'none' ? null : value,
+                  collaborator_name: value === 'none' ? null : selectedUser?.name || selectedUser?.email
+                });
+              }}
+            >
+              <SelectTrigger className="max-w-xs">
+                <SelectValue placeholder="Seleccionar colaborador" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin colaborador</SelectItem>
+                {salespersons.filter(s => s.id !== currentUserId).map((sp) => (
+                  <SelectItem key={sp.id} value={sp.id}>{sp.name || sp.email}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-purple-500 mt-1">El colaborador será notificado de los cambios en este record</p>
+          </div>
+        )}
+
+        {/* Commission Section - Admin Only, shown when record is completed */}
+        {isAdmin && record.record_status === 'completed' && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <Label className="form-label mb-2 block text-amber-700 text-sm flex items-center gap-2">
+              💰 Comisión (Solo Admin)
+            </Label>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label className="form-label mb-1 block text-xs">Porcentaje (%)</Label>
+                <Input 
+                  type="number" 
+                  min="0" 
+                  max="100" 
+                  placeholder="0-100" 
+                  value={editData.commission_percentage || ''} 
+                  onChange={(e) => setEditData({ ...editData, commission_percentage: e.target.value })} 
+                />
+              </div>
+              <div>
+                <Label className="form-label mb-1 block text-xs">Valor ($)</Label>
+                <Input 
+                  type="number" 
+                  placeholder="$0.00" 
+                  value={editData.commission_value || ''} 
+                  onChange={(e) => setEditData({ ...editData, commission_value: e.target.value })} 
+                />
+              </div>
+              <div>
+                <Label className="form-label mb-1 block text-xs">Resultado</Label>
+                <div className="h-9 px-3 py-2 bg-white border rounded-md text-sm flex items-center font-medium text-emerald-600">
+                  ${((parseFloat(editData.commission_percentage || 0) / 100) * parseFloat(editData.commission_value || 0)).toFixed(2)}
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-amber-600 mt-2">Al guardar, el estado de completado quedará bloqueado para otros usuarios.</p>
+          </div>
+        )}
 
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={onCancelEdit}>Cancel</Button>
