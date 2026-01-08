@@ -1414,6 +1414,166 @@ class CRMAPITester:
                 print(f"❌ Document status not updated correctly")
         return False
 
+    # ==================== EMAIL REPORT WITH DOCUMENT ATTACHMENTS TESTS ====================
+    
+    def test_send_record_report_basic(self):
+        """Test basic email report sending without attachments"""
+        if not self.client_id or not self.record_id:
+            return False
+            
+        success, response = self.run_test(
+            "Send Record Report - Basic",
+            "POST",
+            "send-record-report",
+            200,
+            data={
+                "emails": ["test@example.com"],
+                "record_id": self.record_id,
+                "client_id": self.client_id,
+                "include_documents": True,
+                "attach_documents": False
+            }
+        )
+        
+        if success and 'message' in response:
+            print(f"✅ Basic email report sent successfully")
+            return True
+        return False
+
+    def test_send_record_report_with_attachments(self):
+        """Test email report sending with document attachments"""
+        if not self.client_id or not self.record_id:
+            return False
+            
+        success, response = self.run_test(
+            "Send Record Report - With Attachments",
+            "POST",
+            "send-record-report",
+            200,
+            data={
+                "emails": ["test@example.com"],
+                "record_id": self.record_id,
+                "client_id": self.client_id,
+                "include_documents": True,
+                "attach_documents": True
+            }
+        )
+        
+        if success and 'attachments_count' in response:
+            attachments_count = response.get('attachments_count', 0)
+            print(f"✅ Email report with attachments sent successfully - {attachments_count} attachments")
+            return True
+        elif success:
+            print(f"⚠️  Email report sent but no attachments_count field in response")
+            return False
+        return False
+
+    def test_send_record_report_multiple_emails(self):
+        """Test email report sending to multiple recipients"""
+        if not self.client_id or not self.record_id:
+            return False
+            
+        success, response = self.run_test(
+            "Send Record Report - Multiple Recipients",
+            "POST",
+            "send-record-report",
+            200,
+            data={
+                "emails": ["test1@example.com", "test2@example.com"],
+                "record_id": self.record_id,
+                "client_id": self.client_id,
+                "include_documents": True,
+                "attach_documents": True
+            }
+        )
+        
+        if success and 'sent_to' in response:
+            sent_count = len(response.get('sent_to', []))
+            print(f"✅ Email report sent to {sent_count} recipients")
+            return True
+        return False
+
+    def test_send_record_report_invalid_record(self):
+        """Test email report with invalid record ID"""
+        success, response = self.run_test(
+            "Send Record Report - Invalid Record ID",
+            "POST",
+            "send-record-report",
+            404,
+            data={
+                "emails": ["test@example.com"],
+                "record_id": "invalid-record-id",
+                "client_id": self.client_id or "invalid-client-id",
+                "include_documents": True,
+                "attach_documents": False
+            }
+        )
+        return success
+
+    def test_send_record_report_invalid_client(self):
+        """Test email report with invalid client ID"""
+        if not self.record_id:
+            return False
+            
+        success, response = self.run_test(
+            "Send Record Report - Invalid Client ID",
+            "POST",
+            "send-record-report",
+            404,
+            data={
+                "emails": ["test@example.com"],
+                "record_id": self.record_id,
+                "client_id": "invalid-client-id",
+                "include_documents": True,
+                "attach_documents": False
+            }
+        )
+        return success
+
+    # ==================== APPOINTMENT EDITING TESTS ====================
+    
+    def test_update_appointment(self):
+        """Test updating an existing appointment (PUT /api/appointments/{id})"""
+        if not self.appointment_id:
+            return False
+            
+        success, response = self.run_test(
+            "Update Appointment",
+            "PUT",
+            f"appointments/{self.appointment_id}",
+            200,
+            data={
+                "user_record_id": self.record_id,
+                "client_id": self.client_id,
+                "date": "2024-12-25",
+                "time": "14:00",
+                "dealer": "Updated Dealer",
+                "language": "es"
+            }
+        )
+        
+        if success and response.get('date') == "2024-12-25":
+            print(f"✅ Appointment updated successfully - new date: {response.get('date')}")
+            return True
+        return False
+
+    def test_get_appointment_by_id(self):
+        """Test getting a specific appointment by ID"""
+        if not self.appointment_id:
+            return False
+            
+        success, response = self.run_test(
+            "Get Appointment by ID",
+            "GET",
+            f"appointments/{self.appointment_id}",
+            200
+        )
+        
+        if success and 'id' in response:
+            print(f"✅ Appointment retrieved successfully - ID: {response.get('id')}")
+            return True
+        return False
+
     # ==================== DIRECT DEPOSIT AMOUNT TESTS ====================
     
     def test_create_user_record_with_direct_deposit_amount(self):
