@@ -428,9 +428,9 @@ export default function ClientsPage() {
                       <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold relative">
                         {client.first_name.charAt(0)}
                         {/* Sold cars indicator */}
-                        {soldRecords.length > 0 && (
-                          <div className="absolute -bottom-1 -right-1 bg-amber-400 text-white text-xs rounded-full px-1 flex items-center gap-0.5" title={`${soldRecords.length} venta(s)`}>
-                            🚗{soldRecords.length > 1 && <span className="font-bold">{soldRecords.length}</span>}
+                        {soldCount > 0 && (
+                          <div className="absolute -bottom-1 -right-1 bg-amber-400 text-white text-xs rounded-full px-1 flex items-center gap-0.5" title={`${soldCount} venta(s)`}>
+                            🚗{soldCount > 1 && <span className="font-bold">{soldCount}</span>}
                           </div>
                         )}
                       </div>
@@ -439,14 +439,15 @@ export default function ClientsPage() {
                           <p className="font-semibold text-slate-900">
                             {client.first_name} {client.last_name}
                           </p>
-                          {/* Sold badges */}
-                          {soldRecords.length > 0 && (
+                          {/* Sold badges - show stars based on sold count */}
+                          {soldCount > 0 && (
                             <div className="flex items-center gap-1">
-                              {soldRecords.map((sr, idx) => (
-                                <span key={idx} className="text-amber-500" title={`${sr.finance_status}: ${sr.vehicle_make || 'Auto'} ${sr.vehicle_year || ''}`}>
+                              {[...Array(Math.min(soldCount, 5))].map((_, idx) => (
+                                <span key={idx} className="text-amber-500" title={`Venta #${idx + 1}`}>
                                   ⭐
                                 </span>
                               ))}
+                              {soldCount > 5 && <span className="text-amber-500 text-xs font-bold">+{soldCount - 5}</span>}
                             </div>
                           )}
                         </div>
