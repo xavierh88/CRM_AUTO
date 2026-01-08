@@ -552,7 +552,8 @@ export default function ClientsPage() {
                 </CollapsibleContent>
               </Collapsible>
             </Card>
-          ))
+            );
+          })
         )}
       </div>
 
