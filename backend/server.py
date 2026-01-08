@@ -610,7 +610,7 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
     
     clients = await db.clients.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
-    # For each client, get the last record date
+    # For each client, get the last record date and sold count
     for client in clients:
         last_record = await db.user_records.find_one(
             {"client_id": client["id"], "is_deleted": {"$ne": True}},
@@ -618,6 +618,14 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
             sort=[("created_at", -1)]
         )
         client["last_record_date"] = last_record["created_at"] if last_record else None
+        
+        # Count sold records (finance_status = 'financiado' or 'lease')
+        sold_count = await db.user_records.count_documents({
+            "client_id": client["id"],
+            "is_deleted": {"$ne": True},
+            "finance_status": {"$in": ["financiado", "lease"]}
+        })
+        client["sold_count"] = sold_count
     
     return clients
 
