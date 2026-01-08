@@ -1751,6 +1751,27 @@ def main():
         tester.test_update_documents_status_residence_proof()
         tester.test_update_documents_status_clear_file_urls()
     
+    # NEW EMAIL REPORT WITH DOCUMENT ATTACHMENTS TESTS (Priority High)
+    print("\n" + "="*50)
+    print("EMAIL REPORT WITH DOCUMENT ATTACHMENTS TESTS (PRIORITY HIGH)")
+    print("="*50)
+    
+    if tester.client_id and tester.record_id:
+        tester.test_send_record_report_basic()
+        tester.test_send_record_report_with_attachments()
+        tester.test_send_record_report_multiple_emails()
+        tester.test_send_record_report_invalid_record()
+        tester.test_send_record_report_invalid_client()
+    
+    # NEW APPOINTMENT EDITING TESTS (Priority High)
+    print("\n" + "="*50)
+    print("APPOINTMENT EDITING TESTS (PRIORITY HIGH)")
+    print("="*50)
+    
+    if tester.appointment_id:
+        tester.test_get_appointment_by_id()
+        tester.test_update_appointment()
+    
     # NEW DIRECT DEPOSIT AMOUNT TESTS (Priority High) - Run after client creation
     print("\n" + "="*50)
     print("DIRECT DEPOSIT AMOUNT FIELD TESTS (PRIORITY HIGH)")
