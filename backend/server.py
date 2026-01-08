@@ -1287,21 +1287,100 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
         import smtplib
         from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
+        from email.mime.base import MIMEBase
+        from email import encoders
+        
+        # Collect document attachments if requested
+        attachments = []
+        if request.attach_documents:
+            uploads_dir = "/app/backend/uploads"
+            
+            # Client documents
+            if client.get('id_file_url'):
+                file_path = os.path.join(uploads_dir, os.path.basename(client['id_file_url']))
+                if os.path.exists(file_path):
+                    attachments.append({
+                        'path': file_path,
+                        'name': f"{client.get('first_name', 'Cliente')}_{client.get('last_name', '')}_ID{os.path.splitext(file_path)[1]}"
+                    })
+            
+            if client.get('income_proof_file_url'):
+                file_path = os.path.join(uploads_dir, os.path.basename(client['income_proof_file_url']))
+                if os.path.exists(file_path):
+                    attachments.append({
+                        'path': file_path,
+                        'name': f"{client.get('first_name', 'Cliente')}_{client.get('last_name', '')}_Ingresos{os.path.splitext(file_path)[1]}"
+                    })
+            
+            if client.get('residence_proof_file_url'):
+                file_path = os.path.join(uploads_dir, os.path.basename(client['residence_proof_file_url']))
+                if os.path.exists(file_path):
+                    attachments.append({
+                        'path': file_path,
+                        'name': f"{client.get('first_name', 'Cliente')}_{client.get('last_name', '')}_Residencia{os.path.splitext(file_path)[1]}"
+                    })
+            
+            # Also include co-signer documents if available
+            for idx, cosigner in enumerate(cosigners_data, 1):
+                cs_info = cosigner['info']
+                cs_name = f"CoSigner{idx}_{cs_info.get('first_name', '')}"
+                
+                if cs_info.get('id_file_url'):
+                    file_path = os.path.join(uploads_dir, os.path.basename(cs_info['id_file_url']))
+                    if os.path.exists(file_path):
+                        attachments.append({
+                            'path': file_path,
+                            'name': f"{cs_name}_ID{os.path.splitext(file_path)[1]}"
+                        })
+                
+                if cs_info.get('income_proof_file_url'):
+                    file_path = os.path.join(uploads_dir, os.path.basename(cs_info['income_proof_file_url']))
+                    if os.path.exists(file_path):
+                        attachments.append({
+                            'path': file_path,
+                            'name': f"{cs_name}_Ingresos{os.path.splitext(file_path)[1]}"
+                        })
+                
+                if cs_info.get('residence_proof_file_url'):
+                    file_path = os.path.join(uploads_dir, os.path.basename(cs_info['residence_proof_file_url']))
+                    if os.path.exists(file_path):
+                        attachments.append({
+                            'path': file_path,
+                            'name': f"{cs_name}_Residencia{os.path.splitext(file_path)[1]}"
+                        })
         
         for recipient_email in request.emails:
-            msg = MIMEMultipart('alternative')
+            msg = MIMEMultipart('mixed')  # Changed to 'mixed' to support attachments
             msg['Subject'] = f"📋 Reporte de Cliente: {client.get('first_name', '')} {client.get('last_name', '')}"
             msg['From'] = smtp_email
             msg['To'] = recipient_email.strip()
             
+            # Create alternative part for HTML content
+            alt_part = MIMEMultipart('alternative')
             html_part = MIMEText(email_body, 'html')
-            msg.attach(html_part)
+            alt_part.attach(html_part)
+            msg.attach(alt_part)
+            
+            # Attach documents if requested
+            for attachment in attachments:
+                try:
+                    with open(attachment['path'], 'rb') as f:
+                        file_data = f.read()
+                    
+                    part = MIMEBase('application', 'octet-stream')
+                    part.set_payload(file_data)
+                    encoders.encode_base64(part)
+                    part.add_header('Content-Disposition', f'attachment; filename="{attachment["name"]}"')
+                    msg.attach(part)
+                except Exception as att_error:
+                    print(f"Error attaching file {attachment['path']}: {str(att_error)}")
             
             with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
                 server.login(smtp_email, smtp_password)
                 server.sendmail(smtp_email, recipient_email.strip(), msg.as_string())
         
-        return {"message": f"Reporte enviado exitosamente a {len(request.emails)} destinatario(s)", "sent_to": request.emails}
+        attachment_msg = f" con {len(attachments)} documento(s) adjunto(s)" if attachments else ""
+        return {"message": f"Reporte enviado exitosamente a {len(request.emails)} destinatario(s){attachment_msg}", "sent_to": request.emails, "attachments_count": len(attachments)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error sending email: {str(e)}")
 
