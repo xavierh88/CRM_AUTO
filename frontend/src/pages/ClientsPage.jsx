@@ -2307,25 +2307,25 @@ function RecordCard({
 
       {/* Record Status Actions - Always show on all records */}
       <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-        {record.finance_status === 'no' ? (
+        {!record.record_status ? (
           <>
             <Button size="sm" variant="outline" className="text-emerald-600 hover:bg-emerald-50"
-              onClick={() => onMarkFinanceStatus(record.id, 'financiado')}>
-              ✓ Marcar Financiado
+              onClick={() => onMarkRecordStatus(record.id, 'completed')}>
+              ✓ Marcar como Completado
             </Button>
-            <Button size="sm" variant="outline" className="text-blue-600 hover:bg-blue-50"
-              onClick={() => onMarkFinanceStatus(record.id, 'lease')}>
-              ✓ Marcar Lease
+            <Button size="sm" variant="outline" className="text-slate-500 hover:bg-slate-50"
+              onClick={() => onMarkRecordStatus(record.id, 'no_show')}>
+              ✗ Mark as No-Show
             </Button>
           </>
         ) : (
           <>
-            <span className="text-sm text-emerald-600 font-medium flex items-center gap-1">
-              ✅ {record.finance_status === 'financiado' ? 'Financiado' : 'Lease'}
+            <span className={`text-sm font-medium flex items-center gap-1 ${record.record_status === 'completed' ? 'text-emerald-600' : 'text-slate-500'}`}>
+              {record.record_status === 'completed' ? '✅ Completado' : '❌ No-Show'}
             </span>
-            <Button size="sm" variant="outline" className="text-slate-500 hover:bg-slate-50"
-              onClick={() => onMarkFinanceStatus(record.id, 'no')}>
-              ✗ Desmarcar Venta
+            <Button size="sm" variant="outline" className="text-slate-400 hover:bg-slate-50"
+              onClick={() => onMarkRecordStatus(record.id, null)}>
+              ↩ Desmarcar
             </Button>
           </>
         )}
