@@ -371,9 +371,11 @@ class UserRecordResponse(BaseModel):
     # Collaborator
     collaborator_id: Optional[str] = None
     collaborator_name: Optional[str] = None
+    # Record status
+    record_status: Optional[str] = None
     # Legacy fields
-    dl: bool = False
-    checks: bool = False
+    dl: Optional[bool] = False
+    checks: Optional[bool] = False
     down_payment: Optional[str] = None
 
 class AppointmentCreate(BaseModel):
