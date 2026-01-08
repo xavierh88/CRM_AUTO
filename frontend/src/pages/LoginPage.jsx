@@ -65,13 +65,12 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-              <Car className="w-8 h-8 text-white" />
-            </div>
+          <div className="inline-flex flex-col items-center gap-3 mb-4">
+            <img src="/logo.png" alt="CARPLUS AUTOSALE" className="w-32 h-32 object-contain" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">DealerCRM Pro</h1>
-          <p className="text-slate-300">{t('auth.subtitle')}</p>
+          <h1 className="text-3xl font-bold text-white mb-1">CARPLUS <span className="text-red-500">AUTOSALE</span></h1>
+          <p className="text-red-400 font-semibold text-lg mb-2">Friendly Brokerage</p>
+          <p className="text-slate-300 text-sm">{t('auth.subtitle')}</p>
         </div>
 
         {/* Language Toggle */}
