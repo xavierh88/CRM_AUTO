@@ -701,6 +701,7 @@ export default function ClientsPage() {
 function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAppointmentSMS, sendAppointmentEmail, configLists, salespersons }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [showAddRecord, setShowAddRecord] = useState(false);
   const [showNewOpportunity, setShowNewOpportunity] = useState(false);
   const [addingToOpportunity, setAddingToOpportunity] = useState(null);
