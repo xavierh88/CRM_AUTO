@@ -543,11 +543,11 @@ backend:
 frontend:
   - task: "Email Report Dialog with Attach Documents Option"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/frontend/src/pages/ClientsPage.jsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
@@ -555,6 +555,9 @@ frontend:
         - working: "NA"
         - agent: "testing"
         - comment: "BACKEND VERIFIED: Email report backend fully supports attach_documents parameter and returns attachments_count. Frontend integration should work correctly with backend API. Not testing frontend UI as per instructions."
+        - working: false
+        - agent: "testing"
+        - comment: "❌ FRONTEND LOGIN ISSUE: Unable to test UI features due to frontend authentication failure. Login API works correctly (tested via curl - returns valid JWT token), but frontend login form does not complete authentication flow. User remains on /login page after entering correct credentials (xadmin/Cali2020). Backend APIs for all three features are working correctly. CRITICAL: Frontend authentication context or session management needs investigation."
 
   - task: "Client Progress Bar"
     implemented: true
