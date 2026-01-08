@@ -402,20 +402,74 @@ export default function ClientsPage() {
             </CardContent>
           </Card>
         ) : (
-          currentClients.map((client) => (
+          currentClients.map((client) => {
+            // Calculate progress and sold cars
+            const clientRecords = userRecords[client.id] || [];
+            const soldRecords = clientRecords.filter(r => r.finance_status && r.finance_status !== 'no');
+            const docsUploaded = [client.id_uploaded, client.income_proof_uploaded, client.residence_proof_uploaded].filter(Boolean).length;
+            const totalDocs = 3;
+            const hasRecords = clientRecords.length > 0;
+            const hasSold = soldRecords.length > 0;
+            
+            // Progress calculation: 33% docs, 33% has record, 34% sold
+            let progress = 0;
+            progress += (docsUploaded / totalDocs) * 33; // Up to 33% for docs
+            if (hasRecords) progress += 33; // 33% for having records
+            if (hasSold) progress += 34; // 34% for being sold
+            progress = Math.min(100, Math.round(progress));
+            
+            return (
             <Card key={client.id} className="dashboard-card overflow-hidden" data-testid={`client-card-${client.id}`}>
               <Collapsible open={expandedClients[client.id]} onOpenChange={() => toggleClientExpand(client.id)}>
                 <CollapsibleTrigger asChild>
                   <div className="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer w-full" role="button" tabIndex={0}>
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold relative">
                         {client.first_name.charAt(0)}
+                        {/* Sold cars indicator */}
+                        {soldRecords.length > 0 && (
+                          <div className="absolute -bottom-1 -right-1 bg-amber-400 text-white text-xs rounded-full px-1 flex items-center gap-0.5" title={`${soldRecords.length} venta(s)`}>
+                            🚗{soldRecords.length > 1 && <span className="font-bold">{soldRecords.length}</span>}
+                          </div>
+                        )}
                       </div>
                       <div className="text-left">
-                        <p className="font-semibold text-slate-900">
-                          {client.first_name} {client.last_name}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-slate-900">
+                            {client.first_name} {client.last_name}
+                          </p>
+                          {/* Sold badges */}
+                          {soldRecords.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              {soldRecords.map((sr, idx) => (
+                                <span key={idx} className="text-amber-500" title={`${sr.finance_status}: ${sr.vehicle_make || 'Auto'} ${sr.vehicle_year || ''}`}>
+                                  ⭐
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         <p className="text-sm text-slate-500">{client.phone}</p>
+                        {/* Progress bar */}
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all ${
+                                progress >= 100 ? 'bg-green-500' : 
+                                progress >= 66 ? 'bg-blue-500' : 
+                                progress >= 33 ? 'bg-amber-500' : 'bg-slate-400'
+                              }`}
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-slate-400">{progress}%</span>
+                          {/* Document indicators */}
+                          <div className="flex items-center gap-0.5 ml-1">
+                            <span className={`text-xs ${client.id_uploaded ? 'text-green-500' : 'text-slate-300'}`} title="ID">📄</span>
+                            <span className={`text-xs ${client.income_proof_uploaded ? 'text-green-500' : 'text-slate-300'}`} title="Ingresos">💵</span>
+                            <span className={`text-xs ${client.residence_proof_uploaded ? 'text-green-500' : 'text-slate-300'}`} title="Residencia">🏠</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
