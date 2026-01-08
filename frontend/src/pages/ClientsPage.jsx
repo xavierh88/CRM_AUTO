@@ -404,20 +404,22 @@ export default function ClientsPage() {
         ) : (
           currentClients.map((client) => {
             // Calculate progress and sold cars
-            // Use client.last_record_date to determine if client has records (stable value)
-            // Use client.sold_count from backend for sold status (stable value)
-            const docsUploaded = [client.id_uploaded, client.income_proof_uploaded, client.residence_proof_uploaded].filter(Boolean).length;
-            const totalDocs = 3;
-            const hasRecords = !!client.last_record_date;
+            // Progress is based on COMPLETED records, NOT documents
+            // Each completed record (record_status='completed') counts as a star
+            // Progress resets with each new opportunity
             const soldCount = client.sold_count || 0;
-            const hasSold = soldCount > 0;
+            const hasRecords = !!client.last_record_date;
             
-            // Progress calculation: 33% docs, 33% has record, 34% sold
+            // Progress: If any record is completed, show 100% (sale done for current opportunity)
+            // Stars indicate number of completed sales across all opportunities
             let progress = 0;
-            progress += (docsUploaded / totalDocs) * 33; // Up to 33% for docs
-            if (hasRecords) progress += 33; // 33% for having records
-            if (hasSold) progress += 34; // 34% for being sold
-            progress = Math.min(100, Math.round(progress));
+            if (soldCount > 0) {
+              progress = 100; // If there's at least one completed record, progress is 100%
+            } else if (hasRecords) {
+              progress = 50; // Has records but not completed yet
+            }
+            // Documents are shown as indicators but don't affect progress
+            const docsUploaded = [client.id_uploaded, client.income_proof_uploaded, client.residence_proof_uploaded].filter(Boolean).length;
             
             return (
             <Card key={client.id} className="dashboard-card overflow-hidden" data-testid={`client-card-${client.id}`}>
