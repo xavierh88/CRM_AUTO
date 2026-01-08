@@ -345,7 +345,11 @@ class UserRecordResponse(BaseModel):
     # Other fields
     auto: Optional[str] = None
     credit: Optional[str] = None
-    auto_loan: Optional[str] = None
+    # Auto Loan fields - Paid, Late, On Time (with bank and amount for On Time)
+    auto_loan: Optional[str] = None  # Legacy field
+    auto_loan_status: Optional[str] = None  # Paid, Late, On Time
+    auto_loan_bank: Optional[str] = None  # Bank name when On Time
+    auto_loan_amount: Optional[str] = None  # Amount when On Time
     # Down Payment
     down_payment_type: Optional[str] = None
     down_payment_cash: Optional[str] = None
