@@ -2451,7 +2451,7 @@ function RecordCard({
       )}
 
       {/* Record Status Actions - Always show on all records */}
-      <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+      <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100">
         {!record.record_status ? (
           <>
             <Button size="sm" variant="outline" className="text-emerald-600 hover:bg-emerald-50"
@@ -2468,10 +2468,16 @@ function RecordCard({
             <span className={`text-sm font-medium flex items-center gap-1 ${record.record_status === 'completed' ? 'text-emerald-600' : 'text-slate-500'}`}>
               {record.record_status === 'completed' ? '✅ Completado' : '❌ No-Show'}
             </span>
-            <Button size="sm" variant="outline" className="text-slate-400 hover:bg-slate-50"
-              onClick={() => onMarkRecordStatus(record.id, null)}>
-              ↩ Desmarcar
-            </Button>
+            {record.commission_locked && !isAdmin ? (
+              <span className="text-xs text-amber-600 flex items-center gap-1">
+                🔒 Bloqueado por Admin
+              </span>
+            ) : (
+              <Button size="sm" variant="outline" className="text-slate-400 hover:bg-slate-50"
+                onClick={() => onMarkRecordStatus(record.id, null)}>
+                ↩ Desmarcar
+              </Button>
+            )}
           </>
         )}
       </div>
