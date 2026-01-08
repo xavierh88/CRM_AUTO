@@ -1421,7 +1421,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
                     <SelectTrigger><SelectValue placeholder="Seleccionar banco" /></SelectTrigger>
                     <SelectContent>
                       {configLists.banks.map((bank) => (
-                        <SelectItem key={bank} value={bank}>{bank}</SelectItem>
+                        <SelectItem key={bank.id} value={bank.name}>{bank.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
