@@ -1880,10 +1880,48 @@ function RecordCard({
             <Label className="form-label mb-1 block text-xs">Credit</Label>
             <Input placeholder="Score" value={editData.credit || ''} onChange={(e) => setEditData({ ...editData, credit: e.target.value })} />
           </div>
-          <div>
-            <Label className="form-label mb-1 block text-xs">Auto Loan</Label>
-            <Input placeholder="Monto" value={editData.auto_loan || ''} onChange={(e) => setEditData({ ...editData, auto_loan: e.target.value })} />
+        </div>
+
+        {/* Auto Loan Section */}
+        <div className="border rounded-lg p-3 mb-4">
+          <Label className="form-label mb-2 block font-medium text-sm">Auto Loan</Label>
+          <div className="flex flex-wrap gap-4 mb-3">
+            {['Paid', 'Late', 'On Time'].map((status) => (
+              <div key={status} className="flex items-center gap-2">
+                <Checkbox
+                  checked={editData.auto_loan_status === status}
+                  onCheckedChange={(checked) => {
+                    setEditData({ 
+                      ...editData, 
+                      auto_loan_status: checked ? status : '',
+                      auto_loan_bank: checked && status === 'On Time' ? editData.auto_loan_bank : '',
+                      auto_loan_amount: checked && status === 'On Time' ? editData.auto_loan_amount : ''
+                    });
+                  }}
+                />
+                <span className="text-sm">{status}</span>
+              </div>
+            ))}
           </div>
+          {editData.auto_loan_status === 'On Time' && (
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <div>
+                <Label className="form-label mb-1 block text-xs">Banco</Label>
+                <Select value={editData.auto_loan_bank || ''} onValueChange={(value) => setEditData({ ...editData, auto_loan_bank: value })}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar banco" /></SelectTrigger>
+                  <SelectContent>
+                    {configLists?.banks?.map((bank) => (
+                      <SelectItem key={bank} value={bank}>{bank}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="form-label mb-1 block text-xs">Monto</Label>
+                <Input placeholder="$0.00" value={editData.auto_loan_amount || ''} onChange={(e) => setEditData({ ...editData, auto_loan_amount: e.target.value })} />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Down Payment Section - Multi-select */}
