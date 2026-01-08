@@ -561,9 +561,9 @@ frontend:
 
   - task: "Client Progress Bar"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/pages/ClientsPage.jsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: false
     status_history:
@@ -573,6 +573,9 @@ frontend:
         - working: true
         - agent: "testing"
         - comment: "✅ BACKEND VERIFIED: All data needed for progress bar calculation is available from backend APIs. Client data includes id_uploaded, income_proof_uploaded, residence_proof_uploaded fields. last_record_date indicates if client has records. User records include finance_status field for sold status. Progress calculation: 33% for any documents uploaded + 33% for having records + 34% for sold status (finance_status='financiado' or 'lease'). Backend fully supports frontend progress bar feature."
+        - working: false
+        - agent: "testing"
+        - comment: "❌ FRONTEND LOGIN ISSUE: Unable to test UI features due to frontend authentication failure. Login API works correctly (tested via curl - returns valid JWT token), but frontend login form does not complete authentication flow. User remains on /login page after entering correct credentials (xadmin/Cali2020). Backend APIs for all three features are working correctly. CRITICAL: Frontend authentication context or session management needs investigation."
 
   - task: "Appointment Editing Feature"
     implemented: true
