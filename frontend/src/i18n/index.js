@@ -21,7 +21,7 @@ const resources = {
       "auth.password": "Password",
       "auth.name": "Full Name",
       "auth.phone": "Phone",
-      "auth.welcome": "Welcome to DealerCRM Pro",
+      "auth.welcome": "Welcome to CARPLUS AUTOSALE",
       "auth.subtitle": "Manage your clients and appointments efficiently",
       
       // Dashboard
@@ -141,7 +141,7 @@ const resources = {
       "auth.password": "Contraseña",
       "auth.name": "Nombre Completo",
       "auth.phone": "Teléfono",
-      "auth.welcome": "Bienvenido a DealerCRM Pro",
+      "auth.welcome": "Bienvenido a CARPLUS AUTOSALE",
       "auth.subtitle": "Gestiona tus clientes y citas eficientemente",
       
       // Dashboard

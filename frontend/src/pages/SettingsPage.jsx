@@ -155,7 +155,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm text-slate-500">
-            <p><strong>DealerCRM Pro</strong> v1.0.0</p>
+            <p><strong>CARPLUS AUTOSALE</strong> v1.0.0</p>
             <p>Car dealership CRM for managing clients, appointments, and sales.</p>
             <p className="text-xs text-slate-400 mt-4">
               SMS integration is currently <strong>mocked</strong>. Configure Twilio credentials to enable real SMS.

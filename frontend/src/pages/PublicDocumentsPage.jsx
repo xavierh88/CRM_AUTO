@@ -14,7 +14,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 // Translations
 const translations = {
   en: {
-    title: "DealerCRM",
+    title: "CARPLUS AUTOSALE",
     subtitle: "Upload your documents",
     requiredDocuments: "Required Documents",
     hello: "Hello",
@@ -56,7 +56,7 @@ const translations = {
     spanish: "Spanish"
   },
   es: {
-    title: "DealerCRM",
+    title: "CARPLUS AUTOSALE",
     subtitle: "Suba sus documentos",
     requiredDocuments: "Documentos Requeridos",
     hello: "Hola",
