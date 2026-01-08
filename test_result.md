@@ -266,7 +266,8 @@ test_plan:
     - "Direct Deposit Amount Input"
     - "Document Management in Client Info Modal"
     - "Residence Proof Field"
-  stuck_tasks: []
+  stuck_tasks:
+    - "Frontend Authentication Flow"
   test_all: false
   test_priority: "high_first"
 
