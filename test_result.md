@@ -527,15 +527,18 @@ agent_communication:
 backend:
   - task: "Email Report with Document Attachments"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Added attach_documents parameter to EmailReportRequest model. Modified send_record_report endpoint to collect and attach client document files (ID, income, residence) and co-signer documents when attach_documents=true. Uses MIMEBase for file attachments."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ TESTED: Email Report with Document Attachments working perfectly. POST /api/send-record-report accepts attach_documents parameter correctly. When attach_documents=true, response includes attachments_count field showing number of attached files. Successfully tested with 3 document attachments (ID, income, residence). Multiple recipients supported. All document files from /app/backend/uploads/ are properly attached to emails. Feature fully functional."
 
 frontend:
   - task: "Email Report Dialog with Attach Documents Option"
