@@ -1091,6 +1091,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
                     configLists={configLists}
                     salespersons={salespersons}
                     onMarkRecordStatus={handleMarkRecordStatus}
+                    isAdmin={isAdmin}
                   />
                 ))}
                 
