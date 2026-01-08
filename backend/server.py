@@ -983,6 +983,7 @@ class EmailReportRequest(BaseModel):
     record_id: str
     client_id: str
     include_documents: bool = True
+    attach_documents: bool = False  # Whether to attach actual document files
 
 @api_router.post("/send-record-report")
 async def send_record_report(request: EmailReportRequest, current_user: dict = Depends(get_current_user)):
