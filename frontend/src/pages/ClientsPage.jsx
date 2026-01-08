@@ -1912,15 +1912,18 @@ function RecordCard({
             </Button>
           )}
           {appointments[record.id] ? (
-            <>
+            <div className="flex items-center gap-1">
               {getStatusBadge(appointments[record.id].status)}
+              <Button size="sm" variant="ghost" onClick={() => onOpenAppointmentForm(record.id)} title="Editar/Modificar Cita">
+                <Calendar className="w-4 h-4 text-purple-500" />
+              </Button>
               <Button size="sm" variant="ghost" onClick={() => sendAppointmentSMS(clientId, appointments[record.id].id)} title="Enviar SMS">
                 <Send className="w-4 h-4 text-blue-400" />
               </Button>
               <Button size="sm" variant="ghost" onClick={() => sendAppointmentEmail(clientId, appointments[record.id].id)} title="Enviar Email">
                 <Mail className="w-4 h-4 text-green-500" />
               </Button>
-            </>
+            </div>
           ) : (
             <Button size="sm" variant="outline" onClick={() => onOpenAppointmentForm(record.id)}>
               <Calendar className="w-4 h-4 mr-1" />
