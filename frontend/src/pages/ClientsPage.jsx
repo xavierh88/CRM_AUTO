@@ -1081,6 +1081,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
                     onCancelEdit={() => { setEditingRecord(null); setEditRecordData(null); }}
                     configLists={configLists}
                     salespersons={salespersons}
+                    onMarkFinanceStatus={handleMarkFinanceStatus}
                   />
                 ))}
                 
