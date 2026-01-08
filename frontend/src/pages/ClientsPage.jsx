@@ -2309,11 +2309,11 @@ function RecordCard({
         <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
           <Button size="sm" variant="outline" className="text-emerald-600 hover:bg-emerald-50"
             onClick={() => onMarkFinanceStatus(record.id, 'financiado')}>
-            ✓ Marcar como Completado
+            ✓ Marcar Financiado
           </Button>
-          <Button size="sm" variant="outline" className="text-slate-600 hover:bg-slate-50"
-            onClick={() => onMarkFinanceStatus(record.id, 'no_show')}>
-            ✗ Mark as No-Show
+          <Button size="sm" variant="outline" className="text-blue-600 hover:bg-blue-50"
+            onClick={() => onMarkFinanceStatus(record.id, 'lease')}>
+            ✓ Marcar Lease
           </Button>
         </div>
       )}
