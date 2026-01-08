@@ -404,14 +404,13 @@ export default function ClientsPage() {
         ) : (
           currentClients.map((client) => {
             // Calculate progress and sold cars
-            // Use client.last_record_date to determine if client has records (doesn't change when expanding)
-            const clientRecords = userRecords[client.id] || [];
-            const soldRecords = clientRecords.filter(r => r.finance_status && r.finance_status !== 'no');
+            // Use client.last_record_date to determine if client has records (stable value)
+            // Use client.sold_count from backend for sold status (stable value)
             const docsUploaded = [client.id_uploaded, client.income_proof_uploaded, client.residence_proof_uploaded].filter(Boolean).length;
             const totalDocs = 3;
-            // Use last_record_date from client data to determine if has records (stable value)
             const hasRecords = !!client.last_record_date;
-            const hasSold = soldRecords.length > 0;
+            const soldCount = client.sold_count || 0;
+            const hasSold = soldCount > 0;
             
             // Progress calculation: 33% docs, 33% has record, 34% sold
             let progress = 0;
