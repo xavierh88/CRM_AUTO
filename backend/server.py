@@ -308,6 +308,8 @@ class UserRecordCreate(BaseModel):
     # Collaborator - shared user working on this record
     collaborator_id: Optional[str] = None
     collaborator_name: Optional[str] = None
+    # Record completion status: null, completed, no_show
+    record_status: Optional[str] = None
     # Legacy fields for backward compatibility
     dl: Optional[bool] = None
     checks: Optional[bool] = None
