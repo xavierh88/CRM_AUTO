@@ -2289,8 +2289,22 @@ function RecordCard({
         </div>
       )}
 
-      {/* Appointment Actions */}
-      {appointments[record.id] && (
+      {/* Record Status Actions - Always show for marking progress */}
+      {record.finance_status === 'no' && (
+        <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+          <Button size="sm" variant="outline" className="text-emerald-600 hover:bg-emerald-50"
+            onClick={() => onMarkFinanceStatus(record.id, 'financiado')}>
+            ✓ Marcar como Completado
+          </Button>
+          <Button size="sm" variant="outline" className="text-slate-600 hover:bg-slate-50"
+            onClick={() => onMarkFinanceStatus(record.id, 'no_show')}>
+            ✗ Mark as No-Show
+          </Button>
+        </div>
+      )}
+
+      {/* Appointment Actions - Only show if has appointment */}
+      {appointments[record.id] && appointments[record.id].status === 'scheduled' && (
         <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
           <Button size="sm" variant="outline" className="text-emerald-600 hover:bg-emerald-50"
             onClick={() => updateAppointmentStatus(appointments[record.id].id, 'cumplido')}>
