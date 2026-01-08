@@ -714,6 +714,45 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     }
   };
 
+  const handleUpdateAppointment = async () => {
+    if (!appointmentData.date || !appointmentData.time) {
+      toast.error('Por favor complete fecha y hora');
+      return;
+    }
+    try {
+      const existingAppt = appointments[showAppointmentForm];
+      await axios.put(`${API}/appointments/${existingAppt.id}`, {
+        date: appointmentData.date,
+        time: appointmentData.time,
+        dealer: appointmentData.dealer,
+        language: appointmentData.language
+      });
+      
+      toast.success('Cita actualizada exitosamente');
+      setShowAppointmentForm(null);
+      setAppointmentData({ date: '', time: '', dealer: '', language: 'en' });
+      onRefresh();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al actualizar la cita');
+    }
+  };
+
+  // Function to open appointment form - loads existing data if appointment exists
+  const openAppointmentForm = (recordId) => {
+    const existingAppt = appointments[recordId];
+    if (existingAppt) {
+      setAppointmentData({
+        date: existingAppt.date || '',
+        time: existingAppt.time || '',
+        dealer: existingAppt.dealer || '',
+        language: existingAppt.language || 'en'
+      });
+    } else {
+      setAppointmentData({ date: '', time: '', dealer: '', language: 'en' });
+    }
+    setShowAppointmentForm(recordId);
+  };
+
   const handleEditRecord = (record) => {
     setEditingRecord(record.id);
     setEditRecordData({
