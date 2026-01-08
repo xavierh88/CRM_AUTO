@@ -1572,7 +1572,7 @@ function RecordCard({
   record, appointments, getStatusBadge, sendAppointmentSMS, sendAppointmentEmail, clientId, createAppointment, 
   updateAppointmentStatus, t, isPurple, onOpenAppointmentForm, currentUserId,
   onEdit, onDelete, isEditing, editData, setEditData, onSaveEdit, onCancelEdit, configLists, salespersons,
-  onMarkRecordStatus
+  onMarkRecordStatus, onMarkFinanceStatus
 }) {
   const isOwner = record.salesperson_id === currentUserId;
   const [showComments, setShowComments] = useState(false);
