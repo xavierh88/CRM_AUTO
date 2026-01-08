@@ -2480,6 +2480,12 @@ function RecordCard({
             )}
           </>
         )}
+        {/* Show commission info if available (admin only view) */}
+        {isAdmin && record.commission_percentage && record.commission_value && (
+          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded ml-auto">
+            💰 {record.commission_percentage}% de ${record.commission_value} = ${((record.commission_percentage / 100) * record.commission_value).toFixed(2)}
+          </span>
+        )}
       </div>
 
       {/* Appointment Actions - Only show if has appointment */}
