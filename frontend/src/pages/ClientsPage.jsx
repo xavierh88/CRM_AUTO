@@ -1565,6 +1565,7 @@ function RecordCard({
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [emailAddresses, setEmailAddresses] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [attachDocuments, setAttachDocuments] = useState(false);
 
   const sendEmailReport = async () => {
     if (!emailAddresses.trim()) {
@@ -1580,15 +1581,20 @@ function RecordCard({
     
     setSendingEmail(true);
     try {
-      await axios.post(`${API}/send-record-report`, {
+      const response = await axios.post(`${API}/send-record-report`, {
         emails,
         record_id: record.id,
         client_id: clientId,
-        include_documents: true
+        include_documents: true,
+        attach_documents: attachDocuments
       });
-      toast.success(`Reporte enviado a ${emails.length} destinatario(s)`);
+      const attachMsg = response.data.attachments_count > 0 
+        ? ` con ${response.data.attachments_count} documento(s) adjunto(s)` 
+        : '';
+      toast.success(`Reporte enviado a ${emails.length} destinatario(s)${attachMsg}`);
       setShowEmailDialog(false);
       setEmailAddresses('');
+      setAttachDocuments(false);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al enviar el reporte');
     } finally {
