@@ -2160,7 +2160,23 @@ function RecordCard({
                   <li>• Down Payment y detalles de Trade-in</li>
                   <li>• Estado de documentos subidos</li>
                   <li>• Estado de financiamiento</li>
+                  <li>• Información de co-firmantes (si hay)</li>
                 </ul>
+              </div>
+              
+              {/* Attach Documents Option */}
+              <div className="flex items-center space-x-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <Checkbox 
+                  id="attach-docs" 
+                  checked={attachDocuments}
+                  onCheckedChange={(checked) => setAttachDocuments(checked)}
+                />
+                <label htmlFor="attach-docs" className="text-sm cursor-pointer flex-1">
+                  <span className="font-medium text-blue-700">📎 Adjuntar documentos del cliente</span>
+                  <p className="text-xs text-blue-500 mt-0.5">
+                    Se adjuntarán los archivos de ID, ingresos y residencia (si están disponibles)
+                  </p>
+                </label>
               </div>
               
               <div className="flex gap-2 pt-2">
