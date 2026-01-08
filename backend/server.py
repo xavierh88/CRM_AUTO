@@ -621,11 +621,11 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
         )
         client["last_record_date"] = last_record["created_at"] if last_record else None
         
-        # Count sold records (finance_status = 'financiado' or 'lease')
+        # Count sold records (record_status = 'completed' indicates a completed sale)
         sold_count = await db.user_records.count_documents({
             "client_id": client["id"],
             "is_deleted": {"$ne": True},
-            "finance_status": {"$in": ["financiado", "lease"]}
+            "record_status": "completed"
         })
         client["sold_count"] = sold_count
     
