@@ -360,11 +360,10 @@ export default function PublicAppointmentPage() {
       <div className="max-w-lg mx-auto">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Car className="w-8 h-8 text-white" />
-          </div>
+          <img src="/logo.png" alt="CARPLUS AUTOSALE" className="w-20 h-20 object-contain mx-auto mb-3" />
           <h1 className="text-2xl font-bold text-slate-800">{t.title}</h1>
-          <p className="text-slate-500">{t.subtitle}</p>
+          <p className="text-red-500 font-semibold text-sm">Friendly Brokerage</p>
+          <p className="text-slate-500 mt-1">{t.subtitle}</p>
         </div>
 
         {/* Language Selector */}
