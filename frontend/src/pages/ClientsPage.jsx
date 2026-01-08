@@ -1000,7 +1000,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
                     updateAppointmentStatus={updateAppointmentStatus}
                     t={t}
                     isPurple={oppNum > 1}
-                    onOpenAppointmentForm={setShowAppointmentForm}
+                    onOpenAppointmentForm={openAppointmentForm}
                     currentUserId={user.id}
                     onEdit={handleEditRecord}
                     onDelete={handleDeleteRecord}
