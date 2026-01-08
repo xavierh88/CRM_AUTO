@@ -903,7 +903,8 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
         finance_status: status
       });
       onRefresh();
-      toast.success(status === 'financiado' ? 'Record marcado como Completado' : 'Record marcado como No-Show');
+      const statusText = status === 'financiado' ? 'Financiado' : status === 'lease' ? 'Lease' : status;
+      toast.success(`Record marcado como ${statusText}`);
     } catch (error) {
       toast.error('Error al actualizar el estado del record');
     }
