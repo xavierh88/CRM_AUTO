@@ -314,6 +314,10 @@ class UserRecordCreate(BaseModel):
     collaborator_name: Optional[str] = None
     # Record completion status: null, completed, no_show
     record_status: Optional[str] = None
+    # Commission fields (admin only) - only visible when record_status is completed
+    commission_percentage: Optional[float] = None  # 1-100
+    commission_value: Optional[float] = None  # Dollar amount
+    commission_locked: Optional[bool] = False  # When true, record_status cannot be changed by non-admins
     # Legacy fields for backward compatibility
     dl: Optional[bool] = None
     checks: Optional[bool] = None
