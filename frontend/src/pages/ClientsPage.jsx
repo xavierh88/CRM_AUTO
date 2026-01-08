@@ -2019,6 +2019,17 @@ function RecordCard({
             Record
           </span>
           <span className="text-xs text-slate-400">by {record.salesperson_name}</span>
+          {/* Record completion status badge */}
+          {record.record_status === 'completed' && (
+            <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-medium">
+              ✓ Completado
+            </span>
+          )}
+          {record.record_status === 'no_show' && (
+            <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-medium">
+              ✗ No-Show
+            </span>
+          )}
           {record.finance_status && record.finance_status !== 'no' && (
             <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-medium uppercase">
               SOLD - {record.finance_status}
