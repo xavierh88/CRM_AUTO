@@ -579,9 +579,9 @@ frontend:
 
   - task: "Appointment Editing Feature"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/pages/ClientsPage.jsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: false
     status_history:
@@ -591,6 +591,9 @@ frontend:
         - working: true
         - agent: "testing"
         - comment: "✅ TESTED: Appointment Editing backend working perfectly. PUT /api/appointments/{id} successfully updates existing appointments with new date, time, dealer, and language. All fields update correctly and return updated appointment data. GET /api/appointments with client_id filter retrieves appointments for progress tracking. Backend fully supports appointment editing feature with proper data persistence."
+        - working: false
+        - agent: "testing"
+        - comment: "❌ FRONTEND LOGIN ISSUE: Unable to test UI features due to frontend authentication failure. Login API works correctly (tested via curl - returns valid JWT token), but frontend login form does not complete authentication flow. User remains on /login page after entering correct credentials (xadmin/Cali2020). Backend APIs for all three features are working correctly. CRITICAL: Frontend authentication context or session management needs investigation."
 
 agent_communication:
     - agent: "main"
