@@ -896,14 +896,14 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     }
   };
 
-  const handleMarkFinanceStatus = async (recordId, status) => {
+  const handleMarkRecordStatus = async (recordId, status) => {
     try {
       await axios.put(`${API}/user-records/${recordId}`, {
         client_id: clientId,
-        finance_status: status
+        record_status: status
       });
       onRefresh();
-      const statusText = status === 'financiado' ? 'Financiado' : status === 'lease' ? 'Lease' : 'Incompleto';
+      const statusText = status === 'completed' ? 'Completado' : status === 'no_show' ? 'No-Show' : 'Sin estado';
       toast.success(`Record marcado como ${statusText}`);
     } catch (error) {
       toast.error('Error al actualizar el estado del record');
