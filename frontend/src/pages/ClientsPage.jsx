@@ -3697,11 +3697,16 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                       </div>
                     ) : (
                       <>
-                        <Button size="sm" variant="ghost" onClick={() => handleDownloadDocument('residence')} title="Descargar">
-                          <Download className="w-4 h-4 text-blue-500" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm('residence')} title="Eliminar">
-                          <Trash2 className="w-4 h-4 text-red-400" />
+                        {isAdmin && (
+                          <Button size="sm" variant="ghost" onClick={() => handleDownloadDocument('residence')} title="Descargar">
+                            <Download className="w-4 h-4 text-blue-500" />
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm('residence')} title="Eliminar">
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                          </Button>
+                        )}
                         </Button>
                       </>
                     )
