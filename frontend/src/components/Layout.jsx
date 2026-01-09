@@ -12,7 +12,8 @@ import {
   X,
   Shield,
   Car,
-  FileSpreadsheet
+  FileSpreadsheet,
+  FileText
 } from 'lucide-react';
 import { Button } from './ui/button';
 import NotificationsPopover from './NotificationsPopover';
