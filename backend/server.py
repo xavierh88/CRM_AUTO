@@ -3965,6 +3965,26 @@ async def delete_config_list_item(item_id: str, current_user: dict = Depends(get
         raise HTTPException(status_code=404, detail="Item not found")
     return {"message": "Item deleted"}
 
+@api_router.put("/config-lists/{item_id}")
+async def update_config_list_item(item_id: str, item: ConfigListItem, current_user: dict = Depends(get_current_user)):
+    """Update an item in a configurable list (admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_data = {"name": item.name}
+    if item.category == "dealer" and item.address:
+        update_data["address"] = item.address
+    
+    result = await db.config_lists.update_one(
+        {"id": item_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    updated = await db.config_lists.find_one({"id": item_id}, {"_id": 0})
+    return updated
+
 # ==================== CLIENT DELETE (Admin) ====================
 
 @api_router.delete("/clients/{client_id}")
