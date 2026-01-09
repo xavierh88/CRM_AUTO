@@ -12,6 +12,7 @@ import AgendaPage from "./pages/AgendaPage";
 import AdminPage from "./pages/AdminPage";
 import SettingsPage from "./pages/SettingsPage";
 import ImportContactsPage from "./pages/ImportContactsPage";
+import PreQualifyPage from "./pages/PreQualifyPage";
 import Layout from "./components/Layout";
 
 // Public Pages (for clients)
