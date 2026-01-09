@@ -4,95 +4,96 @@
 - **Roles:** Admin and Vendedor (Salesperson).
 - **Client Management:** A centralized client list with import functionality and duplicate handling.
 - **User Records (Oportunidades):** Nested sales opportunities for each client, with a highly detailed and conditional form.
-- **Co-Signers:** Ability to link co-signers to a client's record, including giving them their own opportunity form.
+- **Co-Signers:** Ability to link co-signers to a client's record.
 - **Appointments & Public Forms:** Internal appointment scheduling and public, client-facing forms for document uploads and appointment management.
-- **Automated SMS (Twilio):** For sending public form links, automated marketing campaigns, and a full two-way SMS inbox for conversations.
-- **Automated Email Notifications:** Free email notifications (via SMTP) for key events like new SMS replies or collaboration requests.
-- **Dashboard & Admin Panel:** A dashboard for analytics and an admin panel for user management and dynamically managing various dropdown lists (Banks, Dealers, Autos, ID types, etc.).
+- **Automated SMS (Twilio):** For sending public form links, automated marketing campaigns, and a full two-way SMS inbox.
+- **Automated Email Notifications:** For key events.
+- **Dashboard & Admin Panel:** A dashboard for analytics and an admin panel for user management and dynamically managing dropdown lists.
 - **User Authentication (JWT):** Admin approval for new accounts.
 - **UI/UX:** A modern, clean, light-themed interface.
-- **Notes/Comments:** Ability to add timestamped, user-identified notes at both the client and individual record level.
+- **Notes/Comments:** Timestamped notes at both the client and record level.
+- **Pre-Qualify Module:** A new admin-only section to review leads from a public pre-qualification form, with functionality to match them to existing clients or create new ones.
+- **Deployment:** The user requires a downloadable ZIP file of the project, configured for easy installation on a Hostinger server.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-A full-stack CRM application (FastAPI/React) with a robust feature set. Key functionalities include JWT authentication, client management with an advanced opportunity/record system, and co-signer management. The Admin Panel is functional, and the analytics Dashboard is implemented.
+A full-stack CRM application (FastAPI/React/MongoDB) with robust functionality. In this session, the application underwent significant enhancements and bug fixes.
 
-Recent key enhancements include:
-- **Record Form:** The Down Payment field is now a multi-select checkbox group, a conditional amount field was added for Direct Deposit, and these changes were mirrored in the co-signer form.
-- **Document Management:** Implemented a full upload/download/delete system in the Client Info modal. The public document form now accepts multiple files per category (ID, Income, Residence Proof) and merges them into a single PDF on the backend.
-- **Email Functionality:** As a workaround for Twilio's A2P approval delay, email sending capabilities were added for document/appointment links. A feature to email a detailed client/record report was also implemented, including co-signer information.
-- **Record Collaboration:** A feature was added to assign a Collaborator (another salesperson) to a record, enabling shared notifications.
-- **UI Improvements:** The client-level notes button was removed to reduce clutter, and a comment counter was added to the record-level notes button.
+Key completed work includes:
+- **Branding Overhaul:** The application's logo and name have been updated to CARPLUS AUTOSALE with the slogan Friendly Brokerage across all login, internal, and public-facing pages.
+- **Progress & Sales Tracking:** The client progress bar logic was completely reworked. It now instantly and accurately reflects sales status (with star and car icons) without requiring a page refresh or expanding client details. This is driven by a new  field.
+- **Record Form Enhancements:**
+    - The Auto Loan field was converted into a conditional multi-select with options for Paid, Late, and On Time.
+    - The bug preventing selection from the Car Brands dropdown was fixed.
+- **Admin-Specific Features:**
+    - A new Pre-Qualify module was created for admins to review and process leads from a public form. It includes client matching by phone number.
+    - Admins can now add/edit addresses for Dealers in the Admin Panel.
+    - On completed records, admins now have exclusive access to Commission fields, which lock the record's status upon saving.
+- **Access Control:** The Send Report feature, document download buttons, and the Collaborator field have all been restricted to Admin users only.
+- **Deployment Package:** A  file containing the entire project, with Emergent branding removed and including setup instructions (), was created for the user.
 
 **Last working item**:
-    - Last item agent was working: The agent was implementing a three-part user request:
-        1.  **Fix Appointment Editing:** Allow modification of scheduled appointments and ensure Send SMS/Email buttons are always available.
-        2.  **Client Progress Bar:** Add a visual progress bar to each client card, indicating progress towards a sale (based on document uploads) and showing icons for each completed sale.
-        3.  **Attach Documents to Email Report:** Include the actual document files as attachments in the email report.
-        
-        The agent started with the first two items. It modified  to change the UI for scheduled appointments and added the logic for the progress bar. The last action was adding the progress bar code, which may have introduced syntax errors.
+    - Last item agent was working: Responding to the user's final request to add email notifications for all admins whenever a new Pre-Qualify submission is received. The user also asked for clarification on downloading the generated ZIP file and ensuring the pre-qualify form would work on their live server.
     - Status: IN PROGRESS
     - Agent Testing Done: N
-    - Which testing method agent to use? both
+    - Which testing method agent to use? backend testing agent
     - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-  - Issue 1:  Complete the user's latest multi-part request (P0)
+  - Issue 1:  Implement email notification for new Pre-Qualify submissions (P0)
+  - Issue 2:  Provide clear instructions for ZIP download and live server configuration (P1)
   
   Issues Detail:
   - Issue 1: 
-     - Attempted fixes: The agent has modified  to address the appointment editing UI and has added code for the progress bar.
+     - Attempted fixes: The agent has acknowledged the request but has not started implementation.
      - Next debug checklist: 
-        1.  **Progress Bar (P0):** In , review the code added for the progress bar around line 390. There is likely a syntax error (e.g., a missing closing parenthesis for the  function) that needs to be fixed. Test the progress calculation and display of sold icons.
-        2.  **Appointment Editing (P0):** In , complete the implementation for editing scheduled appointments. The agent added  and  functions. This flow needs to be fully tested to ensure the form opens with existing data and saves changes correctly.
-        3.  **Email Attachments (P1):** In , modify the  endpoint. The current implementation builds an HTML body but does not attach files. It needs to be updated to:
-            - Fetch the paths to the client's documents (, , ).
-            - Read these files from the  directory.
-            - Attach them to the  email object.
-     - Why fix this issue and what will be achieved with the fix? These are direct user requests to improve core workflow (appointment management), add a key visual indicator (progress bar), and complete a reporting feature (email attachments).
+        1. In , locate the  endpoint.
+        2. Inside the function, fetch all users with the  role from the database.
+        3. Extract the email addresses for all admins.
+        4. Use the existing email sending utility to send a notification email to all collected admin addresses, detailing the new submission.
+        5. Test by submitting a new pre-qualify form and verifying that admins receive the email.
+     - Why fix this issue and what will be achieved with the fix? It's a direct user request to improve the lead management workflow by actively notifying admins of new submissions.
+     - Status:  NOT STARTED
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? backend
+     - Blocked on other issue: None
+  - Issue 2: 
+     - Attempted fixes: The agent provided the server path to the ZIP file (), which is not directly accessible to the user, causing confusion.
+     - Next debug checklist: 
+        1. Clearly explain to the user how to download the  file from the Artifacts section in the Emergent user interface.
+        2. Update the  file within the project to include a critical instruction: the  environment variable in the frontend build must be set to the live backend URL on Hostinger for the pre-qualify form (and all other API calls) to function correctly.
+     - Why fix this issue and what will be achieved with the fix? The user is blocked from deploying and using the application without this guidance.
      - Status:  IN PROGRESS
      - Is recurring issue? N
-     - Should Test frontend/backend/both after fix? both
+     - Should Test frontend/backend/both after fix? N/A
      - Blocked on other issue: None
 
 **In progress Task List**:
-  - Task 1:  Finalize Appointment Editing Feature (P0)
-     - Where to resume: . Resume by testing the  and  logic. Ensure clicking the new edit button on a scheduled appointment opens the form with pre-filled data and that saving updates the appointment.
-     - What will be achieved with this? Users will be able to modify scheduled appointments.
-     - Status:  IN PROGRESS
-     - Should Test frontend/backend/both after fix? both
-     - Blocked on something: Potentially blocked by syntax errors from the progress bar implementation in the same file.
-  - Task 2:  Finalize Client Progress Bar (P0)
-     - Where to resume: . The agent added code to display a progress bar and sold car icons. This code must be debugged for syntax errors and its logic for calculating progress must be verified.
-     - What will be achieved with this? Salespeople will have a quick visual reference for a client's status.
-     - Status:  IN PROGRESS
-     - Should Test frontend/backend/both after fix? frontend
-     - Blocked on something: None
+  - None
 
 **Upcoming and Future Tasks**
 Upcoming Tasks:
-- **P1: Attach documents to the email report**: The backend logic for this needs to be implemented. (Part of the last user request).
-- **P2: Refactor **: This monolithic file (>3000 lines) is a significant technical debt and needs to be broken down into modules (routes, models).
-- **P3: Refactor **: This component is extremely large and manages too much state. It should be decomposed into smaller, specialized components.
+- **P2: Refactor **: This monolithic file is now over 4500 lines and represents significant technical debt. It must be broken down into a proper project structure (e.g., separate files for routes, models, and services).
+- **P3: Refactor **: This component is a frontend monolith that should be decomposed into smaller, specialized components to improve maintainability.
 
 Future Tasks:
-- **P4: Add Co-signer comments/notes**: Implement a notes/comments section for co-signer records, similar to the one for client records.
+- **P4: Add Co-signer comments/notes**: Implement a notes/comments section for co-signer records.
 - **P5: Full Dashboard Implementation**: Enhance the dashboard with features like exporting reports to Excel/PDF.
 
 **Completed work in this session**
-- **Record Form Enhancements:** Changed Down Payment to a multi-select checkbox group for both client and co-signer records.
-- **Document Management Overhaul:**
-  - Added Proof of Residence to the document types.
-  - The public document form now supports multiple file uploads per category.
-  - The backend now merges these multiple files into a single PDF per document type.
-- **Email as SMS Alternative:** Added buttons to send public links for document uploads and appointment scheduling via email, serving as a fallback for the pending Twilio SMS integration.
-- **Email Report Feature:** Implemented a feature to send a detailed HTML report of a client's record, including co-signer details, to specified email addresses.
-- **Record Collaboration:** Added the ability to assign a Collaborator (another salesperson) to a record for shared notifications.
-- **UI/UX Cleanup:** Removed the client-level Notes button from the main list and added a comment count to the record-level button. Corrected public-facing URLs in the backend.
+- **Logo and Branding:** Changed app name and logo to CARPLUS AUTOSALE with slogan Friendly Brokerage.
+- **Pre-Qualify Module:** Created a new admin-only page () to manage leads from a public form, with client matching and creation features.
+- **Record Form Rework:** Overhauled the Auto Loan field, fixed the Car Brands dropdown, and implemented a new  field with Mark as Completed functionality.
+- **Progress Bar Fixes:** Ensured the progress bar updates instantly and accurately reflects sales status (with icons) without needing a page refresh.
+- **Admin Controls:**
+    - Restricted Send Report, document downloads, and Collaborator field to admins.
+    - Added admin-only Commission fields to completed records.
+    - Implemented address management for Dealers in the Admin Panel.
+- **Deployment Package:** Created a  file with all source code, removed Emergent branding, and included setup instructions.
 
 **Earlier issues found/mentioned but not fixed**
-   - Issue 1: A user-reported bug during new client creation could not be reproduced. This is a low-priority monitoring task.
+   - Issue 1: A user-reported bug during new client creation could not be reproduced. This remains a low-priority monitoring task.
 
 **Known issue recurrence from previous fork**
   - None.
@@ -101,71 +102,81 @@ Future Tasks:
 
 
 **Key Technical Concepts**
-- **Backend:** FastAPI, MongoDB (), Pydantic, JWT, . New libraries: ,  for PDF generation.
-- **Frontend:** React, Shadcn/UI, Tailwind CSS, , , .
+- **Backend:** FastAPI, MongoDB (), Pydantic for data validation.
+- **Frontend:** React, Shadcn/UI, Tailwind CSS,  for API calls,  for translations.
+- **State Management:** Extensive use of  and  hooks. State updates are now more robust, triggering data refetches to keep the UI in sync automatically.
+- **Access Control:** Logic is heavily reliant on an  flag derived from the authenticated user's JWT .
 
 **key DB schema**
-- **user_records:** Updated model to include , , and .
-- **clients:** Updated model to include document paths for residence proof: .
+- **user_records:** Added , , ,  (completed, no-show), and admin-only commission fields (, , ).
+- **clients:** The  response now includes a calculated  field.
+- **config_list_items:** The schema now supports an optional  field for items in the  category.
+- **pre_qualify_submissions (NEW):** A new collection to store all lead data from the pre-qualification form.
 
 **changes in tech stack**
-- **Backend:** Added  and  dependencies for PDF manipulation.
+  - None.
 
 **All files of reference**
 - **Most Critical/Modified:**
-  - : Contains the majority of the application's UI and state logic. It has grown extremely large and complex.
-  - : The monolithic backend where all new endpoints and business logic were added.
-  - : Significantly refactored to handle multi-file uploads.
-  - : Updated with  and corrected SMTP variable names.
+  - : Heavily modified to add the entire Pre-Qualify module, dealer address logic, and updates to the  model and endpoints. **Needs urgent refactoring.**
+  - : The central point for most feature updates and bug fixes, including the progress bar, record status buttons, and admin restrictions. **Needs urgent refactoring.**
+  - : The new UI for the Pre-Qualify lead management module.
+  - : Modified to allow editing of dealer addresses.
+  -  & : Updated to integrate the new Pre-Qualify page route and navigation link.
 
 **Areas that need refactoring**:
-- **:** Top priority. This single file contains all backend logic and is unmaintainable. It must be broken down using the  and  directories.
-- **:** High priority. This component is a frontend monolith responsible for too many features. It should be broken down into smaller components like , , , etc.
+- **:** **Top Priority.** The file has become critically large and combines routing, business logic, and data models. It must be broken down into a standard FastAPI project structure (e.g., , , ).
+- **:** **High Priority.** This God component handles far too many responsibilities (client list, record details, multiple modals, state management for all). It should be decomposed into smaller, reusable components.
 
 **key api endpoints**
-- : Sends email report of a record (updated to include co-signers).
-- : Retrieves all users with the vendedor role.
-- : New endpoint to send the document upload link via email.
-- : New endpoint to send the appointment management link via email.
-- : Updates an existing appointment.
-- : Handles public document uploads (rewritten to accept multiple files and merge them into a single PDF).
+- **New Module ():**
+    - : Public endpoint to receive form data.
+    - : Admin-only to list all submissions.
+    - : Admin-only to update submission status.
+    - : Admin-only to create a client.
+    - : Admin-only to add data to an existing client's notes.
+- **Modified Endpoints:**
+    - : New endpoint for updating config items like dealer addresses.
+    - : Response now includes a  for each client.
+    - : Updated to handle new  and  fields.
 
 **Critical Info for New Agent**
-- **Resume on User's Request:** Your immediate priority is to complete the user's last three requests. Start by debugging the  file to fix syntax errors related to the new progress bar, then fully test the appointment editing flow. After that, implement the attachment of documents in the email report feature by modifying the  function in .
-- **Technical Debt:** Both the frontend () and backend () are monolithic and need urgent refactoring after the current feature requests are completed.
-- **Environment:** A  variable was added to  to correctly generate public links in emails. Ensure this is used consistently.
+- **Immediate Priority:** Address the user's last request: implement email notifications for new Pre-Qualify submissions and provide clear instructions on downloading the  file and configuring it for their live server.
+- **Technical Debt:** The most critical task after the user's immediate needs are met is to refactor  and . The current monolithic structure is unsustainable. You should propose this to the user as the next major work item.
+- **Deployment Context:** The user intends to deploy on Hostinger. All instructions, especially regarding environment variables (), must be simple and clear for a non-technical user.
 
 **documents and test reports created in this job**
-  -  (updated multiple times).
+  -  (Final deployment package)
+  -  (Updated to remove branding)
+  -  (New page)
 
 **Last 10 User Messages and any pending HUMAN messages**
-- **msg 556 (Pending):** Requested three changes: 1) Fix appointment editing to allow modification after scheduling and ensure resend buttons are available. 2) Add a client progress bar with icons for sold cars. 3) Attach actual document files to the email report. **This is the current task.**
-- **msg 554 (Done):** Agent confirmed all public links and forms are working correctly.
-- **msg 542 (WIP):** Agent working on verifying appointment link generation.
-- **msg 472 (In Progress):** User asked the agent to review the public-facing links sent to clients via email for both documents and appointments. This led to the agent correcting the URLs.
-- **msg 470 (Done):** Agent confirmed completion of the email alternative and public form updates.
-- **msg 382 (In Progress):** User requested an email alternative for sending document/appointment links, adding Proof of Residence to the public form, and allowing multi-file uploads to be merged into a single PDF.
-- **msg 380 (Done):** Agent confirmed the email report modal is working.
-- **msg 353 (In Progress):** User asked to add co-signer information to the email report. This was completed.
-- **msg 351 (Done):** Agent confirmed the collaborators feature is working.
-- **msg 343 (Done):** Agent finished the collaborator/email report features and asked for next steps.
+- **msg 644 (Pending):** User is confused about how to download the ZIP file. Requested confirmation that the pre-qualify integration will work on the live site. **Also requested a new feature: send an email notification to all admins when a new pre-qualify submission is received.**
+- **msg 620 (Done):** User requested a ZIP file of the entire project for deployment on Hostinger and asked to remove the Emergent branding.
+- **msg 483 & 546 (Done):** User requested a 3-part feature: 1) Add addresses to dealers and link them to appointments. 2) Make Send Report and document downloads admin-only. 3) Create a new Pre-Qualify module to integrate with a form, with client matching logic.
+- **msg 437 (Done):** User provided a new logo and requested a branding change to CARPLUS AUTOSALE with the slogan Friendly Brokerage.
+- **msg 301 (Done):** User made a large, 6-part request including reworking the Auto Loan field, fixing the car brand dropdown, making the progress bar update automatically, changing progress logic, restricting the collaborator field to admins, and adding admin-only commission fields.
+- **msg 239 (Done):** User clarified the logic for Mark as Completed buttons, wanting them to drive the sale status (star icon) and progress bar, independent of financing status.
+- **msg 228 (Done):** User confirmed they want the Mark as Completed/Incomplete buttons to always be visible on records.
+- **msg 168 (In Progress):** User requested Mark as Completed and No-Show buttons on every record to track process completion.
+- **msg 142 (Done):** User reported a bug where the sold status (star icon) only appeared after expanding a client card and requested it be shown immediately.
+- **msg 120 (Done):** User reported two bugs: 1) The progress bar percentage was inconsistent before and after expanding a client. 2) Redundant SMS/Email buttons were appearing next to scheduled appointments.
 
 **Project Health Check:**
-- **Broken:** The appointment editing functionality is currently broken/incomplete.
+- **Broken:** None.
 - **Mocked:** None.
-- **Pending:** Twilio SMS functionality is still pending external A2P campaign approval by the user. Email is the current workaround.
+- **Pending:** The new request for admin email notifications on pre-qualify submissions is not yet implemented. Twilio SMS functionality is still pending external A2P campaign approval by the user.
 
 **3rd Party Integrations**
-- **Twilio (SMS):** Live, but outbound messaging is blocked pending user's A2P 10DLC campaign approval. Requires User API Key.
-- **Google Places API:** Live and integrated for address autocomplete. Requires User API Key.
-- **SMTP (via Gmail):** Live, using a user-provided Gmail account for sending free email notifications.
-- **PyPDF & ReportLab:** New Python libraries added to the backend for PDF manipulation.
+- **Twilio (SMS):** Integrated but blocked pending the user's A2P 10DLC campaign approval. Requires User API Key.
+- **Google Places API:** Integrated for address autocomplete. Requires User API Key.
+- **SMTP (via Gmail):** Integrated and used for sending email reports and will be used for pre-qualify notifications. Requires a user-provided email account.
 
 **Testing status**
-  - Testing agent used after significant changes: YES
+  - Testing agent used after significant changes: YES. Backend tests passed; frontend tests had a false negative with authentication, which was then successfully verified with manual screenshots.
   - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: None.
-  - Known regressions: The ability to easily manage a scheduled appointment has regressed; it is now difficult or impossible to edit.
+  - Test files created: None
+  - Known regressions: None
 
 **Credentials to test flow:**
 - **Admin:**
@@ -176,7 +187,4 @@ Future Tasks:
     - **pass:** 
 
 **What agent forgot to execute**
-The agent was in the middle of a multi-part task. It did not complete the full implementation or testing for any of the three requested items before the session ended:
-1.  **Appointment Editing:** The UI and logic were started but not completed or tested.
-2.  **Progress Bar:** The code was added but not debugged for syntax errors or tested.
-3.  **Email Attachments:** This task was not started at all.</analysis>
+- The agent was in the process of handling the user's final request when the session ended. The implementation of email notifications for pre-qualify submissions is the main outstanding action item.</analysis>

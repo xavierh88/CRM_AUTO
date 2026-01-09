@@ -11,7 +11,7 @@ import json
 from datetime import datetime
 
 class FocusedCRMTester:
-    def __init__(self, base_url="https://autocrm-es.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://carmanagehub.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.admin_token = None
         self.salesperson_token = None
