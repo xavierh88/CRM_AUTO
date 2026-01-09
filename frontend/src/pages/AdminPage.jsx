@@ -31,6 +31,8 @@ export default function AdminPage() {
   const [porTypes, setPorTypes] = useState([]);
   const [newBank, setNewBank] = useState('');
   const [newDealer, setNewDealer] = useState('');
+  const [newDealerAddress, setNewDealerAddress] = useState('');
+  const [editingDealer, setEditingDealer] = useState(null);
   const [newCar, setNewCar] = useState('');
   const [newIdType, setNewIdType] = useState('');
   const [newPoiType, setNewPoiType] = useState('');
