@@ -3707,7 +3707,6 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                             <Trash2 className="w-4 h-4 text-red-400" />
                           </Button>
                         )}
-                        </Button>
                       </>
                     )
                   ) : (
