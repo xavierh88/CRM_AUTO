@@ -418,32 +418,134 @@ export default function AdminPage() {
                 <Building2 className="w-5 h-5 text-green-600" />
                 Dealers ({dealers.length})
               </CardTitle>
+              <CardDescription>Agregue el nombre del dealer (ciudad) y su dirección</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-2 mb-4">
-                <Input
-                  placeholder="Enter new dealer name..."
-                  value={newDealer}
-                  onChange={(e) => setNewDealer(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addConfigItem('dealer', newDealer, setNewDealer)}
-                  data-testid="new-dealer-input"
-                />
-                <Button onClick={() => addConfigItem('dealer', newDealer, setNewDealer)} data-testid="add-dealer-btn">
-                  <Plus className="w-4 h-4 mr-1" /> Add
+              <div className="flex flex-col gap-2 mb-4 p-3 bg-slate-50 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-slate-500">Nombre del Dealer (Ciudad)</Label>
+                    <Input
+                      placeholder="Ej: Miami, Los Angeles..."
+                      value={newDealer}
+                      onChange={(e) => setNewDealer(e.target.value)}
+                      data-testid="new-dealer-input"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">Dirección</Label>
+                    <Input
+                      placeholder="Ej: 123 Main St, Miami FL 33101"
+                      value={newDealerAddress}
+                      onChange={(e) => setNewDealerAddress(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <Button 
+                  className="w-fit"
+                  onClick={async () => {
+                    if (!newDealer.trim()) return;
+                    try {
+                      const response = await axios.post(`${API}/config-lists`, {
+                        name: newDealer.trim(),
+                        category: 'dealer',
+                        address: newDealerAddress.trim() || null
+                      });
+                      setDealers([...dealers, response.data]);
+                      setNewDealer('');
+                      setNewDealerAddress('');
+                      toast.success('Dealer agregado');
+                    } catch (error) {
+                      toast.error(error.response?.data?.detail || 'Error al agregar');
+                    }
+                  }}
+                  data-testid="add-dealer-btn"
+                >
+                  <Plus className="w-4 h-4 mr-1" /> Agregar Dealer
                 </Button>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              
+              {/* Dealers List */}
+              <div className="space-y-2">
                 {dealers.map((dealer) => (
-                  <div key={dealer.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2 group">
-                    <span className="text-sm">{dealer.name}</span>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
-                      onClick={() => deleteConfigItem(dealer.id, 'dealer')}
-                    >
-                      <Trash2 className="w-3 h-3 text-red-400" />
-                    </Button>
+                  <div key={dealer.id} className="flex items-center justify-between bg-white border rounded-lg p-3 group">
+                    {editingDealer === dealer.id ? (
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <Input
+                          defaultValue={dealer.name}
+                          id={`dealer-name-${dealer.id}`}
+                          placeholder="Nombre"
+                        />
+                        <Input
+                          defaultValue={dealer.address || ''}
+                          id={`dealer-address-${dealer.id}`}
+                          placeholder="Dirección"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex-1">
+                        <span className="font-medium text-sm">{dealer.name}</span>
+                        {dealer.address && (
+                          <p className="text-xs text-slate-500 mt-0.5">📍 {dealer.address}</p>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1 ml-2">
+                      {editingDealer === dealer.id ? (
+                        <>
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            className="h-7 px-2"
+                            onClick={async () => {
+                              const nameEl = document.getElementById(`dealer-name-${dealer.id}`);
+                              const addrEl = document.getElementById(`dealer-address-${dealer.id}`);
+                              try {
+                                const response = await axios.put(`${API}/config-lists/${dealer.id}`, {
+                                  name: nameEl.value,
+                                  category: 'dealer',
+                                  address: addrEl.value || null
+                                });
+                                setDealers(dealers.map(d => d.id === dealer.id ? response.data : d));
+                                setEditingDealer(null);
+                                toast.success('Dealer actualizado');
+                              } catch (error) {
+                                toast.error('Error al actualizar');
+                              }
+                            }}
+                          >
+                            <Save className="w-3 h-3 text-green-500" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            className="h-7 px-2"
+                            onClick={() => setEditingDealer(null)}
+                          >
+                            <XCircle className="w-3 h-3 text-slate-400" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            className="opacity-0 group-hover:opacity-100 h-7 px-2"
+                            onClick={() => setEditingDealer(dealer.id)}
+                          >
+                            ✏️
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="opacity-0 group-hover:opacity-100 h-7 px-2"
+                            onClick={() => deleteConfigItem(dealer.id, 'dealer')}
+                          >
+                            <Trash2 className="w-3 h-3 text-red-400" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
