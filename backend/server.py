@@ -4084,6 +4084,187 @@ async def run_marketing_sms_now(current_user: dict = Depends(get_current_user)):
 async def root():
     return {"message": "DealerCRM Pro API", "version": "1.0.0"}
 
+# ==================== PRE-QUALIFY SUBMISSIONS ====================
+
+class PreQualifySubmission(BaseModel):
+    email: str
+    firstName: str
+    lastName: str
+    phone: str
+    idNumber: Optional[str] = None
+    ssn: Optional[str] = None
+    dateOfBirth: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zipCode: Optional[str] = None
+    housingType: Optional[str] = None
+    rentAmount: Optional[str] = None
+    timeAtAddress: Optional[str] = None
+    employerName: Optional[str] = None
+    timeWithEmployer: Optional[str] = None
+    incomeType: Optional[str] = None
+    netIncome: Optional[str] = None
+    incomeFrequency: Optional[str] = None
+    estimatedDownPayment: Optional[str] = None
+    consentAccepted: bool = False
+
+class PreQualifyResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    email: str
+    firstName: str
+    lastName: str
+    phone: str
+    idNumber: Optional[str] = None
+    ssn: Optional[str] = None
+    dateOfBirth: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zipCode: Optional[str] = None
+    housingType: Optional[str] = None
+    rentAmount: Optional[str] = None
+    timeAtAddress: Optional[str] = None
+    employerName: Optional[str] = None
+    timeWithEmployer: Optional[str] = None
+    incomeType: Optional[str] = None
+    netIncome: Optional[str] = None
+    incomeFrequency: Optional[str] = None
+    estimatedDownPayment: Optional[str] = None
+    consentAccepted: bool = False
+    created_at: str
+    status: str = "pending"
+    matched_client_id: Optional[str] = None
+    matched_client_name: Optional[str] = None
+
+@api_router.post("/prequalify/submit")
+async def submit_prequalify(submission: PreQualifySubmission):
+    existing_client = await db.clients.find_one(
+        {"phone": {"$regex": submission.phone[-10:], "$options": "i"}, "is_deleted": {"$ne": True}},
+        {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1}
+    )
+    doc = {
+        "id": str(uuid.uuid4()),
+        **submission.dict(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "status": "pending",
+        "matched_client_id": existing_client["id"] if existing_client else None,
+        "matched_client_name": f"{existing_client['first_name']} {existing_client['last_name']}" if existing_client else None
+    }
+    await db.prequalify_submissions.insert_one(doc)
+    del doc["_id"]
+    return {"message": "Pre-qualify submission received", "id": doc["id"], "matched": existing_client is not None}
+
+@api_router.get("/prequalify/submissions", response_model=List[PreQualifyResponse])
+async def get_prequalify_submissions(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    submissions = await db.prequalify_submissions.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    for sub in submissions:
+        if not sub.get("matched_client_id"):
+            phone = sub.get("phone", "")
+            if phone:
+                existing_client = await db.clients.find_one(
+                    {"phone": {"$regex": phone[-10:], "$options": "i"}, "is_deleted": {"$ne": True}},
+                    {"_id": 0, "id": 1, "first_name": 1, "last_name": 1}
+                )
+                if existing_client:
+                    sub["matched_client_id"] = existing_client["id"]
+                    sub["matched_client_name"] = f"{existing_client['first_name']} {existing_client['last_name']}"
+    return submissions
+
+@api_router.get("/prequalify/submissions/{submission_id}")
+async def get_prequalify_submission(submission_id: str, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    submission = await db.prequalify_submissions.find_one({"id": submission_id}, {"_id": 0})
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    comparison = None
+    if submission.get("matched_client_id"):
+        client = await db.clients.find_one({"id": submission["matched_client_id"]}, {"_id": 0})
+        if client:
+            comparison = {"client": client, "differences": []}
+            if client.get("first_name", "").lower() != submission.get("firstName", "").lower():
+                comparison["differences"].append({"field": "Nombre", "prequalify": submission.get("firstName"), "client": client.get("first_name")})
+            if client.get("last_name", "").lower() != submission.get("lastName", "").lower():
+                comparison["differences"].append({"field": "Apellido", "prequalify": submission.get("lastName"), "client": client.get("last_name")})
+            if client.get("email", "").lower() != submission.get("email", "").lower():
+                comparison["differences"].append({"field": "Email", "prequalify": submission.get("email"), "client": client.get("email")})
+    return {"submission": submission, "comparison": comparison}
+
+@api_router.post("/prequalify/submissions/{submission_id}/create-client")
+async def create_client_from_prequalify(submission_id: str, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    submission = await db.prequalify_submissions.find_one({"id": submission_id}, {"_id": 0})
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    full_address = f"{submission.get('address', '')} {submission.get('city', '')} {submission.get('state', '')} {submission.get('zipCode', '')}".strip()
+    client_doc = {
+        "id": str(uuid.uuid4()),
+        "first_name": submission.get("firstName", ""),
+        "last_name": submission.get("lastName", ""),
+        "phone": submission.get("phone", ""),
+        "email": submission.get("email", ""),
+        "address": full_address,
+        "apartment": "",
+        "salesperson_id": current_user["id"],
+        "salesperson_name": current_user.get("name") or current_user.get("email"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "is_deleted": False
+    }
+    await db.clients.insert_one(client_doc)
+    notes_content = f"--- Pre-Qualify Data ---\nFecha Nacimiento: {submission.get('dateOfBirth', 'N/A')}\nID/Pasaporte: {submission.get('idNumber', 'N/A')}\nSSN/ITIN: {submission.get('ssn', 'N/A')}\nTipo Vivienda: {submission.get('housingType', 'N/A')}\nRenta Mensual: {submission.get('rentAmount', 'N/A')}\nEmpleador: {submission.get('employerName', 'N/A')}\nIngreso Neto: {submission.get('netIncome', 'N/A')}\nDown Payment: {submission.get('estimatedDownPayment', 'N/A')}"
+    record_doc = {
+        "id": str(uuid.uuid4()),
+        "client_id": client_doc["id"],
+        "salesperson_id": current_user["id"],
+        "salesperson_name": current_user.get("name") or current_user.get("email"),
+        "opportunity_number": 1,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "has_id": bool(submission.get("idNumber")),
+        "ssn": bool(submission.get("ssn")),
+        "finance_status": "no",
+        "is_deleted": False
+    }
+    await db.user_records.insert_one(record_doc)
+    note_doc = {
+        "id": str(uuid.uuid4()),
+        "record_id": record_doc["id"],
+        "content": notes_content,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by_id": current_user["id"],
+        "created_by_name": current_user.get("name") or current_user.get("email")
+    }
+    await db.record_comments.insert_one(note_doc)
+    await db.prequalify_submissions.update_one(
+        {"id": submission_id},
+        {"$set": {"status": "converted", "matched_client_id": client_doc["id"], "matched_client_name": f"{client_doc['first_name']} {client_doc['last_name']}"}}
+    )
+    return {"message": "Cliente creado exitosamente", "client_id": client_doc["id"], "record_id": record_doc["id"]}
+
+@api_router.post("/prequalify/submissions/{submission_id}/add-to-notes")
+async def add_prequalify_to_notes(submission_id: str, record_id: str, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    submission = await db.prequalify_submissions.find_one({"id": submission_id}, {"_id": 0})
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    notes_content = f"--- Pre-Qualify Data ---\nEmail: {submission.get('email', 'N/A')}\nNombre: {submission.get('firstName', '')} {submission.get('lastName', '')}\nTeléfono: {submission.get('phone', 'N/A')}\nDirección: {submission.get('address', '')} {submission.get('city', '')} {submission.get('state', '')}\nEmpleador: {submission.get('employerName', 'N/A')}\nIngreso: {submission.get('netIncome', 'N/A')}\nDown Payment: {submission.get('estimatedDownPayment', 'N/A')}"
+    note_doc = {
+        "id": str(uuid.uuid4()),
+        "record_id": record_id,
+        "content": notes_content,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by_id": current_user["id"],
+        "created_by_name": current_user.get("name") or current_user.get("email")
+    }
+    await db.record_comments.insert_one(note_doc)
+    await db.prequalify_submissions.update_one({"id": submission_id}, {"$set": {"status": "reviewed"}})
+    return {"message": "Data added to record notes", "note_id": note_doc["id"]}
+
 # Include router and middleware
 app.include_router(api_router)
 
