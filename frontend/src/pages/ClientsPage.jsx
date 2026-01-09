@@ -2178,10 +2178,12 @@ function RecordCard({
           )}
         </div>
         <div className="flex items-center gap-1">
-          {/* Email Report button */}
-          <Button size="sm" variant="ghost" onClick={() => setShowEmailDialog(true)} title="Enviar Reporte por Email" className="relative">
-            <Mail className="w-4 h-4 text-green-500" />
-          </Button>
+          {/* Email Report button - Admin Only */}
+          {isAdmin && (
+            <Button size="sm" variant="ghost" onClick={() => setShowEmailDialog(true)} title="Enviar Reporte por Email" className="relative">
+              <Mail className="w-4 h-4 text-green-500" />
+            </Button>
+          )}
           {/* Comments button with counter */}
           <Button size="sm" variant="ghost" onClick={openCommentsDialog} title="Comentarios" className="relative">
             <MessageCircle className="w-4 h-4 text-blue-400" />
