@@ -3946,6 +3946,7 @@ async def create_config_list_item(item: ConfigListItem, current_user: dict = Dep
         "id": str(uuid.uuid4()),
         "name": item.name,
         "category": item.category,
+        "address": item.address if item.category == "dealer" else None,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": current_user["id"]
     }
