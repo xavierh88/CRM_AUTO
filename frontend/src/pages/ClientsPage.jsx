@@ -609,6 +609,7 @@ export default function ClientsPage() {
           onSendDocsSMS={() => sendDocumentsSMS(selectedClient.id)}
           onSendDocsEmail={() => sendDocumentsEmail(selectedClient)}
           onRefresh={fetchClients}
+          isAdmin={isAdmin}
         />
       )}
 
