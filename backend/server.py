@@ -4154,6 +4154,157 @@ async def submit_prequalify(submission: PreQualifySubmission):
     }
     await db.prequalify_submissions.insert_one(doc)
     del doc["_id"]
+    
+    # Send email notification to ALL admins
+    try:
+        admin_users = await db.users.find(
+            {"role": "admin", "approved": True},
+            {"_id": 0, "email": 1, "full_name": 1}
+        ).to_list(100)
+        
+        if admin_users:
+            frontend_url = os.environ.get('FRONTEND_URL', '')
+            prequalify_link = f"{frontend_url}/prequalify" if frontend_url else ""
+            
+            # Build HTML email with ALL submission data
+            html_content = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+                <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <h1 style="color: #1e40af; margin: 0;">🚗 CARPLUS AUTOSALE</h1>
+                        <p style="color: #6b7280; margin: 5px 0;">Nueva Solicitud de Pre-Calificación</p>
+                    </div>
+                    
+                    <div style="background: #dbeafe; border-left: 4px solid #1e40af; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+                        <strong style="color: #1e40af;">¡Nueva solicitud recibida!</strong>
+                        <p style="margin: 5px 0 0 0; color: #374151;">Se ha recibido una nueva solicitud de pre-calificación.</p>
+                    </div>
+                    
+                    <h2 style="color: #374151; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">📋 Información Personal</h2>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                        <tr style="background: #f9fafb;">
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold; width: 40%;">Nombre Completo</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.firstName} {submission.lastName}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Email</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.email}</td>
+                        </tr>
+                        <tr style="background: #f9fafb;">
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Teléfono</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.phone}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">ID/Licencia</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.idNumber or 'No proporcionado'}</td>
+                        </tr>
+                        <tr style="background: #f9fafb;">
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">SSN</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.ssn or 'No proporcionado'}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Fecha de Nacimiento</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.dateOfBirth or 'No proporcionado'}</td>
+                        </tr>
+                    </table>
+                    
+                    <h2 style="color: #374151; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">🏠 Información de Vivienda</h2>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                        <tr style="background: #f9fafb;">
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold; width: 40%;">Dirección</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.address or 'No proporcionado'}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Ciudad</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.city or 'No proporcionado'}</td>
+                        </tr>
+                        <tr style="background: #f9fafb;">
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Estado</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.state or 'No proporcionado'}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Código Postal</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.zipCode or 'No proporcionado'}</td>
+                        </tr>
+                        <tr style="background: #f9fafb;">
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Tipo de Vivienda</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.housingType or 'No proporcionado'}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Monto de Renta</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.rentAmount or 'No proporcionado'}</td>
+                        </tr>
+                        <tr style="background: #f9fafb;">
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Tiempo en Dirección</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.timeAtAddress or 'No proporcionado'}</td>
+                        </tr>
+                    </table>
+                    
+                    <h2 style="color: #374151; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">💼 Información Laboral</h2>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                        <tr style="background: #f9fafb;">
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold; width: 40%;">Empleador</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.employerName or 'No proporcionado'}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Tiempo con Empleador</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.timeWithEmployer or 'No proporcionado'}</td>
+                        </tr>
+                        <tr style="background: #f9fafb;">
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Tipo de Ingreso</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.incomeType or 'No proporcionado'}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Ingreso Neto</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.netIncome or 'No proporcionado'}</td>
+                        </tr>
+                        <tr style="background: #f9fafb;">
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Frecuencia de Pago</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.incomeFrequency or 'No proporcionado'}</td>
+                        </tr>
+                    </table>
+                    
+                    <h2 style="color: #374151; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">💰 Información Financiera</h2>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                        <tr style="background: #f9fafb;">
+                            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold; width: 40%;">Enganche Estimado</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">{submission.estimatedDownPayment or 'No proporcionado'}</td>
+                        </tr>
+                    </table>
+                    
+                    {"<div style='background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin-bottom: 20px; border-radius: 5px;'><strong style='color: #b45309;'>⚠️ Cliente Existente Encontrado</strong><p style='margin: 5px 0 0 0; color: #374151;'>Se encontró un cliente con el mismo teléfono: <strong>" + existing_client['first_name'] + " " + existing_client['last_name'] + "</strong></p></div>" if existing_client else ""}
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="{prequalify_link}" style="background: #1e40af; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Ver en Panel de Pre-Calificación</a>
+                    </div>
+                    
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px;">
+                        <p>Este es un mensaje automático del sistema CRM CARPLUS AUTOSALE</p>
+                        <p>Fecha de recepción: {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M UTC')}</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            # Send to all admin emails
+            for admin in admin_users:
+                admin_email = admin.get('email')
+                if admin_email:
+                    try:
+                        await send_email_notification(
+                            to_email=admin_email,
+                            subject=f"🚗 Nueva Pre-Calificación: {submission.firstName} {submission.lastName}",
+                            html_content=html_content
+                        )
+                        logger.info(f"Pre-qualify notification sent to admin: {admin_email}")
+                    except Exception as email_error:
+                        logger.error(f"Failed to send pre-qualify notification to {admin_email}: {str(email_error)}")
+    except Exception as e:
+        logger.error(f"Error sending pre-qualify admin notifications: {str(e)}")
+        # Don't fail the submission if email fails
+    
     return {"message": "Pre-qualify submission received", "id": doc["id"], "matched": existing_client is not None}
 
 @api_router.get("/prequalify/submissions", response_model=List[PreQualifyResponse])
