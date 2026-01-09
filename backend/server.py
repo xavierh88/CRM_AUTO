@@ -3907,12 +3907,14 @@ async def toggle_client_opt_out(client_id: str, opt_out: bool, current_user: dic
 class ConfigListItem(BaseModel):
     name: str
     category: str  # 'bank', 'dealer', 'car'
+    address: Optional[str] = None  # Only for dealers
 
 class ConfigListItemResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     name: str
     category: str
+    address: Optional[str] = None
     created_at: str
     created_by: str
 
