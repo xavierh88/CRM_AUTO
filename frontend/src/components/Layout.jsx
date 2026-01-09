@@ -29,6 +29,7 @@ export const Layout = ({ children }) => {
     { path: '/clients', icon: Users, label: t('nav.clients') },
     { path: '/agenda', icon: Calendar, label: t('nav.agenda') },
     { path: '/import', icon: FileSpreadsheet, label: t('nav.import') || 'Importar' },
+    ...(isAdmin ? [{ path: '/prequalify', icon: FileText, label: 'Pre-Qualify' }] : []),
     ...(isAdmin ? [{ path: '/admin', icon: Shield, label: t('nav.admin') }] : []),
     { path: '/settings', icon: Settings, label: t('nav.settings') },
   ];
