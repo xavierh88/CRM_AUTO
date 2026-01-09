@@ -3582,12 +3582,16 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                       </div>
                     ) : (
                       <>
-                        <Button size="sm" variant="ghost" onClick={() => handleDownloadDocument('id')} title="Descargar">
-                          <Download className="w-4 h-4 text-blue-500" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm('id')} title="Eliminar">
-                          <Trash2 className="w-4 h-4 text-red-400" />
-                        </Button>
+                        {isAdmin && (
+                          <Button size="sm" variant="ghost" onClick={() => handleDownloadDocument('id')} title="Descargar">
+                            <Download className="w-4 h-4 text-blue-500" />
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm('id')} title="Eliminar">
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                          </Button>
+                        )}
                       </>
                     )
                   ) : (
