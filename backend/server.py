@@ -4158,7 +4158,7 @@ async def submit_prequalify(submission: PreQualifySubmission):
     # Send email notification to ALL admins
     try:
         admin_users = await db.users.find(
-            {"role": "admin", "approved": True},
+            {"role": "admin", "approved": {"$ne": False}},
             {"_id": 0, "email": 1, "full_name": 1}
         ).to_list(100)
         
