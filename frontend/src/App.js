@@ -117,6 +117,16 @@ function App() {
             }
           />
           <Route
+            path="/prequalify"
+            element={
+              <AdminRoute>
+                <Layout>
+                  <PreQualifyPage />
+                </Layout>
+              </AdminRoute>
+            }
+          />
+          <Route
             path="/settings"
             element={
               <ProtectedRoute>
