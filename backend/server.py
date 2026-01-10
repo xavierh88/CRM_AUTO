@@ -281,8 +281,12 @@ class UserRecordCreate(BaseModel):
     ssn: bool = False
     # ITIN
     itin: bool = False
-    # Self Employed (new)
-    self_employed: bool = False
+    # Employment type: Company, Retired/workcomp/SSN/SDI, Unemployed, Self employed
+    self_employed: bool = False  # Legacy field
+    employment_type: Optional[str] = None  # Company, Retired/workcomp/SSN/SDI, Unemployed, Self employed
+    employment_company_name: Optional[str] = None  # Company name when Company or Self employed
+    employment_time_years: Optional[int] = None  # Years at employment
+    employment_time_months: Optional[int] = None  # Months at employment
     # POR (Proof of Residence) - new
     has_por: bool = False
     por_types: Optional[List[str]] = None  # Agua, Luz, Gas, Internet, etc. (multiple selection)
