@@ -304,13 +304,13 @@ export default function ClientsPage() {
               {t('clients.addNew')}
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{t('clients.addNew')}</DialogTitle>
               <p className="text-sm text-slate-500">Enter client information below</p>
             </DialogHeader>
-            <form onSubmit={handleAddClient} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleAddClient} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="form-label">{t('clients.firstName')}</Label>
                   <Input
