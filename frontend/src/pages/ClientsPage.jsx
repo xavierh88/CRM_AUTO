@@ -883,6 +883,11 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
       ssn: record.ssn || false,
       itin: record.itin || false,
       self_employed: record.self_employed || false,
+      // Employment fields
+      employment_type: record.employment_type || '',
+      employment_company_name: record.employment_company_name || '',
+      employment_time_years: record.employment_time_years || '',
+      employment_time_months: record.employment_time_months || '',
       // New POR fields
       has_por: record.has_por || false,
       por_types: record.por_types || [],
