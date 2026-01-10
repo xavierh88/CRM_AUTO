@@ -2740,7 +2740,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
         cosigner_client_id: clientRes.data.id
       });
       setShowAdd(false);
-      setNewCosigner({ first_name: '', last_name: '', phone: '', email: '', address: '', apartment: '' });
+      setNewCosigner({ first_name: '', last_name: '', phone: '', email: '', address: '', apartment: '', time_at_address_years: '', time_at_address_months: '', housing_type: '', rent_amount: '' });
       onRefresh();
       toast.success('Co-signer created and linked');
     } catch (error) {
