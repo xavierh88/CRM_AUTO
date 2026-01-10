@@ -1342,14 +1342,57 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
               />
               <Label htmlFor="new-itin">ITIN</Label>
             </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={newRecord.self_employed}
-                onCheckedChange={(checked) => setNewRecord({ ...newRecord, self_employed: checked })}
-                id="new-self_employed"
-              />
-              <Label htmlFor="new-self_employed">Self Employed</Label>
-            </div>
+          </div>
+
+          {/* Employment Section */}
+          <div className="space-y-3 mb-4">
+            <Label className="font-medium">Employment</Label>
+            <Select value={newRecord.employment_type} onValueChange={(value) => setNewRecord({ ...newRecord, employment_type: value, employment_company_name: '' })}>
+              <SelectTrigger className="max-w-xs">
+                <SelectValue placeholder="Select employment type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Company">Company</SelectItem>
+                <SelectItem value="Retired/workcomp/SSN/SDI">Retired/workcomp/SSN/SDI</SelectItem>
+                <SelectItem value="Unemployed">Unemployed</SelectItem>
+                <SelectItem value="Self employed">Self employed</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {/* Company name field - show for Company or Self employed */}
+            {(newRecord.employment_type === 'Company' || newRecord.employment_type === 'Self employed') && (
+              <div>
+                <Label className="form-label mb-1 block">
+                  {newRecord.employment_type === 'Company' ? 'Company Name' : 'Business Name'}
+                </Label>
+                <Input
+                  value={newRecord.employment_company_name}
+                  onChange={(e) => setNewRecord({ ...newRecord, employment_company_name: e.target.value })}
+                  placeholder="Enter name"
+                />
+              </div>
+            )}
+            
+            {/* Time at employment - show for any employment type */}
+            {newRecord.employment_type && (
+              <div>
+                <Label className="form-label mb-1 block">Time at Employment</Label>
+                <div className="flex gap-2 max-w-xs">
+                  <Input
+                    type="number"
+                    placeholder="Years"
+                    value={newRecord.employment_time_years}
+                    onChange={(e) => setNewRecord({ ...newRecord, employment_time_years: e.target.value })}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Months"
+                    value={newRecord.employment_time_months}
+                    onChange={(e) => setNewRecord({ ...newRecord, employment_time_months: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* POR Section (Proof of Residence) */}
