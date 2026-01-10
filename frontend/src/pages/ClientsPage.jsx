@@ -3745,6 +3745,14 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                     onChange={(e) => setEditData({ ...editData, email: e.target.value })}
                   />
                 </div>
+                <div>
+                  <Label className="form-label">Date of Birth</Label>
+                  <Input
+                    type="date"
+                    value={editData.date_of_birth}
+                    onChange={(e) => setEditData({ ...editData, date_of_birth: e.target.value })}
+                  />
+                </div>
                 <div className="col-span-2">
                   <Label className="form-label">{t('clients.address')}</Label>
                   <AddressAutocomplete
