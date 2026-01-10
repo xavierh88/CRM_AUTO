@@ -3506,7 +3506,11 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
     phone: client.phone,
     email: client.email || '',
     address: client.address || '',
-    apartment: client.apartment || ''
+    apartment: client.apartment || '',
+    time_at_address_years: client.time_at_address_years || '',
+    time_at_address_months: client.time_at_address_months || '',
+    housing_type: client.housing_type || '',
+    rent_amount: client.rent_amount || ''
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null); // 'id', 'income', or 'residence'
   const [uploading, setUploading] = useState(null); // 'id', 'income', or 'residence'
