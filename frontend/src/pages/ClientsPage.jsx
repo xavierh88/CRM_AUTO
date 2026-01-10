@@ -898,6 +898,9 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
       employment_company_name: record.employment_company_name || '',
       employment_time_years: record.employment_time_years || '',
       employment_time_months: record.employment_time_months || '',
+      // Income fields
+      income_frequency: record.income_frequency || '',
+      net_income_amount: record.net_income_amount || '',
       // New POR fields
       has_por: record.has_por || false,
       por_types: record.por_types || [],
