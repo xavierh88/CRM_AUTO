@@ -4387,7 +4387,7 @@ async def submit_prequalify_with_file(
     if id_file and id_file.filename:
         try:
             # Create uploads directory if not exists
-            upload_dir = Path("uploads")
+            upload_dir = Path(__file__).parent / "uploads"
             upload_dir.mkdir(exist_ok=True)
             
             # Generate unique filename
@@ -4405,6 +4405,8 @@ async def submit_prequalify_with_file(
             
             id_file_url = f"/uploads/{unique_filename}"
             logger.info(f"Pre-qualify ID file uploaded: {id_file_url}")
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Error uploading pre-qualify ID file: {str(e)}")
             # Continue without file if upload fails
