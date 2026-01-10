@@ -2523,7 +2523,16 @@ function RecordCard({
             <span>✓</span> ITIN
           </div>
         )}
-        {record.self_employed && (
+        {record.employment_type && (
+          <div className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded text-xs">
+            <span>✓</span> {record.employment_type}
+            {record.employment_company_name && `: ${record.employment_company_name}`}
+            {(record.employment_time_years || record.employment_time_months) && 
+              ` (${record.employment_time_years || 0}y ${record.employment_time_months || 0}m)`}
+          </div>
+        )}
+        {/* Legacy support for self_employed */}
+        {!record.employment_type && record.self_employed && (
           <div className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded text-xs">
             <span>✓</span> Self Employed
           </div>
