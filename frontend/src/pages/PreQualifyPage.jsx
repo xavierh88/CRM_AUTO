@@ -371,6 +371,33 @@ export default function PreQualifyPage() {
                 </div>
               </div>
 
+              {/* ID Document */}
+              {detailData.submission.id_file_url && (
+                <div className="p-4 bg-amber-50 rounded-lg">
+                  <h4 className="font-medium text-amber-700 mb-2 flex items-center gap-1">
+                    📄 Documento de ID Adjunto
+                  </h4>
+                  <div className="flex items-center gap-3">
+                    <a 
+                      href={`${process.env.REACT_APP_BACKEND_URL}${detailData.submission.id_file_url}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline flex items-center gap-1"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Ver/Descargar Documento
+                    </a>
+                    {detailData.submission.id_file_url.match(/\.(jpg|jpeg|png)$/i) && (
+                      <img 
+                        src={`${process.env.REACT_APP_BACKEND_URL}${detailData.submission.id_file_url}`}
+                        alt="ID Document"
+                        className="max-w-xs max-h-40 rounded border"
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Client Match / Comparison */}
               {detailData.comparison ? (
                 <div className="p-4 bg-purple-50 rounded-lg border-2 border-purple-200">
