@@ -2674,7 +2674,9 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
   const [searchPhone, setSearchPhone] = useState('');
   const [foundClient, setFoundClient] = useState(null);
   const [newCosigner, setNewCosigner] = useState({
-    first_name: '', last_name: '', phone: '', email: '', address: '', apartment: ''
+    first_name: '', last_name: '', phone: '', email: '', address: '', apartment: '',
+    time_at_address_years: '', time_at_address_months: '',
+    housing_type: '', rent_amount: ''
   });
   // Co-signer profile view state
   const [viewingCosigner, setViewingCosigner] = useState(null);
@@ -2686,6 +2688,8 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
     has_id: false, id_type: '',
     has_poi: false, poi_type: '',
     ssn: false, itin: false, self_employed: false,
+    employment_type: '', employment_company_name: '',
+    employment_time_years: '', employment_time_months: '',
     has_por: false, por_types: [],
     bank: '', bank_deposit_type: '', direct_deposit_amount: '',
     auto: '', credit: '', auto_loan: '',
