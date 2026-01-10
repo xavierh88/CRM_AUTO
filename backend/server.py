@@ -354,7 +354,12 @@ class UserRecordResponse(BaseModel):
     # Other checks
     ssn: bool = False
     itin: bool = False
-    self_employed: bool = False
+    self_employed: bool = False  # Legacy
+    # Employment fields
+    employment_type: Optional[str] = None  # Company, Retired/workcomp/SSN/SDI, Unemployed, Self employed
+    employment_company_name: Optional[str] = None
+    employment_time_years: Optional[int] = None
+    employment_time_months: Optional[int] = None
     # POR fields
     has_por: bool = False
     por_types: Optional[List[str]] = None
