@@ -236,6 +236,8 @@ class ClientCreate(BaseModel):
     email: Optional[str] = None
     address: Optional[str] = None
     apartment: Optional[str] = None
+    # Date of birth
+    date_of_birth: Optional[str] = None
     # Time at address
     time_at_address_years: Optional[int] = None
     time_at_address_months: Optional[int] = None
@@ -252,6 +254,8 @@ class ClientResponse(BaseModel):
     email: Optional[str] = None
     address: Optional[str] = None
     apartment: Optional[str] = None
+    # Date of birth
+    date_of_birth: Optional[str] = None
     # Time at address
     time_at_address_years: Optional[int] = None
     time_at_address_months: Optional[int] = None
