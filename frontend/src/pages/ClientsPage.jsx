@@ -370,6 +370,56 @@ export default function ClientsPage() {
                   data-testid="client-apartment"
                 />
               </div>
+              {/* Time at Address */}
+              <div>
+                <Label className="form-label">Time at Address</Label>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Input
+                      type="number"
+                      placeholder="Years"
+                      value={newClient.time_at_address_years}
+                      onChange={(e) => setNewClient({ ...newClient, time_at_address_years: e.target.value })}
+                      data-testid="client-time-years"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      type="number"
+                      placeholder="Months"
+                      value={newClient.time_at_address_months}
+                      onChange={(e) => setNewClient({ ...newClient, time_at_address_months: e.target.value })}
+                      data-testid="client-time-months"
+                    />
+                  </div>
+                </div>
+              </div>
+              {/* Housing Type */}
+              <div>
+                <Label className="form-label">Housing Type</Label>
+                <Select value={newClient.housing_type} onValueChange={(v) => setNewClient({ ...newClient, housing_type: v, rent_amount: v !== 'Renta' ? '' : newClient.rent_amount })}>
+                  <SelectTrigger data-testid="client-housing-type">
+                    <SelectValue placeholder="Select housing type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Dueño">Dueño</SelectItem>
+                    <SelectItem value="Renta">Renta</SelectItem>
+                    <SelectItem value="Vivo con familiares">Vivo con familiares</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Rent Amount - only show if Renta selected */}
+              {newClient.housing_type === 'Renta' && (
+                <div>
+                  <Label className="form-label">Rent Amount</Label>
+                  <Input
+                    placeholder="$"
+                    value={newClient.rent_amount}
+                    onChange={(e) => setNewClient({ ...newClient, rent_amount: e.target.value })}
+                    data-testid="client-rent-amount"
+                  />
+                </div>
+              )}
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => setShowAddClient(false)} className="flex-1">
                   {t('common.cancel')}
