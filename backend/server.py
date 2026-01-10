@@ -4168,6 +4168,7 @@ class PreQualifyResponse(BaseModel):
     status: str = "pending"
     matched_client_id: Optional[str] = None
     matched_client_name: Optional[str] = None
+    id_file_url: Optional[str] = None  # URL del documento de ID subido
 
 @api_router.post("/prequalify/submit")
 async def submit_prequalify(submission: PreQualifySubmission):
