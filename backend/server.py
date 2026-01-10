@@ -4560,12 +4560,13 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
     if prequalify_id_file:
         try:
             # Copy file to client's document location
-            old_path = Path("uploads") / Path(prequalify_id_file).name
+            upload_dir = Path(__file__).parent / "uploads"
+            old_path = upload_dir / Path(prequalify_id_file).name
             logger.info(f"Looking for file at: {old_path}")
             if old_path.exists():
                 file_extension = old_path.suffix
                 new_filename = f"{client_id}_id{file_extension}"
-                new_path = Path("uploads") / new_filename
+                new_path = upload_dir / new_filename
                 
                 shutil.copy2(old_path, new_path)
                 
