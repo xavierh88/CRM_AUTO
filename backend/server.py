@@ -236,6 +236,12 @@ class ClientCreate(BaseModel):
     email: Optional[str] = None
     address: Optional[str] = None
     apartment: Optional[str] = None
+    # Time at address
+    time_at_address_years: Optional[int] = None
+    time_at_address_months: Optional[int] = None
+    # Housing type: Dueño, Renta, Vivo con familiares
+    housing_type: Optional[str] = None
+    rent_amount: Optional[str] = None  # Only when housing_type is "Renta"
 
 class ClientResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -246,6 +252,12 @@ class ClientResponse(BaseModel):
     email: Optional[str] = None
     address: Optional[str] = None
     apartment: Optional[str] = None
+    # Time at address
+    time_at_address_years: Optional[int] = None
+    time_at_address_months: Optional[int] = None
+    # Housing type
+    housing_type: Optional[str] = None
+    rent_amount: Optional[str] = None
     id_uploaded: bool = False
     income_proof_uploaded: bool = False
     residence_proof_uploaded: bool = False
