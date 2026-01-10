@@ -4552,18 +4552,20 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
     if prequalify_id_file:
         try:
             # Copy file to client's document location
-            old_path = Path("." + prequalify_id_file)  # Remove leading slash
+            old_path = Path("uploads") / Path(prequalify_id_file).name
+            logger.info(f"Looking for file at: {old_path}")
             if old_path.exists():
                 file_extension = old_path.suffix
                 new_filename = f"{client_id}_id{file_extension}"
                 new_path = Path("uploads") / new_filename
                 
-                import shutil
                 shutil.copy2(old_path, new_path)
                 
                 id_file_url = f"/uploads/{new_filename}"
                 id_uploaded = True
                 logger.info(f"Transferred ID document from pre-qualify to client: {id_file_url}")
+            else:
+                logger.warning(f"Pre-qualify ID file not found at: {old_path}")
         except Exception as e:
             logger.error(f"Error transferring ID document: {str(e)}")
     
