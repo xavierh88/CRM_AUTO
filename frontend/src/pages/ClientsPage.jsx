@@ -187,7 +187,7 @@ export default function ClientsPage() {
       const response = await axios.post(`${API}/clients`, newClient);
       setClients([response.data, ...clients]);
       setShowAddClient(false);
-      setNewClient({ first_name: '', last_name: '', phone: '', email: '', address: '', apartment: '' });
+      setNewClient({ first_name: '', last_name: '', phone: '', email: '', address: '', apartment: '', time_at_address_years: '', time_at_address_months: '', housing_type: '', rent_amount: '' });
       toast.success(t('common.success'));
     } catch (error) {
       toast.error(error.response?.data?.detail || t('common.error'));
