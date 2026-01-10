@@ -374,24 +374,22 @@ export default function ClientsPage() {
               <div>
                 <Label className="form-label">Time at Address</Label>
                 <div className="flex gap-2">
-                  <div className="flex-1">
-                    <Input
-                      type="number"
-                      placeholder="Years"
-                      value={newClient.time_at_address_years}
-                      onChange={(e) => setNewClient({ ...newClient, time_at_address_years: e.target.value })}
-                      data-testid="client-time-years"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <Input
-                      type="number"
-                      placeholder="Months"
-                      value={newClient.time_at_address_months}
-                      onChange={(e) => setNewClient({ ...newClient, time_at_address_months: e.target.value })}
-                      data-testid="client-time-months"
-                    />
-                  </div>
+                  <Input
+                    type="number"
+                    placeholder="Years"
+                    value={newClient.time_at_address_years}
+                    onChange={(e) => setNewClient({ ...newClient, time_at_address_years: e.target.value })}
+                    data-testid="client-time-years"
+                    className="w-20"
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Months"
+                    value={newClient.time_at_address_months}
+                    onChange={(e) => setNewClient({ ...newClient, time_at_address_months: e.target.value })}
+                    data-testid="client-time-months"
+                    className="w-20"
+                  />
                 </div>
               </div>
               {/* Housing Type */}
@@ -399,7 +397,7 @@ export default function ClientsPage() {
                 <Label className="form-label">Housing Type</Label>
                 <Select value={newClient.housing_type} onValueChange={(v) => setNewClient({ ...newClient, housing_type: v, rent_amount: v !== 'Renta' ? '' : newClient.rent_amount })}>
                   <SelectTrigger data-testid="client-housing-type">
-                    <SelectValue placeholder="Select housing type" />
+                    <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Dueño">Dueño</SelectItem>
