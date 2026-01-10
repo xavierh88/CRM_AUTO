@@ -4539,22 +4539,58 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
     submission = await db.prequalify_submissions.find_one({"id": submission_id}, {"_id": 0})
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
+    
+    client_id = str(uuid.uuid4())
     full_address = f"{submission.get('address', '')} {submission.get('city', '')} {submission.get('state', '')} {submission.get('zipCode', '')}".strip()
+    
+    # Transfer ID document if exists
+    id_file_url = None
+    id_uploaded = False
+    prequalify_id_file = submission.get("id_file_url")
+    
+    if prequalify_id_file:
+        try:
+            # Copy file to client's document location
+            old_path = Path("." + prequalify_id_file)  # Remove leading slash
+            if old_path.exists():
+                file_extension = old_path.suffix
+                new_filename = f"{client_id}_id{file_extension}"
+                new_path = Path("uploads") / new_filename
+                
+                import shutil
+                shutil.copy2(old_path, new_path)
+                
+                id_file_url = f"/uploads/{new_filename}"
+                id_uploaded = True
+                logger.info(f"Transferred ID document from pre-qualify to client: {id_file_url}")
+        except Exception as e:
+            logger.error(f"Error transferring ID document: {str(e)}")
+    
     client_doc = {
-        "id": str(uuid.uuid4()),
+        "id": client_id,
         "first_name": submission.get("firstName", ""),
         "last_name": submission.get("lastName", ""),
         "phone": submission.get("phone", ""),
         "email": submission.get("email", ""),
         "address": full_address,
         "apartment": "",
+        "date_of_birth": submission.get("dateOfBirth", ""),
+        "housing_type": submission.get("housingType", ""),
+        "rent_amount": submission.get("rentAmount", ""),
+        "time_at_address_years": None,
+        "time_at_address_months": None,
+        "id_uploaded": id_uploaded,
+        "id_file_url": id_file_url,
+        "income_proof_uploaded": False,
+        "residence_proof_uploaded": False,
         "salesperson_id": current_user["id"],
         "salesperson_name": current_user.get("name") or current_user.get("email"),
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": current_user["id"],
         "is_deleted": False
     }
     await db.clients.insert_one(client_doc)
-    notes_content = f"--- Pre-Qualify Data ---\nFecha Nacimiento: {submission.get('dateOfBirth', 'N/A')}\nID/Pasaporte: {submission.get('idNumber', 'N/A')}\nSSN/ITIN: {submission.get('ssn', 'N/A')}\nTipo Vivienda: {submission.get('housingType', 'N/A')}\nRenta Mensual: {submission.get('rentAmount', 'N/A')}\nEmpleador: {submission.get('employerName', 'N/A')}\nIngreso Neto: {submission.get('netIncome', 'N/A')}\nDown Payment: {submission.get('estimatedDownPayment', 'N/A')}"
+    notes_content = f"--- Pre-Qualify Data ---\nFecha Nacimiento: {submission.get('dateOfBirth', 'N/A')}\nID/Pasaporte: {submission.get('idNumber', 'N/A')}\nSSN/ITIN: {submission.get('ssn', 'N/A')}\nTipo Vivienda: {submission.get('housingType', 'N/A')}\nRenta Mensual: {submission.get('rentAmount', 'N/A')}\nEmpleador: {submission.get('employerName', 'N/A')}\nTiempo con Empleador: {submission.get('timeWithEmployer', 'N/A')}\nTipo de Ingreso: {submission.get('incomeType', 'N/A')}\nIngreso Neto: {submission.get('netIncome', 'N/A')}\nFrecuencia de Ingreso: {submission.get('incomeFrequency', 'N/A')}\nDown Payment: {submission.get('estimatedDownPayment', 'N/A')}"
     record_doc = {
         "id": str(uuid.uuid4()),
         "client_id": client_doc["id"],
@@ -4562,8 +4598,12 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
         "salesperson_name": current_user.get("name") or current_user.get("email"),
         "opportunity_number": 1,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "has_id": bool(submission.get("idNumber")),
+        "has_id": bool(submission.get("idNumber")) or id_uploaded,
         "ssn": bool(submission.get("ssn")),
+        "employment_type": submission.get("incomeType", ""),
+        "employment_company_name": submission.get("employerName", ""),
+        "income_frequency": submission.get("incomeFrequency", ""),
+        "net_income_amount": submission.get("netIncome", ""),
         "finance_status": "no",
         "is_deleted": False
     }
@@ -4581,7 +4621,7 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
         {"id": submission_id},
         {"$set": {"status": "converted", "matched_client_id": client_doc["id"], "matched_client_name": f"{client_doc['first_name']} {client_doc['last_name']}"}}
     )
-    return {"message": "Cliente creado exitosamente", "client_id": client_doc["id"], "record_id": record_doc["id"]}
+    return {"message": "Cliente creado exitosamente", "client_id": client_doc["id"], "record_id": record_doc["id"], "id_transferred": id_uploaded}
 
 @api_router.post("/prequalify/submissions/{submission_id}/add-to-notes")
 async def add_prequalify_to_notes(submission_id: str, record_id: str, current_user: dict = Depends(get_current_user)):
