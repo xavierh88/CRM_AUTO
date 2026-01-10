@@ -3580,6 +3580,7 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
     last_name: client.last_name,
     phone: client.phone,
     email: client.email || '',
+    date_of_birth: client.date_of_birth || '',
     address: client.address || '',
     apartment: client.apartment || '',
     time_at_address_years: client.time_at_address_years || '',
