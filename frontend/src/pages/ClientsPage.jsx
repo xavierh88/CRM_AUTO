@@ -3840,6 +3840,10 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                 <p className="font-medium">{client.email || '-'}</p>
               </div>
               <div>
+                <Label className="form-label">Date of Birth</Label>
+                <p className="font-medium">{client.date_of_birth || '-'}</p>
+              </div>
+              <div>
                 <Label className="form-label">{t('clients.address')}</Label>
                 <p className="font-medium">{client.address || '-'} {client.apartment && `Apt ${client.apartment}`}</p>
               </div>
