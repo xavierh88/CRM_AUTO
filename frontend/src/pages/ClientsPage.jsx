@@ -355,6 +355,15 @@ export default function ClientsPage() {
                 />
               </div>
               <div>
+                <Label className="form-label">Date of Birth</Label>
+                <Input
+                  type="date"
+                  value={newClient.date_of_birth}
+                  onChange={(e) => setNewClient({ ...newClient, date_of_birth: e.target.value })}
+                  data-testid="client-dob"
+                />
+              </div>
+              <div>
                 <Label className="form-label">{t('clients.address')}</Label>
                 <AddressAutocomplete
                   value={newClient.address}
