@@ -367,6 +367,9 @@ class UserRecordResponse(BaseModel):
     employment_company_name: Optional[str] = None
     employment_time_years: Optional[int] = None
     employment_time_months: Optional[int] = None
+    # Income fields
+    income_frequency: Optional[str] = None  # Semanal, Cada dos semanas, Dos veces al mes, Mensual
+    net_income_amount: Optional[str] = None  # Net income amount
     # POR fields
     has_por: bool = False
     por_types: Optional[List[str]] = None
