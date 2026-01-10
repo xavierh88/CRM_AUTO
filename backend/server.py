@@ -291,6 +291,9 @@ class UserRecordCreate(BaseModel):
     employment_company_name: Optional[str] = None  # Company name when Company or Self employed
     employment_time_years: Optional[int] = None  # Years at employment
     employment_time_months: Optional[int] = None  # Months at employment
+    # Income fields
+    income_frequency: Optional[str] = None  # Semanal, Cada dos semanas, Dos veces al mes, Mensual
+    net_income_amount: Optional[str] = None  # Net income amount
     # POR (Proof of Residence) - new
     has_por: bool = False
     por_types: Optional[List[str]] = None  # Agua, Luz, Gas, Internet, etc. (multiple selection)
