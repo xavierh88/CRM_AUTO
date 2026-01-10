@@ -1880,10 +1880,57 @@ function RecordCard({
             <Checkbox checked={editData.itin} onCheckedChange={(checked) => setEditData({ ...editData, itin: checked })} id="edit-itin" />
             <Label htmlFor="edit-itin">ITIN</Label>
           </div>
-          <div className="flex items-center gap-2">
-            <Checkbox checked={editData.self_employed} onCheckedChange={(checked) => setEditData({ ...editData, self_employed: checked })} id="edit-self_employed" />
-            <Label htmlFor="edit-self_employed">Self Employed</Label>
-          </div>
+        </div>
+
+        {/* Employment Section */}
+        <div className="space-y-3 mb-4">
+          <Label className="font-medium">Employment</Label>
+          <Select value={editData.employment_type || ''} onValueChange={(value) => setEditData({ ...editData, employment_type: value, employment_company_name: '' })}>
+            <SelectTrigger className="max-w-xs">
+              <SelectValue placeholder="Select employment type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Company">Company</SelectItem>
+              <SelectItem value="Retired/workcomp/SSN/SDI">Retired/workcomp/SSN/SDI</SelectItem>
+              <SelectItem value="Unemployed">Unemployed</SelectItem>
+              <SelectItem value="Self employed">Self employed</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {/* Company name field */}
+          {(editData.employment_type === 'Company' || editData.employment_type === 'Self employed') && (
+            <div>
+              <Label className="form-label mb-1 block">
+                {editData.employment_type === 'Company' ? 'Company Name' : 'Business Name'}
+              </Label>
+              <Input
+                value={editData.employment_company_name || ''}
+                onChange={(e) => setEditData({ ...editData, employment_company_name: e.target.value })}
+                placeholder="Enter name"
+              />
+            </div>
+          )}
+          
+          {/* Time at employment */}
+          {editData.employment_type && (
+            <div>
+              <Label className="form-label mb-1 block">Time at Employment</Label>
+              <div className="flex gap-2 max-w-xs">
+                <Input
+                  type="number"
+                  placeholder="Years"
+                  value={editData.employment_time_years || ''}
+                  onChange={(e) => setEditData({ ...editData, employment_time_years: e.target.value })}
+                />
+                <Input
+                  type="number"
+                  placeholder="Months"
+                  value={editData.employment_time_months || ''}
+                  onChange={(e) => setEditData({ ...editData, employment_time_months: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* POR Section */}
