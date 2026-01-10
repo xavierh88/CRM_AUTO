@@ -2766,6 +2766,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
     ssn: false, itin: false, self_employed: false,
     employment_type: '', employment_company_name: '',
     employment_time_years: '', employment_time_months: '',
+    income_frequency: '', net_income_amount: '',
     has_por: false, por_types: [],
     bank: '', bank_deposit_type: '', direct_deposit_amount: '',
     auto: '', credit: '', auto_loan: '',
