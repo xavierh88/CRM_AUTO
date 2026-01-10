@@ -3677,13 +3677,55 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                     placeholder="Start typing an address..."
                   />
                 </div>
-                <div className="col-span-2">
+                <div>
                   <Label className="form-label">{t('clients.apartment')}</Label>
                   <Input
                     value={editData.apartment}
                     onChange={(e) => setEditData({ ...editData, apartment: e.target.value })}
                   />
                 </div>
+                <div>
+                  <Label className="form-label">Time at Address</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Years"
+                      value={editData.time_at_address_years}
+                      onChange={(e) => setEditData({ ...editData, time_at_address_years: e.target.value })}
+                      className="w-20"
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Months"
+                      value={editData.time_at_address_months}
+                      onChange={(e) => setEditData({ ...editData, time_at_address_months: e.target.value })}
+                      className="w-20"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="form-label">Housing Type</Label>
+                  <Select value={editData.housing_type} onValueChange={(v) => setEditData({ ...editData, housing_type: v, rent_amount: v !== 'Renta' ? '' : editData.rent_amount })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Dueño">Dueño</SelectItem>
+                      <SelectItem value="Renta">Renta</SelectItem>
+                      <SelectItem value="Vivo con familiares">Vivo con familiares</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {editData.housing_type === 'Renta' && (
+                  <div>
+                    <Label className="form-label">Rent Amount</Label>
+                    <Input
+                      placeholder="$"
+                      value={editData.rent_amount}
+                      onChange={(e) => setEditData({ ...editData, rent_amount: e.target.value })}
+                    />
+                  </div>
+                )}
               </div>
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" onClick={() => setIsEditing(false)}>
@@ -3713,10 +3755,28 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                 <Label className="form-label">{t('clients.email')}</Label>
                 <p className="font-medium">{client.email || '-'}</p>
               </div>
-              <div className="col-span-2">
+              <div>
                 <Label className="form-label">{t('clients.address')}</Label>
                 <p className="font-medium">{client.address || '-'} {client.apartment && `Apt ${client.apartment}`}</p>
               </div>
+              <div>
+                <Label className="form-label">Time at Address</Label>
+                <p className="font-medium">
+                  {(client.time_at_address_years || client.time_at_address_months) 
+                    ? `${client.time_at_address_years || 0} yrs, ${client.time_at_address_months || 0} mos` 
+                    : '-'}
+                </p>
+              </div>
+              <div>
+                <Label className="form-label">Housing Type</Label>
+                <p className="font-medium">{client.housing_type || '-'}</p>
+              </div>
+              {client.housing_type === 'Renta' && (
+                <div>
+                  <Label className="form-label">Rent Amount</Label>
+                  <p className="font-medium">{client.rent_amount || '-'}</p>
+                </div>
+              )}
             </div>
           )}
 
