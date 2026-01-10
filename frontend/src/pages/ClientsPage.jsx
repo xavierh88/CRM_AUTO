@@ -1408,6 +1408,37 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
                 </div>
               </div>
             )}
+            
+            {/* Income Frequency */}
+            {newRecord.employment_type && (
+              <div>
+                <Label className="form-label mb-1 block">Income Frequency</Label>
+                <Select value={newRecord.income_frequency} onValueChange={(value) => setNewRecord({ ...newRecord, income_frequency: value })}>
+                  <SelectTrigger className="max-w-xs">
+                    <SelectValue placeholder="Select frequency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Semanal">Semanal</SelectItem>
+                    <SelectItem value="Cada dos semanas">Cada dos semanas</SelectItem>
+                    <SelectItem value="Dos veces al mes">Dos veces al mes</SelectItem>
+                    <SelectItem value="Mensual">Mensual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {/* Net Income Amount */}
+            {newRecord.employment_type && (
+              <div>
+                <Label className="form-label mb-1 block">Net Income Amount</Label>
+                <Input
+                  placeholder="$"
+                  value={newRecord.net_income_amount}
+                  onChange={(e) => setNewRecord({ ...newRecord, net_income_amount: e.target.value })}
+                  className="max-w-xs"
+                />
+              </div>
+            )}
           </div>
 
           {/* POR Section (Proof of Residence) */}
