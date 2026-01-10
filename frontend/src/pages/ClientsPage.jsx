@@ -787,6 +787,8 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     self_employed: false,  // Legacy
     employment_type: '', employment_company_name: '', 
     employment_time_years: '', employment_time_months: '',
+    // Income fields
+    income_frequency: '', net_income_amount: '',
     // Bank info
     bank: '', bank_deposit_type: '', direct_deposit_amount: '',
     // Vehicle & finance
