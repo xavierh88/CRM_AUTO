@@ -775,8 +775,10 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     has_poi: false, poi_type: '',
     // New POR fields
     has_por: false, por_types: [],
-    // Self employed
-    self_employed: false,
+    // Employment fields (replaces self_employed)
+    self_employed: false,  // Legacy
+    employment_type: '', employment_company_name: '', 
+    employment_time_years: '', employment_time_months: '',
     // Bank info
     bank: '', bank_deposit_type: '', direct_deposit_amount: '',
     // Vehicle & finance
