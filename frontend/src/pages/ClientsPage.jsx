@@ -2750,6 +2750,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
   const [foundClient, setFoundClient] = useState(null);
   const [newCosigner, setNewCosigner] = useState({
     first_name: '', last_name: '', phone: '', email: '', address: '', apartment: '',
+    date_of_birth: '',
     time_at_address_years: '', time_at_address_months: '',
     housing_type: '', rent_amount: ''
   });
