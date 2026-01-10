@@ -140,7 +140,9 @@ export default function ClientsPage() {
   };
 
   const [newClient, setNewClient] = useState({
-    first_name: '', last_name: '', phone: '', email: '', address: '', apartment: ''
+    first_name: '', last_name: '', phone: '', email: '', address: '', apartment: '',
+    time_at_address_years: '', time_at_address_months: '',
+    housing_type: '', rent_amount: ''
   });
 
   useEffect(() => {
