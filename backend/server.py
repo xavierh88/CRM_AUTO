@@ -4339,6 +4339,161 @@ async def submit_prequalify(submission: PreQualifySubmission):
     
     return {"message": "Pre-qualify submission received", "id": doc["id"], "matched": existing_client is not None}
 
+# New endpoint with file upload support
+@api_router.post("/prequalify/submit-with-file")
+async def submit_prequalify_with_file(
+    email: str = Form(...),
+    firstName: str = Form(...),
+    lastName: str = Form(...),
+    phone: str = Form(...),
+    idNumber: Optional[str] = Form(None),
+    ssn: Optional[str] = Form(None),
+    dateOfBirth: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
+    city: Optional[str] = Form(None),
+    state: Optional[str] = Form(None),
+    zipCode: Optional[str] = Form(None),
+    housingType: Optional[str] = Form(None),
+    rentAmount: Optional[str] = Form(None),
+    timeAtAddress: Optional[str] = Form(None),
+    employerName: Optional[str] = Form(None),
+    timeWithEmployer: Optional[str] = Form(None),
+    incomeType: Optional[str] = Form(None),
+    netIncome: Optional[str] = Form(None),
+    incomeFrequency: Optional[str] = Form(None),
+    estimatedDownPayment: Optional[str] = Form(None),
+    consentAccepted: bool = Form(False),
+    id_file: Optional[UploadFile] = File(None)
+):
+    """Submit pre-qualify form with optional ID document upload"""
+    
+    # Check for existing client by phone
+    existing_client = await db.clients.find_one(
+        {"phone": {"$regex": phone[-10:], "$options": "i"}, "is_deleted": {"$ne": True}},
+        {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1}
+    )
+    
+    submission_id = str(uuid.uuid4())
+    id_file_url = None
+    
+    # Handle file upload if provided
+    if id_file and id_file.filename:
+        try:
+            # Create uploads directory if not exists
+            upload_dir = Path("uploads")
+            upload_dir.mkdir(exist_ok=True)
+            
+            # Generate unique filename
+            file_extension = Path(id_file.filename).suffix.lower()
+            if file_extension not in ['.pdf', '.jpg', '.jpeg', '.png']:
+                raise HTTPException(status_code=400, detail="Invalid file type. Allowed: PDF, JPG, PNG")
+            
+            unique_filename = f"prequalify_{submission_id}_id{file_extension}"
+            file_path = upload_dir / unique_filename
+            
+            # Save file
+            content = await id_file.read()
+            with open(file_path, "wb") as f:
+                f.write(content)
+            
+            id_file_url = f"/uploads/{unique_filename}"
+            logger.info(f"Pre-qualify ID file uploaded: {id_file_url}")
+        except Exception as e:
+            logger.error(f"Error uploading pre-qualify ID file: {str(e)}")
+            # Continue without file if upload fails
+    
+    doc = {
+        "id": submission_id,
+        "email": email,
+        "firstName": firstName,
+        "lastName": lastName,
+        "phone": phone,
+        "idNumber": idNumber,
+        "ssn": ssn,
+        "dateOfBirth": dateOfBirth,
+        "address": address,
+        "city": city,
+        "state": state,
+        "zipCode": zipCode,
+        "housingType": housingType,
+        "rentAmount": rentAmount,
+        "timeAtAddress": timeAtAddress,
+        "employerName": employerName,
+        "timeWithEmployer": timeWithEmployer,
+        "incomeType": incomeType,
+        "netIncome": netIncome,
+        "incomeFrequency": incomeFrequency,
+        "estimatedDownPayment": estimatedDownPayment,
+        "consentAccepted": consentAccepted,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "status": "pending",
+        "matched_client_id": existing_client["id"] if existing_client else None,
+        "matched_client_name": f"{existing_client['first_name']} {existing_client['last_name']}" if existing_client else None,
+        "id_file_url": id_file_url
+    }
+    
+    await db.prequalify_submissions.insert_one(doc)
+    del doc["_id"]
+    
+    # Send email notification to ALL admins (same as original endpoint)
+    try:
+        admin_users = await db.users.find(
+            {"role": "admin", "approved": {"$ne": False}},
+            {"_id": 0, "email": 1, "full_name": 1}
+        ).to_list(100)
+        
+        if admin_users:
+            frontend_url = os.environ.get('FRONTEND_URL', '')
+            prequalify_link = f"{frontend_url}/prequalify" if frontend_url else ""
+            
+            html_content = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+                <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; padding: 30px;">
+                    <h1 style="color: #1e40af;">🚗 CARPLUS AUTOSALE</h1>
+                    <p>Nueva Solicitud de Pre-Calificación</p>
+                    <hr/>
+                    <p><strong>Nombre:</strong> {firstName} {lastName}</p>
+                    <p><strong>Email:</strong> {email}</p>
+                    <p><strong>Teléfono:</strong> {phone}</p>
+                    <p><strong>ID/Licencia:</strong> {idNumber or 'No proporcionado'}</p>
+                    <p><strong>Documento ID Adjunto:</strong> {'✅ Sí' if id_file_url else '❌ No'}</p>
+                    <hr/>
+                    <p><strong>Dirección:</strong> {address or ''}, {city or ''}, {state or ''} {zipCode or ''}</p>
+                    <p><strong>Tipo de Vivienda:</strong> {housingType or 'No proporcionado'}</p>
+                    <p><strong>Empleador:</strong> {employerName or 'No proporcionado'}</p>
+                    <p><strong>Ingreso Neto:</strong> {netIncome or 'No proporcionado'}</p>
+                    <p><strong>Enganche Estimado:</strong> {estimatedDownPayment or 'No proporcionado'}</p>
+                    {"<p style='color: orange;'><strong>⚠️ Cliente existente encontrado: " + existing_client['first_name'] + " " + existing_client['last_name'] + "</strong></p>" if existing_client else ""}
+                    <br/>
+                    <a href="{prequalify_link}" style="background: #1e40af; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Ver en Panel</a>
+                </div>
+            </body>
+            </html>
+            """
+            
+            for admin in admin_users:
+                admin_email = admin.get('email')
+                if admin_email:
+                    try:
+                        await send_email_notification(
+                            to_email=admin_email,
+                            subject=f"🚗 Nueva Pre-Calificación: {firstName} {lastName}",
+                            html_content=html_content
+                        )
+                        logger.info(f"Pre-qualify notification sent to admin: {admin_email}")
+                    except Exception as email_error:
+                        logger.error(f"Failed to send pre-qualify notification to {admin_email}: {str(email_error)}")
+    except Exception as e:
+        logger.error(f"Error sending pre-qualify admin notifications: {str(e)}")
+    
+    return {
+        "message": "Pre-qualify submission received", 
+        "id": submission_id, 
+        "matched": existing_client is not None,
+        "id_file_uploaded": id_file_url is not None
+    }
+
 @api_router.get("/prequalify/submissions", response_model=List[PreQualifyResponse])
 async def get_prequalify_submissions(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "admin":
