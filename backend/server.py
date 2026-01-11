@@ -4660,6 +4660,28 @@ async def submit_prequalify(submission: PreQualifySubmission):
                         logger.info(f"Pre-qualify notification sent to admin: {admin_email}")
                     except Exception as email_error:
                         logger.error(f"Failed to send pre-qualify notification to {admin_email}: {str(email_error)}")
+        
+        # Create in-app notification for all admins
+        for admin in admin_users:
+            notification_doc = {
+                "id": str(uuid.uuid4()),
+                "user_id": admin.get("id") or admin.get("email"),
+                "type": "prequalify",
+                "title": "Nueva Pre-Calificación",
+                "message": f"Nueva solicitud de {firstName} {lastName} - Tel: {phone}",
+                "data": {
+                    "submission_id": submission_id,
+                    "name": f"{firstName} {lastName}",
+                    "phone": phone,
+                    "email": email,
+                    "matched": existing_client is not None
+                },
+                "read": False,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.notifications.insert_one(notification_doc)
+            logger.info(f"In-app notification created for admin: {admin.get('email')}")
+            
     except Exception as e:
         logger.error(f"Error sending pre-qualify admin notifications: {str(e)}")
         # Don't fail the submission if email fails
@@ -4970,6 +4992,28 @@ async def submit_prequalify_with_file(
                         logger.info(f"Pre-qualify notification sent to admin: {admin_email}")
                     except Exception as email_error:
                         logger.error(f"Failed to send pre-qualify notification to {admin_email}: {str(email_error)}")
+        
+        # Create in-app notification for all admins
+        for admin in admin_users:
+            notification_doc = {
+                "id": str(uuid.uuid4()),
+                "user_id": admin.get("id") or admin.get("email"),
+                "type": "prequalify",
+                "title": "Nueva Pre-Calificación",
+                "message": f"Nueva solicitud de {firstName} {lastName} - Tel: {phone}",
+                "data": {
+                    "submission_id": submission_id,
+                    "name": f"{firstName} {lastName}",
+                    "phone": phone,
+                    "email": email,
+                    "matched": existing_client is not None
+                },
+                "read": False,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.notifications.insert_one(notification_doc)
+            logger.info(f"In-app notification created for admin: {admin.get('email')}")
+            
     except Exception as e:
         logger.error(f"Error sending pre-qualify admin notifications: {str(e)}")
     
