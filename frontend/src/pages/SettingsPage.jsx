@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
@@ -6,7 +6,10 @@ import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { Switch } from '../components/ui/switch';
 import { toast } from 'sonner';
-import { Globe, Bell, User, Shield } from 'lucide-react';
+import { Globe, Bell, User, Shield, Database, Download, Upload, AlertTriangle } from 'lucide-react';
+import axios from 'axios';
+
+const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -16,11 +19,88 @@ export default function SettingsPage() {
     emailAlerts: false,
     appointmentUpdates: true
   });
+  
+  // Backup/Restore states
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const fileInputRef = useRef(null);
 
   const changeLanguage = (lang) => {
     i18n.changeLanguage(lang);
     localStorage.setItem('language', lang);
     toast.success(`Language changed to ${lang === 'en' ? 'English' : 'Español'}`);
+  };
+
+  // Download backup
+  const handleDownloadBackup = async () => {
+    setIsDownloading(true);
+    try {
+      const response = await axios.get(`${API}/admin/backup`, {
+        responseType: 'blob'
+      });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const date = new Date().toISOString().split('T')[0];
+      link.setAttribute('download', `carplus_backup_${date}.json`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Backup descargado exitosamente');
+    } catch (error) {
+      console.error('Backup error:', error);
+      toast.error(error.response?.data?.detail || 'Error al descargar backup');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // Handle file selection
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.name.endsWith('.json')) {
+        toast.error('Por favor selecciona un archivo .json');
+        return;
+      }
+      setSelectedFile(file);
+      setShowRestoreConfirm(true);
+    }
+  };
+
+  // Restore backup
+  const handleRestoreBackup = async () => {
+    if (!selectedFile) return;
+    
+    setIsRestoring(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      
+      const response = await axios.post(`${API}/admin/restore`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      toast.success(`Backup restaurado: ${response.data.message}`);
+      setShowRestoreConfirm(false);
+      setSelectedFile(null);
+      
+      // Reload page to reflect changes
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (error) {
+      console.error('Restore error:', error);
+      toast.error(error.response?.data?.detail || 'Error al restaurar backup');
+    } finally {
+      setIsRestoring(false);
+    }
   };
 
   return (
