@@ -4409,6 +4409,9 @@ async def submit_prequalify_with_file(
     from reportlab.lib.pagesizes import letter
     from reportlab.pdfgen import canvas
     
+    # Debug log
+    logger.info(f"Pre-qualify submission: idType={idType}, ssnType={ssnType}, employmentTimeYears={employmentTimeYears}")
+    
     # Check for existing client by phone
     existing_client = await db.clients.find_one(
         {"phone": {"$regex": phone[-10:], "$options": "i"}, "is_deleted": {"$ne": True}},
