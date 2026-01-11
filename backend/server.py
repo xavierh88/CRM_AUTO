@@ -4732,6 +4732,7 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
     
     notes_content = f"""--- Pre-Qualify Data ---
 Fecha Nacimiento: {submission.get('dateOfBirth', 'N/A')}
+Tipo de ID: {submission.get('idType', 'N/A')}
 ID/Pasaporte: {submission.get('idNumber', 'N/A')}
 SSN/ITIN: {submission.get('ssn', 'N/A')}
 Dirección: {full_address}
