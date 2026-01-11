@@ -269,6 +269,12 @@ class ClientResponse(BaseModel):
     apartment: Optional[str] = None
     # Date of birth
     date_of_birth: Optional[str] = None
+    # ID fields (admin only for id_number)
+    id_type: Optional[str] = None
+    id_number: Optional[str] = None  # Admin only
+    # SSN/ITIN fields
+    ssn_type: Optional[str] = None
+    ssn: Optional[str] = None  # Admin only
     # Time at address
     time_at_address_years: Optional[int] = None
     time_at_address_months: Optional[int] = None
