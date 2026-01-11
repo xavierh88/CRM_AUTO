@@ -13,7 +13,7 @@ from datetime import datetime
 
 class NewFeaturesTester:
     def __init__(self):
-        self.base_url = "https://carmanagehub.preview.emergentagent.com/api"
+        self.base_url = "https://carmgmt-system-3.preview.emergentagent.com/api"
         self.token = None
         self.client_id = None
         self.record_id = None
