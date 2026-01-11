@@ -305,13 +305,13 @@ export default function ClientsPage() {
               {t('clients.addNew')}
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{t('clients.addNew')}</DialogTitle>
               <p className="text-sm text-slate-500">Enter client information below</p>
             </DialogHeader>
-            <form onSubmit={handleAddClient} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={handleAddClient} className="space-y-4 py-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="form-label">{t('clients.firstName')}</Label>
                   <Input
@@ -383,23 +383,28 @@ export default function ClientsPage() {
               {/* Time at Address */}
               <div>
                 <Label className="form-label">Time at Address</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    placeholder="Years"
-                    value={newClient.time_at_address_years}
-                    onChange={(e) => setNewClient({ ...newClient, time_at_address_years: e.target.value })}
-                    data-testid="client-time-years"
-                    className="w-20"
-                  />
-                  <Input
-                    type="number"
-                    placeholder="Months"
-                    value={newClient.time_at_address_months}
-                    onChange={(e) => setNewClient({ ...newClient, time_at_address_months: e.target.value })}
-                    data-testid="client-time-months"
-                    className="w-20"
-                  />
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Input
+                      type="number"
+                      placeholder="Years"
+                      value={newClient.time_at_address_years}
+                      onChange={(e) => setNewClient({ ...newClient, time_at_address_years: e.target.value })}
+                      data-testid="client-time-years"
+                      min="0"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      type="number"
+                      placeholder="Months"
+                      value={newClient.time_at_address_months}
+                      onChange={(e) => setNewClient({ ...newClient, time_at_address_months: e.target.value })}
+                      data-testid="client-time-months"
+                      min="0"
+                      max="11"
+                    />
+                  </div>
                 </div>
               </div>
               {/* Housing Type */}
@@ -428,7 +433,7 @@ export default function ClientsPage() {
                   />
                 </div>
               )}
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-3">
                 <Button type="button" variant="outline" onClick={() => setShowAddClient(false)} className="flex-1">
                   {t('common.cancel')}
                 </Button>
