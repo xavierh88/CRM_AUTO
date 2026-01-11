@@ -3768,6 +3768,63 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                   onChange={(e) => setEditData({ ...editData, date_of_birth: e.target.value })}
                 />
               </div>
+              {/* ID Fields - Admin Only */}
+              {isAdmin && (
+                <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 space-y-3">
+                  <Label className="form-label text-amber-700 flex items-center gap-1">
+                    🔒 ID Information (Admin Only)
+                  </Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-amber-600">Tipo de ID</Label>
+                      <Select value={editData.id_type} onValueChange={(v) => setEditData({ ...editData, id_type: v })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Licencia de Conducir">Licencia de Conducir</SelectItem>
+                          <SelectItem value="Pasaporte">Pasaporte</SelectItem>
+                          <SelectItem value="Matrícula Consular">Matrícula Consular</SelectItem>
+                          <SelectItem value="ID Estatal">ID Estatal</SelectItem>
+                          <SelectItem value="Otro">Otro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-amber-600">Número de ID</Label>
+                      <Input
+                        value={editData.id_number}
+                        onChange={(e) => setEditData({ ...editData, id_number: e.target.value })}
+                        placeholder="D1234567"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-amber-600">Tipo SSN/ITIN</Label>
+                      <Select value={editData.ssn_type} onValueChange={(v) => setEditData({ ...editData, ssn_type: v })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="SSN">SSN</SelectItem>
+                          <SelectItem value="ITIN">ITIN</SelectItem>
+                          <SelectItem value="Ninguno">Ninguno</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-amber-600">SSN/ITIN (últimos 4)</Label>
+                      <Input
+                        value={editData.ssn}
+                        onChange={(e) => setEditData({ ...editData, ssn: e.target.value })}
+                        placeholder="XXXX"
+                        maxLength={4}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
               <div>
                 <Label className="form-label">{t('clients.address')}</Label>
                 <AddressAutocomplete
