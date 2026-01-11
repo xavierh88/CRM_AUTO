@@ -4701,7 +4701,36 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
         "is_deleted": False
     }
     await db.clients.insert_one(client_doc)
-    notes_content = f"--- Pre-Qualify Data ---\nFecha Nacimiento: {submission.get('dateOfBirth', 'N/A')}\nID/Pasaporte: {submission.get('idNumber', 'N/A')}\nSSN/ITIN: {submission.get('ssn', 'N/A')}\nTipo Vivienda: {submission.get('housingType', 'N/A')}\nRenta Mensual: {submission.get('rentAmount', 'N/A')}\nEmpleador: {submission.get('employerName', 'N/A')}\nTiempo con Empleador: {submission.get('timeWithEmployer', 'N/A')}\nTipo de Ingreso: {submission.get('incomeType', 'N/A')}\nIngreso Neto: {submission.get('netIncome', 'N/A')}\nFrecuencia de Ingreso: {submission.get('incomeFrequency', 'N/A')}\nDown Payment: {submission.get('estimatedDownPayment', 'N/A')}"
+    
+    # Format time at address for notes
+    time_at_addr_str = "N/A"
+    if submission.get('timeAtAddressYears') or submission.get('timeAtAddressMonths'):
+        years = submission.get('timeAtAddressYears', 0) or 0
+        months = submission.get('timeAtAddressMonths', 0) or 0
+        time_at_addr_str = f"{years} años, {months} meses"
+    
+    # Format time with employer for notes
+    time_with_emp_str = "N/A"
+    if submission.get('timeWithEmployerYears') or submission.get('timeWithEmployerMonths'):
+        years = submission.get('timeWithEmployerYears', 0) or 0
+        months = submission.get('timeWithEmployerMonths', 0) or 0
+        time_with_emp_str = f"{years} años, {months} meses"
+    
+    notes_content = f"""--- Pre-Qualify Data ---
+Fecha Nacimiento: {submission.get('dateOfBirth', 'N/A')}
+ID/Pasaporte: {submission.get('idNumber', 'N/A')}
+SSN/ITIN: {submission.get('ssn', 'N/A')}
+Dirección: {full_address}
+Tiempo en Dirección: {time_at_addr_str}
+Tipo Vivienda: {submission.get('housingType', 'N/A')}
+Renta Mensual: {submission.get('rentAmount', 'N/A')}
+Empleador: {submission.get('employerName', 'N/A')}
+Tiempo con Empleador: {time_with_emp_str}
+Tipo de Ingreso: {submission.get('incomeType', 'N/A')}
+Ingreso Neto: {submission.get('netIncome', 'N/A')}
+Frecuencia de Ingreso: {submission.get('incomeFrequency', 'N/A')}
+Down Payment: {submission.get('estimatedDownPayment', 'N/A')}"""
+
     record_doc = {
         "id": str(uuid.uuid4()),
         "client_id": client_doc["id"],
@@ -4713,6 +4742,8 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
         "ssn": bool(submission.get("ssn")),
         "employment_type": submission.get("incomeType", ""),
         "employment_company_name": submission.get("employerName", ""),
+        "employment_time_years": submission.get("timeWithEmployerYears"),
+        "employment_time_months": submission.get("timeWithEmployerMonths"),
         "income_frequency": submission.get("incomeFrequency", ""),
         "net_income_amount": submission.get("netIncome", ""),
         "finance_status": "no",
