@@ -5072,6 +5072,7 @@ Down Payment: {submission.get('estimatedDownPayment', 'N/A')}"""
         "opportunity_number": 1,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "has_id": bool(submission.get("idNumber")) or id_uploaded,
+        "id_type": mapped_id_type,  # Add ID type to record
         "ssn": bool(submission.get("ssn")),
         "employment_type": submission.get("incomeType", ""),
         "employment_company_name": submission.get("employerName", ""),
