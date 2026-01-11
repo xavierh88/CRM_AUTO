@@ -4380,7 +4380,9 @@ async def submit_prequalify_with_file(
     idType: Optional[str] = Form(None),
     ssn: Optional[str] = Form(None),
     ssnType: Optional[str] = Form(None),
+    # Support both date field naming conventions
     dateOfBirth: Optional[str] = Form(None),
+    date_of_birth: Optional[str] = Form(None),  # Alternative from website
     address: Optional[str] = Form(None),
     apartment: Optional[str] = Form(None),
     city: Optional[str] = Form(None),
@@ -4401,11 +4403,15 @@ async def submit_prequalify_with_file(
     incomeType: Optional[str] = Form(None),
     netIncome: Optional[str] = Form(None),
     incomeFrequency: Optional[str] = Form(None),
+    # Support both down payment field naming conventions
     estimatedDownPayment: Optional[str] = Form(None),
+    downPayment: Optional[str] = Form(None),  # Alternative from website
     consentAccepted: bool = Form(False),
     language: Optional[str] = Form(None),
+    # Support multiple file field names
     id_file: Optional[UploadFile] = File(None),
-    id_files: List[UploadFile] = File(default=[])
+    id_files: List[UploadFile] = File(default=[]),
+    idFile: Optional[UploadFile] = File(None)  # Alternative from website
 ):
     """Submit pre-qualify form with optional ID document upload (supports multiple files)"""
     from PyPDF2 import PdfMerger, PdfReader
