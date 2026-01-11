@@ -716,6 +716,11 @@ async def update_client(client_id: str, client: ClientCreate, current_user: dict
     update_data = client.model_dump(exclude_unset=True)
     update_data["last_contact"] = datetime.now(timezone.utc).isoformat()
     
+    # Restrict sensitive fields to admin only
+    if current_user["role"] != "admin":
+        update_data.pop("id_number", None)
+        update_data.pop("ssn", None)
+    
     # Normalize phone number if provided
     if "phone" in update_data and update_data["phone"]:
         update_data["phone"] = normalize_phone_number(update_data["phone"])
@@ -725,6 +730,12 @@ async def update_client(client_id: str, client: ClientCreate, current_user: dict
         raise HTTPException(status_code=404, detail="Client not found")
     
     updated = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    
+    # Hide sensitive fields from non-admin users
+    if current_user["role"] != "admin":
+        updated.pop("id_number", None)
+        updated.pop("ssn", None)
+    
     return updated
 
 @api_router.delete("/clients/{client_id}")
