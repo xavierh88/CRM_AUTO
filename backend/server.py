@@ -3202,11 +3202,17 @@ async def get_public_document_info(token: str):
     documents_submitted = record.get("documents_submitted", False) if record else False
     preferred_language = link.get("preferred_language") or (record.get("preferred_language") if record else None)
     
+    # Check if client already has an ID document from pre-qualify
+    has_existing_id_document = client.get("id_uploaded", False)
+    existing_id_file_url = client.get("id_file_url") if has_existing_id_document else None
+    
     return {
         "first_name": client["first_name"],
         "last_name": client["last_name"],
         "documents_submitted": documents_submitted,
-        "preferred_language": preferred_language
+        "preferred_language": preferred_language,
+        "has_existing_id_document": has_existing_id_document,
+        "existing_id_message": "Ya tiene un documento de ID previamente subido. Puede subir uno nuevo si lo desea." if has_existing_id_document else None
     }
 
 class DocumentLanguageRequest(BaseModel):
