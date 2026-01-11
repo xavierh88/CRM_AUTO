@@ -486,7 +486,14 @@ export default function PreQualifyPage() {
                         size="sm" 
                         variant="outline" 
                         className="mt-3"
-                        onClick={() => handleAddToNotes(detailData.comparison.client.id)}
+                        onClick={() => {
+                          if (detailData.comparison.latest_record_id) {
+                            handleAddToNotes(detailData.comparison.latest_record_id);
+                          } else {
+                            toast.error('Este cliente no tiene records. Primero cree un record para el cliente.');
+                          }
+                        }}
+                        disabled={!detailData.comparison.latest_record_id}
                       >
                         <MessageSquare className="w-4 h-4 mr-1" />
                         Agregar diferencias a Notas del Record
