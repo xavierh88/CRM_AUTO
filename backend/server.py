@@ -4979,6 +4979,32 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
         except Exception as e:
             logger.error(f"Error transferring ID document: {str(e)}")
     
+    # Map ID type from pre-qualify to CRM format
+    id_type_mapping = {
+        "DL": "Licencia de Conducir",
+        "Licencia": "Licencia de Conducir",
+        "Licencia de Conducir": "Licencia de Conducir",
+        "Driver License": "Licencia de Conducir",
+        "Passport": "Pasaporte",
+        "Pasaporte": "Pasaporte",
+        "US Passport": "Pasaporte",
+        "Matricula": "Matrícula Consular",
+        "Matrícula": "Matrícula Consular",
+        "Matrícula Consular": "Matrícula Consular",
+        "Matricula Consular": "Matrícula Consular",
+        "State ID": "ID Estatal",
+        "ID Estatal": "ID Estatal",
+        "Votacion ID": "ID Estatal",
+        "Resident ID": "ID Estatal",
+        "Other": "Otro",
+        "Otro": "Otro"
+    }
+    
+    raw_id_type = submission.get("idType", "")
+    mapped_id_type = id_type_mapping.get(raw_id_type, raw_id_type) if raw_id_type else ""
+    
+    logger.info(f"ID Type mapping: '{raw_id_type}' -> '{mapped_id_type}'")
+    
     client_doc = {
         "id": client_id,
         "first_name": submission.get("firstName", ""),
@@ -4988,7 +5014,7 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
         "address": full_address,
         "apartment": submission.get("apartment", ""),
         "date_of_birth": submission.get("dateOfBirth", ""),
-        "id_type": submission.get("idType", ""),
+        "id_type": mapped_id_type,  # Use mapped value
         "id_number": submission.get("idNumber", ""),  # ID/License number
         "ssn_type": submission.get("ssnType", ""),
         "ssn": submission.get("ssn", ""),
