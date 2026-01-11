@@ -4419,19 +4419,28 @@ async def submit_prequalify_with_file(
     from reportlab.lib.pagesizes import letter
     from reportlab.pdfgen import canvas
     
+    # === NORMALIZE FIELD NAMES (support both naming conventions) ===
+    # Date of birth
+    final_dateOfBirth = dateOfBirth or date_of_birth
+    # Down payment
+    final_downPayment = estimatedDownPayment or downPayment
+    # Employment time (use whichever is provided)
+    final_employmentYears = timeWithEmployerYears or employmentTimeYears
+    final_employmentMonths = timeWithEmployerMonths or employmentTimeMonths
+    
     # Debug log - DETAILED for all critical fields
     logger.info(f"=== PRE-QUALIFY SUBMISSION RECEIVED ===")
     logger.info(f"Name: {firstName} {lastName}")
-    logger.info(f"idNumber: '{idNumber}' (type: {type(idNumber)})")
-    logger.info(f"idType: '{idType}' (type: {type(idType)})")
-    logger.info(f"ssn: '{ssn}' (type: {type(ssn)})")
-    logger.info(f"ssnType: '{ssnType}' (type: {type(ssnType)})")
-    logger.info(f"timeAtAddressYears: '{timeAtAddressYears}' (type: {type(timeAtAddressYears)})")
-    logger.info(f"timeAtAddressMonths: '{timeAtAddressMonths}' (type: {type(timeAtAddressMonths)})")
-    logger.info(f"employmentTimeYears: '{employmentTimeYears}' (type: {type(employmentTimeYears)})")
-    logger.info(f"employmentTimeMonths: '{employmentTimeMonths}' (type: {type(employmentTimeMonths)})")
-    logger.info(f"timeWithEmployerYears: '{timeWithEmployerYears}' (type: {type(timeWithEmployerYears)})")
-    logger.info(f"timeWithEmployerMonths: '{timeWithEmployerMonths}' (type: {type(timeWithEmployerMonths)})")
+    logger.info(f"idNumber: '{idNumber}'")
+    logger.info(f"idType: '{idType}'")
+    logger.info(f"ssn: '{ssn}'")
+    logger.info(f"ssnType: '{ssnType}'")
+    logger.info(f"dateOfBirth: '{dateOfBirth}' | date_of_birth: '{date_of_birth}' -> final: '{final_dateOfBirth}'")
+    logger.info(f"timeAtAddressYears: '{timeAtAddressYears}'")
+    logger.info(f"timeAtAddressMonths: '{timeAtAddressMonths}'")
+    logger.info(f"employmentTimeYears: '{employmentTimeYears}' | timeWithEmployerYears: '{timeWithEmployerYears}' -> final: '{final_employmentYears}'")
+    logger.info(f"employmentTimeMonths: '{employmentTimeMonths}' | timeWithEmployerMonths: '{timeWithEmployerMonths}' -> final: '{final_employmentMonths}'")
+    logger.info(f"estimatedDownPayment: '{estimatedDownPayment}' | downPayment: '{downPayment}' -> final: '{final_downPayment}'")
     logger.info(f"=== END SUBMISSION DATA ===")
     
     # Check for existing client by phone
@@ -4443,10 +4452,12 @@ async def submit_prequalify_with_file(
     submission_id = str(uuid.uuid4())
     id_file_url = None
     
-    # Collect all files (single file + multiple files)
+    # Collect all files (single file + multiple files + alternative name)
     all_files = []
     if id_file and id_file.filename:
         all_files.append(id_file)
+    if idFile and idFile.filename:  # Alternative name from website
+        all_files.append(idFile)
     if id_files:
         all_files.extend([f for f in id_files if f.filename])
     
