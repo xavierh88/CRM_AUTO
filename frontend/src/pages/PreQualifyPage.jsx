@@ -406,8 +406,9 @@ export default function PreQualifyPage() {
                   </div>
                   <div>
                     <span className="text-emerald-600">Tiempo:</span> {
-                      (detailData.submission.timeWithEmployerYears || detailData.submission.timeWithEmployerMonths)
-                        ? `${detailData.submission.timeWithEmployerYears || 0} años, ${detailData.submission.timeWithEmployerMonths || 0} meses`
+                      (detailData.submission.timeWithEmployerYears !== null && detailData.submission.timeWithEmployerYears !== undefined) ||
+                      (detailData.submission.timeWithEmployerMonths !== null && detailData.submission.timeWithEmployerMonths !== undefined)
+                        ? `${detailData.submission.timeWithEmployerYears ?? 0} años, ${detailData.submission.timeWithEmployerMonths ?? 0} meses`
                         : 'N/A'
                     }
                   </div>
