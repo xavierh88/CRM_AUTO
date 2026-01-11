@@ -386,8 +386,9 @@ export default function PreQualifyPage() {
                   </div>
                   <div>
                     <span className="text-blue-500">Tiempo:</span> {
-                      (detailData.submission.timeAtAddressYears || detailData.submission.timeAtAddressMonths)
-                        ? `${detailData.submission.timeAtAddressYears || 0} años, ${detailData.submission.timeAtAddressMonths || 0} meses`
+                      (detailData.submission.timeAtAddressYears !== null && detailData.submission.timeAtAddressYears !== undefined) ||
+                      (detailData.submission.timeAtAddressMonths !== null && detailData.submission.timeAtAddressMonths !== undefined)
+                        ? `${detailData.submission.timeAtAddressYears ?? 0} años, ${detailData.submission.timeAtAddressMonths ?? 0} meses`
                         : 'N/A'
                     }
                   </div>
