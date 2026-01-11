@@ -971,14 +971,38 @@ async def get_user_record(record_id: str, current_user: dict = Depends(get_curre
     return record
 
 @api_router.put("/user-records/{record_id}", response_model=UserRecordResponse)
-async def update_user_record(record_id: str, record: UserRecordCreate, current_user: dict = Depends(get_current_user)):
-    update_data = record.model_dump(exclude_unset=True)
-    result = await db.user_records.update_one({"id": record_id}, {"$set": update_data})
+async def update_user_record(record_id: str, record_data: dict, current_user: dict = Depends(get_current_user)):
+    # Clean the data - convert empty strings to None for numeric fields
+    numeric_fields = ['sale_month', 'sale_day', 'sale_year', 'employment_time_years', 
+                      'employment_time_months', 'commission_percentage', 'commission_value']
+    
+    cleaned_data = {}
+    for key, value in record_data.items():
+        if key in numeric_fields:
+            if value == '' or value is None:
+                cleaned_data[key] = None
+            else:
+                try:
+                    if key in ['commission_percentage', 'commission_value']:
+                        cleaned_data[key] = float(value) if value else None
+                    else:
+                        cleaned_data[key] = int(value) if value else None
+                except (ValueError, TypeError):
+                    cleaned_data[key] = None
+        else:
+            cleaned_data[key] = value
+    
+    # Get client_id from the data
+    client_id = cleaned_data.get('client_id')
+    if not client_id:
+        raise HTTPException(status_code=400, detail="client_id is required")
+    
+    result = await db.user_records.update_one({"id": record_id}, {"$set": cleaned_data})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User record not found")
     
     # Update client last_contact
-    await db.clients.update_one({"id": record.client_id}, {"$set": {"last_contact": datetime.now(timezone.utc).isoformat()}})
+    await db.clients.update_one({"id": client_id}, {"$set": {"last_contact": datetime.now(timezone.utc).isoformat()}})
     
     updated = await db.user_records.find_one({"id": record_id}, {"_id": 0})
     return updated
