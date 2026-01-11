@@ -4587,11 +4587,11 @@ async def submit_prequalify_with_file(
         "zipCode": zipCode,
         "housingType": housingType,
         "rentAmount": rentAmount,
-        # Time at address - separated fields
-        "timeAtAddressYears": timeAtAddressYears,
-        "timeAtAddressMonths": timeAtAddressMonths,
+        # Time at address - use normalized int values
+        "timeAtAddressYears": final_timeAtAddressYears,
+        "timeAtAddressMonths": final_timeAtAddressMonths,
         "employerName": employerName,
-        # Time with employer - use normalized values
+        # Time with employer - use normalized int values
         "timeWithEmployerYears": final_employmentYears,
         "timeWithEmployerMonths": final_employmentMonths,
         "incomeType": incomeType,
