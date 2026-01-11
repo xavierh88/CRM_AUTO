@@ -372,6 +372,90 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+
+            {/* Delete All Data */}
+            <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border-2 border-red-300 mt-4">
+              <div>
+                <Label className="font-medium flex items-center gap-2 text-red-700">
+                  <AlertTriangle className="w-4 h-4" />
+                  Eliminar Todos los Datos
+                </Label>
+                <p className="text-sm text-red-500">⚠️ PELIGRO: Elimina permanentemente TODA la información del CRM</p>
+              </div>
+              <Button 
+                onClick={() => setShowDeleteAllConfirm(true)}
+                variant="destructive"
+                className="bg-red-600 hover:bg-red-700"
+                data-testid="delete-all-btn"
+              >
+                <AlertTriangle className="w-4 h-4 mr-2" />
+                Eliminar Todo
+              </Button>
+            </div>
+
+            {/* Delete All Confirmation Modal */}
+            {showDeleteAllConfirm && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl border-2 border-red-500">
+                  <div className="flex items-center gap-3 text-red-600 mb-4">
+                    <AlertTriangle className="w-10 h-10" />
+                    <h3 className="text-xl font-bold">¡PELIGRO!</h3>
+                  </div>
+                  <p className="text-slate-600 mb-4">
+                    Estás a punto de <strong className="text-red-600">ELIMINAR PERMANENTEMENTE</strong> todos los datos del CRM:
+                  </p>
+                  <ul className="text-sm text-slate-600 mb-4 list-disc list-inside bg-red-50 p-3 rounded">
+                    <li>Todos los clientes</li>
+                    <li>Todos los records</li>
+                    <li>Todas las citas</li>
+                    <li>Todas las pre-calificaciones</li>
+                    <li>Todos los comentarios</li>
+                  </ul>
+                  <p className="text-red-600 font-bold mb-4">
+                    ⚠️ Esta acción NO se puede deshacer. Asegúrate de tener un backup antes de continuar.
+                  </p>
+                  <div className="mb-4">
+                    <Label className="text-sm text-slate-600">
+                      Escribe <strong className="text-red-600">ELIMINAR TODO</strong> para confirmar:
+                    </Label>
+                    <input
+                      type="text"
+                      value={deleteConfirmText}
+                      onChange={(e) => setDeleteConfirmText(e.target.value)}
+                      className="w-full mt-2 p-2 border-2 border-red-300 rounded focus:border-red-500 focus:outline-none"
+                      placeholder="ELIMINAR TODO"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setShowDeleteAllConfirm(false);
+                        setDeleteConfirmText('');
+                      }}
+                      className="flex-1"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      onClick={handleDeleteAllData}
+                      disabled={isDeleting || deleteConfirmText !== 'ELIMINAR TODO'}
+                      className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-300"
+                      data-testid="confirm-delete-all-btn"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <span className="animate-spin mr-2">⏳</span>
+                          Eliminando...
+                        </>
+                      ) : (
+                        '🗑️ Eliminar Todo'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
