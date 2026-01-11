@@ -5051,7 +5051,7 @@ async def restore_backup(
             "stats": restore_stats
         }
         
-    except json.JSONDecodeError:
+    except json_lib.JSONDecodeError:
         raise HTTPException(status_code=400, detail="El archivo JSON no es válido")
     except Exception as e:
         logger.error(f"Restore error: {str(e)}")
