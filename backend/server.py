@@ -4657,17 +4657,31 @@ async def submit_prequalify_with_file(
                     <h1 style="color: #1e40af;">🚗 CARPLUS AUTOSALE</h1>
                     <p>Nueva Solicitud de Pre-Calificación</p>
                     <hr/>
+                    <h3>📋 Información Personal</h3>
                     <p><strong>Nombre:</strong> {firstName} {lastName}</p>
                     <p><strong>Email:</strong> {email}</p>
                     <p><strong>Teléfono:</strong> {phone}</p>
-                    <p><strong>ID/Licencia:</strong> {idNumber or 'No proporcionado'}</p>
+                    <p><strong>Fecha de Nacimiento:</strong> {final_dateOfBirth or 'No proporcionado'}</p>
+                    <p><strong>Tipo de ID:</strong> {idType or 'No proporcionado'}</p>
+                    <p><strong>Número de ID:</strong> {idNumber or 'No proporcionado'}</p>
+                    <p><strong>Tipo SSN/ITIN:</strong> {ssnType or 'No proporcionado'}</p>
+                    <p><strong>SSN/ITIN (últimos 4):</strong> {ssn or 'No proporcionado'}</p>
                     <p><strong>Documento ID Adjunto:</strong> {'✅ Sí' if id_file_url else '❌ No'}</p>
                     <hr/>
+                    <h3>🏠 Información de Vivienda</h3>
                     <p><strong>Dirección:</strong> {address or ''}, {city or ''}, {state or ''} {zipCode or ''}</p>
+                    <p><strong>Apartamento:</strong> {apartment or 'N/A'}</p>
                     <p><strong>Tipo de Vivienda:</strong> {housingType or 'No proporcionado'}</p>
+                    <p><strong>Monto de Renta:</strong> {rentAmount or 'N/A'}</p>
+                    <p><strong>Tiempo en Dirección:</strong> {final_timeAtAddressYears or 0} años, {final_timeAtAddressMonths or 0} meses</p>
+                    <hr/>
+                    <h3>💼 Información de Empleo</h3>
                     <p><strong>Empleador:</strong> {employerName or 'No proporcionado'}</p>
+                    <p><strong>Tiempo de Empleo:</strong> {final_employmentYears or 0} años, {final_employmentMonths or 0} meses</p>
+                    <p><strong>Tipo de Ingreso:</strong> {incomeType or 'No proporcionado'}</p>
                     <p><strong>Ingreso Neto:</strong> {netIncome or 'No proporcionado'}</p>
-                    <p><strong>Enganche Estimado:</strong> {estimatedDownPayment or 'No proporcionado'}</p>
+                    <p><strong>Frecuencia de Pago:</strong> {incomeFrequency or 'No proporcionado'}</p>
+                    <p><strong>Enganche Estimado:</strong> {final_downPayment or 'No proporcionado'}</p>
                     {"<p style='color: orange;'><strong>⚠️ Cliente existente encontrado: " + existing_client['first_name'] + " " + existing_client['last_name'] + "</strong></p>" if existing_client else ""}
                     <br/>
                     <a href="{prequalify_link}" style="background: #1e40af; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Ver en Panel</a>
