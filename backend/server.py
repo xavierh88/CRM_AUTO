@@ -253,9 +253,9 @@ class ClientCreate(BaseModel):
     # SSN/ITIN fields
     ssn_type: Optional[str] = None  # SSN, ITIN, Ninguno
     ssn: Optional[str] = None  # Last 4 digits (admin only)
-    # Time at address
-    time_at_address_years: Optional[int] = None
-    time_at_address_months: Optional[int] = None
+    # Time at address (accept str or int)
+    time_at_address_years: Optional[Any] = None
+    time_at_address_months: Optional[Any] = None
     # Housing type: Dueño, Renta, Vivo con familiares
     housing_type: Optional[str] = None
     rent_amount: Optional[str] = None  # Only when housing_type is "Renta"
