@@ -17,9 +17,10 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - ✅ Progress bar with instant updates
 - ✅ Sold status indicators (star/car icons)
 - ✅ Date of Birth field
-- ✅ Time at Address (years/months)
+- ✅ Time at Address (years/months) - FIXED mapping from Pre-Qualify
 - ✅ Housing Type (Dueño/Renta/Vivo con familiares)
 - ✅ Rent Amount (conditional)
+- ✅ UI modals fixed - no more overlay issues
 
 ### User Records (Oportunidades)
 - ✅ Nested sales opportunities per client
@@ -32,7 +33,7 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - ✅ Employment section with:
   - Employment Type (Company/Retired/Unemployed/Self employed)
   - Company/Business Name
-  - Time at Employment (years/months)
+  - Time at Employment (years/months) - FIXED mapping from Pre-Qualify
   - Income Frequency (Semanal/Cada dos semanas/Dos veces al mes/Mensual)
   - Net Income Amount
 
@@ -45,6 +46,8 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - ✅ **Multiple file upload support** (combines into single PDF)
 - ✅ **Document preview in Pre-Qualify panel**
 - ✅ **Automatic document transfer when converting to client**
+- ✅ **Time fields separated (years/months) - FIXED**
+- ✅ **Notes include formatted time strings (e.g., "2 años, 6 meses")**
 
 ### Public Document Upload
 - ✅ When client already has ID from pre-qualify, shows message:
@@ -84,16 +87,42 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - **PDF Processing:** PyPDF2, Pillow, reportlab
 
 ## Deployment
-- ✅ CRM.zip package created for Hostinger deployment
-- ✅ README.md with comprehensive setup instructions
-- ✅ .env.example files for both backend and frontend
+- ✅ Live deployment at crm.carplusautosalesgroup.com (Hostinger VPS)
+- ✅ SSL certificate (HTTPS) via Certbot
+- ✅ Nginx reverse proxy
+- ✅ systemd service management
 - ✅ Pre-qualify form HTML for website integration
+
+## Recently Fixed (January 11, 2025)
+
+### Pre-Qualify to Client Data Mapping - FIXED
+- ✅ Backend endpoint `/prequalify/submit-with-file` now accepts separated time fields:
+  - `timeAtAddressYears`, `timeAtAddressMonths`
+  - `timeWithEmployerYears`, `timeWithEmployerMonths`
+- ✅ Create client endpoint maps these fields correctly:
+  - Client: `time_at_address_years`, `time_at_address_months`
+  - Record: `employment_time_years`, `employment_time_months`
+- ✅ Notes contain formatted time strings (e.g., "3 años, 4 meses")
+
+### UI Modal Layout Issues - FIXED
+- ✅ "Add Client" modal now uses responsive grid (1 col mobile, 2 cols desktop)
+- ✅ "Client Info" modal fixed with proper spacing
+- ✅ No more element overlap issues
+- ✅ Scrollable content with max-height
+
+### Direct Client Creation - FIXED
+- ✅ `/api/clients` POST endpoint now saves all new fields:
+  - `date_of_birth`, `time_at_address_years`, `time_at_address_months`
+  - `housing_type`, `rent_amount`
 
 ## Pending/Future Tasks
 
 ### P2 - Technical Debt (High Priority)
 - [ ] Refactor server.py (>4500 lines) into modular structure
 - [ ] Refactor ClientsPage.jsx (monolithic component)
+
+### P2 - Website Integration
+- [ ] Create integrated website package with pre-qualify form matching site design
 
 ### P3 - Enhancements
 - [ ] Co-signer comments/notes section
@@ -107,5 +136,8 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - **Admin:** admin@carplus.com / Cali2020
 - **Salesperson:** vendedor1@test.com / Test1234
 
+## Test Files
+- `/app/tests/test_prequalify_and_clients.py` - Comprehensive test suite for pre-qualify and client functionality
+
 ## Last Updated
-January 11, 2025 - Added multiple file upload for pre-qualify with PDF merging, document transfer to client
+January 11, 2025 - Fixed Pre-Qualify data mapping with separated time fields, UI modal layouts, and direct client creation endpoint
