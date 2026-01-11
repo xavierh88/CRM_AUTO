@@ -277,9 +277,9 @@ class ClientResponse(BaseModel):
     # SSN/ITIN fields
     ssn_type: Optional[str] = None
     ssn: Optional[str] = None  # Admin only
-    # Time at address
-    time_at_address_years: Optional[int] = None
-    time_at_address_months: Optional[int] = None
+    # Time at address (can be int or str)
+    time_at_address_years: Optional[Any] = None
+    time_at_address_months: Optional[Any] = None
     # Housing type
     housing_type: Optional[str] = None
     rent_amount: Optional[str] = None
