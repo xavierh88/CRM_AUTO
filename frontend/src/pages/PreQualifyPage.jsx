@@ -340,6 +340,35 @@ export default function PreQualifyPage() {
                 </div>
               </div>
 
+              {/* SSN/ITIN - Admin Only */}
+              {isAdmin && (detailData.submission.ssn || detailData.submission.ssnType) && (
+                <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                  <h4 className="font-medium text-red-700 mb-2 flex items-center gap-1">
+                    <Shield className="w-4 h-4" /> Información Confidencial (Solo Admin)
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-red-500">Tipo</label>
+                      <p className="font-medium">{detailData.submission.ssnType || 'SSN'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-red-500">Número</label>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium font-mono">
+                          {showSSN ? (detailData.submission.ssn || 'N/A') : '•••••••••'}
+                        </p>
+                        <button 
+                          onClick={() => setShowSSN(!showSSN)}
+                          className="p-1 hover:bg-red-100 rounded"
+                        >
+                          {showSSN ? <EyeOff className="w-4 h-4 text-red-600" /> : <Eye className="w-4 h-4 text-red-600" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Address Info */}
               <div className="p-4 bg-blue-50 rounded-lg">
                 <h4 className="font-medium text-blue-700 mb-2 flex items-center gap-1">
