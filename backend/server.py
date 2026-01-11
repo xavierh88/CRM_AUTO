@@ -4966,7 +4966,7 @@ async def download_backup(current_user: dict = Depends(get_current_user)):
                 backup_data["collections"][collection_name] = []
         
         # Convert to JSON
-        json_data = json.dumps(backup_data, ensure_ascii=False, indent=2, default=str)
+        json_data = json_lib.dumps(backup_data, ensure_ascii=False, indent=2, default=str)
         
         # Return as downloadable file
         return StreamingResponse(
