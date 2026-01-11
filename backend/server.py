@@ -4929,9 +4929,6 @@ app.add_middleware(
 
 # ==================== BACKUP & RESTORE ENDPOINTS (Admin Only) ====================
 
-from fastapi.responses import StreamingResponse
-import json
-
 @api_router.get("/admin/backup")
 async def download_backup(current_user: dict = Depends(get_current_user)):
     """Download complete database backup as JSON (Admin only)"""
