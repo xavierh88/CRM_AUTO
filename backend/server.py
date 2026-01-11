@@ -4533,9 +4533,9 @@ async def submit_prequalify_with_file(
         "timeAtAddressYears": timeAtAddressYears,
         "timeAtAddressMonths": timeAtAddressMonths,
         "employerName": employerName,
-        # Time with employer - separated fields  
-        "timeWithEmployerYears": timeWithEmployerYears,
-        "timeWithEmployerMonths": timeWithEmployerMonths,
+        # Time with employer - use whichever is provided (support both naming conventions)
+        "timeWithEmployerYears": timeWithEmployerYears or employmentTimeYears,
+        "timeWithEmployerMonths": timeWithEmployerMonths or employmentTimeMonths,
         "incomeType": incomeType,
         "netIncome": netIncome,
         "incomeFrequency": incomeFrequency,
