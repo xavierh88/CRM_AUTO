@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CARPLUS AUTOSALE | Friendly Brokerage</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        
+        /* Header */
+        .header {
+            background: rgba(15, 23, 42, 0.95);
+            padding: 15px 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+        }
+        
+        .logo span {
+            color: #60a5fa;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+        
+        .nav-links a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            color: #fff;
+        }
+        
+        /* Hero Section */
+        .hero {
+            padding: 150px 20px 80px;
+            text-align: center;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+        
+        .hero h1 span {
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            color: #94a3b8;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+        
+        .hero-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 15px 35px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            color: #fff;
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: #fff;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.5);
+        }
+        
+        /* Services Section */
+        .services {
+            padding: 80px 20px;
+            background: rgba(0,0,0,0.2);
+        }
+        
+        .services-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 60px;
+        }
+        
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+        }
+        
+        .service-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .service-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .service-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+        
+        .service-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+        }
+        
+        .service-card p {
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+        
+        /* Contact Section */
+        .contact {
+            padding: 80px 20px;
+        }
+        
+        .contact-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+        }
+        
+        @media (max-width: 768px) {
+            .contact-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .contact-info h2 {
+            font-size: 2rem;
+            margin-bottom: 30px;
+        }
+        
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+        }
+        
+        .contact-item-icon {
+            font-size: 1.5rem;
+        }
+        
+        .contact-item-text {
+            color: #e2e8f0;
+        }
+        
+        .contact-item-text strong {
+            display: block;
+            color: #fff;
+            margin-bottom: 3px;
+        }
+        
+        .social-links {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .social-link {
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .social-link:hover {
+            background: #3b82f6;
+            transform: scale(1.1);
+        }
+        
+        /* Contact Form */
+        .contact-form {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 40px;
+        }
+        
+        .contact-form h3 {
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        .whatsapp-options {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(37, 211, 102, 0.1);
+            border: 1px solid rgba(37, 211, 102, 0.3);
+            border-radius: 12px;
+        }
+        
+        .whatsapp-options.show {
+            display: block;
+        }
+        
+        .whatsapp-options h4 {
+            color: #25d366;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+        
+        .whatsapp-btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .whatsapp-contact-btn {
+            padding: 15px 20px;
+            background: #25d366;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+        
+        .whatsapp-contact-btn:hover {
+            background: #1da851;
+            transform: translateY(-2px);
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(90deg, #25d366, #128c7e);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(37, 211, 102, 0.3);
+        }
+        
+        /* Footer */
+        .footer {
+            background: rgba(0,0,0,0.3);
+            padding: 40px 20px;
+            text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .footer p {
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+        
+        .footer a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+            
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            .hero p {
+                font-size: 1rem;
+            }
+            
+            .section-title {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="nav-container">
+            <div class="logo">CARPLUS <span>AUTOSALE</span></div>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="#inicio">Inicio</a></li>
+                    <li><a href="#servicios">Servicios</a></li>
+                    <li><a href="#contacto">Contacto</a></li>
+                    <li><a href="prequalify.html">Pre-Califícate</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero" id="inicio">
+        <h1>Tu Auto Ideal <span>Te Espera</span></h1>
+        <p>En CARPLUS AUTOSALE te ayudamos a encontrar el vehículo perfecto con las mejores opciones de financiamiento. Friendly Brokerage - Tu socio confiable en la compra de autos.</p>
+        <div class="hero-buttons">
+            <a href="prequalify.html" class="btn btn-primary">
+                ✨ Pre-Califícate Ahora
+            </a>
+            <a href="#contacto" class="btn btn-secondary">
+                📞 Contáctanos
+            </a>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section class="services" id="servicios">
+        <div class="services-container">
+            <h2 class="section-title">Nuestros Servicios</h2>
+            <div class="services-grid">
+                <div class="service-card">
+                    <div class="service-icon">🚗</div>
+                    <h3>Variedad de Vehículos</h3>
+                    <p>Amplia selección de autos nuevos y usados de las mejores marcas del mercado.</p>
+                </div>
+                <div class="service-card">
+                    <div class="service-icon">💳</div>
+                    <h3>Financiamiento Flexible</h3>
+                    <p>Opciones de financiamiento adaptadas a tu presupuesto. Trabajamos con múltiples prestamistas.</p>
+                </div>
+                <div class="service-card">
+                    <div class="service-icon">📋</div>
+                    <h3>Pre-Calificación Rápida</h3>
+                    <p>Conoce tu capacidad de compra en minutos con nuestro proceso de pre-calificación en línea.</p>
+                </div>
+                <div class="service-card">
+                    <div class="service-icon">🤝</div>
+                    <h3>Atención Personalizada</h3>
+                    <p>Te acompañamos en todo el proceso de compra con un servicio amigable y profesional.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact" id="contacto">
+        <div class="contact-container">
+            <div class="contact-grid">
+                <div class="contact-info">
+                    <h2>Contáctanos</h2>
+                    
+                    <div class="contact-item">
+                        <span class="contact-item-icon">📧</span>
+                        <div class="contact-item-text">
+                            <strong>Email</strong>
+                            info@carplusautosalesgroup.com
+                        </div>
+                    </div>
+                    
+                    <div class="contact-item">
+                        <span class="contact-item-icon">📍</span>
+                        <div class="contact-item-text">
+                            <strong>Ubicación</strong>
+                            Los Angeles, California
+                        </div>
+                    </div>
+                    
+                    <div class="contact-item">
+                        <span class="contact-item-icon">🕐</span>
+                        <div class="contact-item-text">
+                            <strong>Horario</strong>
+                            Lunes - Sábado: 9AM - 7PM
+                        </div>
+                    </div>
+                    
+                    <div class="social-links">
+                        <a href="https://instagram.com/carplus_autosales" target="_blank" class="social-link" title="Instagram">
+                            📷
+                        </a>
+                        <a href="https://facebook.com/carplusAutosale" target="_blank" class="social-link" title="Facebook">
+                            📘
+                        </a>
+                        <a href="https://wa.me/13109999999" target="_blank" class="social-link" title="WhatsApp">
+                            💬
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="contact-form">
+                    <h3>Envíanos un Mensaje</h3>
+                    <form id="contactForm">
+                        <div class="form-group">
+                            <label>Nombre</label>
+                            <input type="text" id="contactName" placeholder="Tu nombre" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono</label>
+                            <input type="tel" id="contactPhone" placeholder="Tu teléfono">
+                        </div>
+                        <div class="form-group">
+                            <label>Mensaje</label>
+                            <textarea id="contactMessage" placeholder="¿En qué podemos ayudarte?" required></textarea>
+                        </div>
+                        <button type="submit" class="submit-btn">
+                            💬 Enviar vía WhatsApp
+                        </button>
+                    </form>
+                    
+                    <div id="whatsappOptions" class="whatsapp-options">
+                        <h4>¿A quién deseas contactar?</h4>
+                        <div class="whatsapp-btn-group">
+                            <a href="#" id="whatsapp1" class="whatsapp-contact-btn" target="_blank">
+                                💬 David A. - Ventas
+                            </a>
+                            <a href="#" id="whatsapp2" class="whatsapp-contact-btn" target="_blank">
+                                💬 Carlos G. - Atención
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>© 2025 CARPLUS AUTOSALE - Friendly Brokerage</p>
+        <p>Todos los derechos reservados</p>
+        <p style="margin-top: 15px;">
+            <a href="prequalify.html">Pre-Califícate</a> | 
+            <a href="mailto:info@carplusautosalesgroup.com">info@carplusautosalesgroup.com</a>
+        </p>
+    </footer>
+
+    <script>
+        // WhatsApp numbers
+        const WHATSAPP_1 = '13235235028'; // David A. - Ventas
+        const WHATSAPP_2 = '13233380156'; // Carlos G. - Atención al Cliente
+        
+        document.getElementById('contactForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('contactName').value;
+            const phone = document.getElementById('contactPhone').value;
+            const message = document.getElementById('contactMessage').value;
+            
+            // Create WhatsApp message
+            const whatsappMessage = encodeURIComponent(
+                `*Nuevo mensaje de contacto*\n\n` +
+                `*Nombre:* ${name}\n` +
+                `*Teléfono:* ${phone || 'No proporcionado'}\n` +
+                `*Mensaje:* ${message}`
+            );
+            
+            // Update WhatsApp links
+            document.getElementById('whatsapp1').href = `https://wa.me/${WHATSAPP_1}?text=${whatsappMessage}`;
+            document.getElementById('whatsapp2').href = `https://wa.me/${WHATSAPP_2}?text=${whatsappMessage}`;
+            
+            // Show options
+            document.getElementById('whatsappOptions').classList.add('show');
+            
+            // Scroll to options
+            document.getElementById('whatsappOptions').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+    </script>
+</body>
+</html>

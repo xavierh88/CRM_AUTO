@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pre-Calificación - CARPLUS AUTOSALE</title>
+    <link rel="icon" href="https://crm.carplusautosalesgroup.com/logo.png">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { 
+            max-width: 700px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 40px; 
+            border-radius: 20px; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .logo { text-align: center; margin-bottom: 30px; }
+        .logo img { max-width: 200px; }
+        .logo h1 { color: #1e3a8a; font-size: 28px; margin-top: 10px; }
+        .logo p { color: #64748b; font-size: 14px; }
+        
+        h2 { 
+            color: #1e3a8a; 
+            font-size: 20px; 
+            margin: 30px 0 20px; 
+            padding-bottom: 10px; 
+            border-bottom: 3px solid #3b82f6; 
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+        
+        label { 
+            display: block; 
+            margin-bottom: 6px; 
+            font-weight: 600; 
+            color: #374151; 
+            font-size: 14px;
+        }
+        .required { color: #dc2626; }
+        
+        input, select { 
+            width: 100%; 
+            padding: 12px 15px; 
+            border: 2px solid #e5e7eb; 
+            border-radius: 10px; 
+            font-size: 15px; 
+            transition: all 0.3s;
+        }
+        input:focus, select:focus { 
+            outline: none; 
+            border-color: #3b82f6; 
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .file-upload {
+            border: 3px dashed #cbd5e1;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8fafc;
+        }
+        .file-upload:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .file-upload input { display: none; }
+        .file-upload-icon { font-size: 48px; margin-bottom: 10px; }
+        .file-upload-text { color: #64748b; font-size: 14px; }
+        .file-upload-text strong { color: #3b82f6; }
+        
+        .file-list {
+            margin-top: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .file-item {
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .file-item button {
+            background: none;
+            border: none;
+            color: #dc2626;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+            line-height: 1;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+        }
+        .checkbox-group label {
+            font-weight: 400;
+            font-size: 14px;
+            color: #4b5563;
+        }
+        
+        button[type="submit"] {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+        button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(30, 58, 138, 0.3);
+        }
+        button[type="submit"]:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .alert-success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #86efac;
+        }
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #9ca3af;
+            font-size: 13px;
+        }
+        
+        .whatsapp-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #25d366;
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+            font-size: 30px;
+            transition: transform 0.3s;
+        }
+        .whatsapp-btn:hover { transform: scale(1.1); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>🚗 CARPLUS AUTOSALE</h1>
+            <p>Friendly Brokerage</p>
+        </div>
+        
+        <div class="alert alert-success" id="successAlert">
+            ✅ ¡Solicitud enviada exitosamente! Nos pondremos en contacto pronto.
+        </div>
+        <div class="alert alert-error" id="errorAlert">
+            ❌ Error al enviar. Por favor intente de nuevo.
+        </div>
+        
+        <form id="prequalifyForm" enctype="multipart/form-data">
+            <h2>📋 Información Personal</h2>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nombre <span class="required">*</span></label>
+                    <input type="text" name="firstName" required placeholder="Juan">
+                </div>
+                <div class="form-group">
+                    <label>Apellido <span class="required">*</span></label>
+                    <input type="text" name="lastName" required placeholder="Pérez">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Email <span class="required">*</span></label>
+                    <input type="email" name="email" required placeholder="juan@ejemplo.com">
+                </div>
+                <div class="form-group">
+                    <label>Teléfono <span class="required">*</span></label>
+                    <input type="tel" name="phone" required placeholder="(310) 123-4567">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Fecha de Nacimiento</label>
+                    <input type="date" name="dateOfBirth">
+                </div>
+                <div class="form-group">
+                    <label>Número de ID/Licencia</label>
+                    <input type="text" name="idNumber" placeholder="D1234567">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>SSN (últimos 4 dígitos)</label>
+                <input type="text" name="ssn" placeholder="XXXX" maxlength="4">
+            </div>
+            
+            <!-- File Upload Section -->
+            <div class="form-group">
+                <label>📄 Documentos de ID (puede subir varios)</label>
+                <div class="file-upload" onclick="document.getElementById('idFiles').click()">
+                    <input type="file" id="idFiles" name="id_files" multiple accept=".pdf,.jpg,.jpeg,.png">
+                    <div class="file-upload-icon">📁</div>
+                    <div class="file-upload-text">
+                        <strong>Haz clic aquí</strong> para seleccionar archivos<br>
+                        PDF, JPG o PNG (máx. 10MB cada uno)
+                    </div>
+                </div>
+                <div class="file-list" id="fileList"></div>
+            </div>
+            
+            <h2>🏠 Información de Vivienda</h2>
+            
+            <div class="form-group">
+                <label>Dirección</label>
+                <input type="text" name="address" placeholder="123 Main Street">
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Ciudad</label>
+                    <input type="text" name="city" placeholder="Los Angeles">
+                </div>
+                <div class="form-group">
+                    <label>Estado</label>
+                    <select name="state">
+                        <option value="">Seleccionar</option>
+                        <option value="CA">California</option>
+                        <option value="AZ">Arizona</option>
+                        <option value="NV">Nevada</option>
+                        <option value="TX">Texas</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Código Postal</label>
+                <input type="text" name="zipCode" placeholder="90001">
+            </div>
+            
+            <div class="form-group">
+                <label>Tiempo en esta dirección</label>
+                <div class="form-row">
+                    <div>
+                        <input type="number" name="timeAtAddressYears" placeholder="Años" min="0" max="99">
+                    </div>
+                    <div>
+                        <input type="number" name="timeAtAddressMonths" placeholder="Meses" min="0" max="11">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tipo de Vivienda</label>
+                    <select name="housingType" id="housingType" onchange="toggleRent()">
+                        <option value="">Seleccionar</option>
+                        <option value="Dueño">Dueño</option>
+                        <option value="Renta">Renta</option>
+                        <option value="Vivo con familiares">Vivo con familiares</option>
+                    </select>
+                </div>
+                <div class="form-group" id="rentGroup" style="display: none;">
+                    <label>Monto de Renta Mensual</label>
+                    <input type="text" name="rentAmount" placeholder="$1,500">
+                </div>
+            </div>
+            
+            <h2>💼 Información de Empleo</h2>
+            
+            <div class="form-group">
+                <label>Nombre del Empleador</label>
+                <input type="text" name="employerName" placeholder="ABC Company">
+            </div>
+            
+            <div class="form-group">
+                <label>Tiempo con Empleador</label>
+                <div class="form-row">
+                    <div>
+                        <input type="number" name="timeWithEmployerYears" placeholder="Años" min="0" max="99">
+                    </div>
+                    <div>
+                        <input type="number" name="timeWithEmployerMonths" placeholder="Meses" min="0" max="11">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Tipo de Ingreso</label>
+                <select name="incomeType">
+                    <option value="">Seleccionar</option>
+                    <option value="Company">Empleado</option>
+                    <option value="Self employed">Trabajo por cuenta propia</option>
+                    <option value="Retired/workcomp/SSN/SDI">Jubilado/Pensión</option>
+                    <option value="Unemployed">Desempleado</option>
+                </select>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Ingreso Neto</label>
+                    <input type="text" name="netIncome" placeholder="$4,000">
+                </div>
+                <div class="form-group">
+                    <label>Frecuencia de Pago</label>
+                    <select name="incomeFrequency">
+                        <option value="">Seleccionar</option>
+                        <option value="Semanal">Semanal</option>
+                        <option value="Cada dos semanas">Cada dos semanas</option>
+                        <option value="Dos veces al mes">Dos veces al mes</option>
+                        <option value="Mensual">Mensual</option>
+                    </select>
+                </div>
+            </div>
+            
+            <h2>💰 Información Financiera</h2>
+            
+            <div class="form-group">
+                <label>Enganche Estimado</label>
+                <input type="text" name="estimatedDownPayment" placeholder="$2,500">
+            </div>
+            
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" name="consentAccepted" id="consent" required>
+                    <label for="consent">
+                        Acepto los términos y condiciones y autorizo la verificación de mi información <span class="required">*</span>
+                    </label>
+                </div>
+            </div>
+            
+            <button type="submit" id="submitBtn">
+                📤 Enviar Solicitud de Pre-Calificación
+            </button>
+        </form>
+        
+        <div class="footer">
+            <p>© 2025 CARPLUS AUTOSALE - Friendly Brokerage</p>
+            <p>Todos los derechos reservados</p>
+        </div>
+    </div>
+    
+    <!-- WhatsApp Button with contact selection -->
+    <div id="whatsappWidget" style="position:fixed;bottom:20px;right:20px;z-index:1000;">
+        <div id="whatsappOptions" style="display:none;background:#fff;border-radius:15px;padding:15px;margin-bottom:10px;box-shadow:0 5px 25px rgba(0,0,0,0.2);">
+            <p style="color:#333;font-weight:600;margin-bottom:10px;font-size:14px;">¿A quién deseas contactar?</p>
+            <a href="https://wa.me/13235235028" target="_blank" style="display:block;background:#25d366;color:#fff;padding:12px;border-radius:8px;text-decoration:none;text-align:center;margin-bottom:8px;font-weight:500;">💬 David A. - Ventas</a>
+            <a href="https://wa.me/13233380156" target="_blank" style="display:block;background:#25d366;color:#fff;padding:12px;border-radius:8px;text-decoration:none;text-align:center;font-weight:500;">💬 Carlos G. - Atención</a>
+        </div>
+        <button onclick="document.getElementById('whatsappOptions').style.display = document.getElementById('whatsappOptions').style.display === 'none' ? 'block' : 'none'" style="background:#25d366;color:#fff;border:none;width:60px;height:60px;border-radius:50%;font-size:28px;cursor:pointer;box-shadow:0 5px 20px rgba(37,211,102,0.4);">💬</button>
+    </div>
+    
+    <script>
+        // CRM URL
+        const CRM_URL = 'https://crm.carplusautosalesgroup.com';
+        
+        // Selected files
+        let selectedFiles = [];
+        
+        // Handle file selection
+        document.getElementById('idFiles').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            files.forEach(file => {
+                if (!selectedFiles.find(f => f.name === file.name && f.size === file.size)) {
+                    selectedFiles.push(file);
+                }
+            });
+            updateFileList();
+        });
+        
+        function updateFileList() {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = selectedFiles.map((file, index) => `
+                <div class="file-item">
+                    📄 ${file.name}
+                    <button type="button" onclick="removeFile(${index})">✕</button>
+                </div>
+            `).join('');
+        }
+        
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFileList();
+        }
+        
+        // Toggle rent field
+        function toggleRent() {
+            const housingType = document.getElementById('housingType').value;
+            document.getElementById('rentGroup').style.display = housingType === 'Renta' ? 'block' : 'none';
+        }
+        
+        // Form submission
+        document.getElementById('prequalifyForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const successAlert = document.getElementById('successAlert');
+            const errorAlert = document.getElementById('errorAlert');
+            
+            // Reset alerts
+            successAlert.style.display = 'none';
+            errorAlert.style.display = 'none';
+            
+            // Disable button
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Enviando...';
+            
+            try {
+                const formData = new FormData(this);
+                
+                // Remove the file input and add files manually
+                formData.delete('id_files');
+                
+                // Add selected files
+                selectedFiles.forEach(file => {
+                    formData.append('id_files', file);
+                });
+                
+                // Convert checkbox
+                formData.set('consentAccepted', document.getElementById('consent').checked ? 'true' : 'false');
+                
+                const response = await fetch(`${CRM_URL}/api/prequalify/submit-with-file`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    successAlert.style.display = 'block';
+                    this.reset();
+                    selectedFiles = [];
+                    updateFileList();
+                    document.getElementById('rentGroup').style.display = 'none';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    throw new Error(result.detail || 'Error al enviar');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                errorAlert.textContent = '❌ ' + error.message;
+                errorAlert.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '📤 Enviar Solicitud de Pre-Calificación';
+            }
+        });
+    </script>
+</body>
+</html>
