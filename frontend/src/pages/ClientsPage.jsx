@@ -3613,12 +3613,29 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
 
   const handleSave = async () => {
     try {
-      await axios.put(`${API}/clients/${client.id}`, editData);
+      // Clean data - remove empty strings and convert time fields to integers
+      const cleanData = { ...editData };
+      
+      // Convert time fields to integers if they exist
+      if (cleanData.time_at_address_years !== '' && cleanData.time_at_address_years !== null) {
+        cleanData.time_at_address_years = parseInt(cleanData.time_at_address_years) || 0;
+      } else {
+        cleanData.time_at_address_years = null;
+      }
+      
+      if (cleanData.time_at_address_months !== '' && cleanData.time_at_address_months !== null) {
+        cleanData.time_at_address_months = parseInt(cleanData.time_at_address_months) || 0;
+      } else {
+        cleanData.time_at_address_months = null;
+      }
+      
+      await axios.put(`${API}/clients/${client.id}`, cleanData);
       toast.success('Client updated');
       setIsEditing(false);
       onRefresh();
       onClose(); // Close modal to show updated data in list
     } catch (error) {
+      console.error('Update error:', error);
       toast.error(error.response?.data?.detail || 'Failed to update');
     }
   };
