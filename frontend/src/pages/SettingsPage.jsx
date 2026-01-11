@@ -108,6 +108,32 @@ export default function SettingsPage() {
     }
   };
 
+  // Delete all data
+  const handleDeleteAllData = async () => {
+    if (deleteConfirmText !== 'ELIMINAR TODO') {
+      toast.error('Debes escribir "ELIMINAR TODO" para confirmar');
+      return;
+    }
+    
+    setIsDeleting(true);
+    try {
+      const response = await axios.delete(`${API}/admin/delete-all-data`);
+      toast.success(response.data.message);
+      setShowDeleteAllConfirm(false);
+      setDeleteConfirmText('');
+      
+      // Reload page to reflect changes
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error(error.response?.data?.detail || 'Error al eliminar datos');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-2xl" data-testid="settings-page">
       {/* Header */}
