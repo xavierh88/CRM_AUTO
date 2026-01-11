@@ -25,58 +25,23 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 ### User Records (Oportunidades)
 - ✅ Nested sales opportunities per client
 - ✅ Conditional form with detailed fields
-- ✅ Auto Loan multi-select (Paid/Late/On Time)
-- ✅ Car Brands dropdown (fixed)
-- ✅ Record status: Completed/No-Show
-- ✅ Admin-only Commission fields (locks status)
-- ✅ Mark as Completed functionality
-- ✅ Employment section with:
-  - Employment Type (Company/Retired/Unemployed/Self employed)
-  - Company/Business Name
-  - Time at Employment (years/months) - FIXED mapping from Pre-Qualify
-  - Income Frequency (Semanal/Cada dos semanas/Dos veces al mes/Mensual)
-  - Net Income Amount
+- ✅ Employment section with time at employment (years/months)
+- ✅ Income Frequency and Net Income Amount
+- ✅ Commission fields (Admin-only)
 
 ### Pre-Qualify Module
 - ✅ Public form for lead capture
 - ✅ Admin-only review page (/prequalify)
-- ✅ Client matching by phone number
-- ✅ Create client or add to existing notes
-- ✅ Email notifications to ALL admins on new submission
-- ✅ **Multiple file upload support** (combines into single PDF)
-- ✅ **Document preview in Pre-Qualify panel**
-- ✅ **Automatic document transfer when converting to client**
+- ✅ Multiple file upload support (combines into single PDF)
+- ✅ Automatic document transfer when converting to client
 - ✅ **Time fields separated (years/months) - FIXED**
 - ✅ **Notes include formatted time strings (e.g., "2 años, 6 meses")**
-
-### Public Document Upload
-- ✅ When client already has ID from pre-qualify, shows message:
-  "Ya tiene un documento de ID previamente subido. Puede subir uno nuevo si lo desea."
-
-### Co-Signers
-- ✅ Link co-signers to client records
-
-### Appointments
-- ✅ Internal appointment scheduling
-- ✅ Public forms for document uploads
-- ✅ Dealer address management (Admin)
+- ✅ Email notifications to ALL admins on new submission
 
 ### Communications
 - ✅ Twilio SMS integration (pending A2P approval)
 - ✅ Two-way SMS inbox
-- ✅ Automated marketing campaigns
 - ✅ SMTP Email notifications (Gmail)
-- ✅ Send Report feature (Admin-only)
-
-### Admin Panel
-- ✅ User management
-- ✅ Dynamic dropdown lists management
-- ✅ Dealer address management
-
-### Branding
-- ✅ Logo: CARPLUS AUTOSALE
-- ✅ Slogan: Friendly Brokerage
-- ✅ Light-themed modern UI
 
 ## Technical Stack
 - **Backend:** FastAPI + MongoDB (motor) + Pydantic
@@ -91,53 +56,83 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - ✅ SSL certificate (HTTPS) via Certbot
 - ✅ Nginx reverse proxy
 - ✅ systemd service management
-- ✅ Pre-qualify form HTML for website integration
 
-## Recently Fixed (January 11, 2025)
+## Session Work Completed (January 11, 2025)
 
 ### Pre-Qualify to Client Data Mapping - FIXED
-- ✅ Backend endpoint `/prequalify/submit-with-file` now accepts separated time fields:
-  - `timeAtAddressYears`, `timeAtAddressMonths`
-  - `timeWithEmployerYears`, `timeWithEmployerMonths`
-- ✅ Create client endpoint maps these fields correctly:
-  - Client: `time_at_address_years`, `time_at_address_months`
-  - Record: `employment_time_years`, `employment_time_months`
-- ✅ Notes contain formatted time strings (e.g., "3 años, 4 meses")
+- ✅ Backend endpoint `/prequalify/submit-with-file` now accepts separated time fields
+- ✅ Create client endpoint maps these fields correctly to client and record
+- ✅ Notes contain formatted time strings
 
 ### UI Modal Layout Issues - FIXED
-- ✅ "Add Client" modal now uses responsive grid (1 col mobile, 2 cols desktop)
+- ✅ "Add Client" modal uses responsive grid
 - ✅ "Client Info" modal fixed with proper spacing
 - ✅ No more element overlap issues
-- ✅ Scrollable content with max-height
 
-### Direct Client Creation - FIXED
-- ✅ `/api/clients` POST endpoint now saves all new fields:
-  - `date_of_birth`, `time_at_address_years`, `time_at_address_months`
-  - `housing_type`, `rent_amount`
+### Backend Refactoring - IN PROGRESS
+- ✅ Created `/app/backend/config.py` - Configuration and DB connection
+- ✅ Created `/app/backend/auth.py` - Authentication utilities
+- ✅ Created `/app/backend/models/` - Pydantic models separated by entity:
+  - `user.py`, `client.py`, `record.py`, `appointment.py`, `cosigner.py`, `config_list.py`, `prequalify.py`
+- ✅ Created `/app/backend/services/` - Reusable services:
+  - `email.py`, `sms.py`, `pdf.py`
+- Note: `server.py` still contains all routes (4900+ lines) - can be gradually migrated
+
+### Frontend Refactoring - DOCUMENTED
+- ✅ Created `/app/frontend/src/components/clients/` folder structure
+- Note: `ClientsPage.jsx` (4097 lines) contains internal components that can be extracted gradually
+
+### Website Package - COMPLETED
+- ✅ Created `/app/carplus-website-con-prequalify.zip` containing:
+  - Original website files (without Emergent branding)
+  - `prequalify.html` - Updated form with separated time fields
+  - `README.md` - Installation instructions in Spanish
+
+## File Locations
+
+### Backend Refactored Structure
+```
+/app/backend/
+├── server.py           # Main entry point (routes still here)
+├── config.py           # NEW: Configuration & DB
+├── auth.py             # NEW: Auth utilities
+├── models/
+│   ├── __init__.py     # Exports all models
+│   ├── user.py
+│   ├── client.py
+│   ├── record.py
+│   ├── appointment.py
+│   ├── cosigner.py
+│   ├── config_list.py
+│   └── prequalify.py
+└── services/
+    ├── __init__.py
+    ├── email.py
+    ├── sms.py
+    └── pdf.py
+```
+
+### Downloadable Packages
+- `/app/carplus-website-con-prequalify.zip` - Website with pre-qualify form
+- `/app/carplus-prequalify-form-updated.zip` - Standalone pre-qualify form
 
 ## Pending/Future Tasks
 
-### P2 - Technical Debt (High Priority)
-- [ ] Refactor server.py (>4500 lines) into modular structure
-- [ ] Refactor ClientsPage.jsx (monolithic component)
+### P3 - Technical Debt (Continue when needed)
+- [ ] Migrate routes from server.py to /routes/ modules
+- [ ] Extract components from ClientsPage.jsx to /components/clients/
 
-### P2 - Website Integration
-- [ ] Create integrated website package with pre-qualify form matching site design
-
-### P3 - Enhancements
+### P4 - Enhancements
 - [ ] Co-signer comments/notes section
 - [ ] Dashboard export to Excel/PDF
-
-### P4 - Nice to Have
 - [ ] Advanced analytics dashboard
-- [ ] Bulk operations on clients
 
 ## Credentials
 - **Admin:** admin@carplus.com / Cali2020
-- **Salesperson:** vendedor1@test.com / Test1234
+- **Live URL:** https://crm.carplusautosalesgroup.com
 
 ## Test Files
-- `/app/tests/test_prequalify_and_clients.py` - Comprehensive test suite for pre-qualify and client functionality
+- `/app/tests/test_prequalify_and_clients.py` - Comprehensive test suite
 
 ## Last Updated
-January 11, 2025 - Fixed Pre-Qualify data mapping with separated time fields, UI modal layouts, and direct client creation endpoint
+January 11, 2025 - Refactoring backend structure, created website package with pre-qualify form
