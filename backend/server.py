@@ -4668,12 +4668,12 @@ async def submit_prequalify(submission: PreQualifySubmission):
                 "user_id": admin.get("id") or admin.get("email"),
                 "type": "prequalify",
                 "title": "Nueva Pre-Calificación",
-                "message": f"Nueva solicitud de {firstName} {lastName} - Tel: {phone}",
+                "message": f"Nueva solicitud de {submission.firstName} {submission.lastName} - Tel: {submission.phone}",
                 "data": {
-                    "submission_id": submission_id,
-                    "name": f"{firstName} {lastName}",
-                    "phone": phone,
-                    "email": email,
+                    "submission_id": doc["id"],
+                    "name": f"{submission.firstName} {submission.lastName}",
+                    "phone": submission.phone,
+                    "email": submission.email,
                     "matched": existing_client is not None
                 },
                 "read": False,
