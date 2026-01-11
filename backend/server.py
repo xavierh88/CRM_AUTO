@@ -387,7 +387,7 @@ class UserRecordResponse(BaseModel):
     employment_type: Optional[str] = None  # Company, Retired/workcomp/SSN/SDI, Unemployed, Self employed
     employment_company_name: Optional[str] = None
     employment_time_years: Optional[int] = None
-    employment_time_months: Optional[int] = None
+    employment_time_months: Optional[Any] = None
     # Income fields
     income_frequency: Optional[str] = None  # Semanal, Cada dos semanas, Dos veces al mes, Mensual
     net_income_amount: Optional[str] = None  # Net income amount
