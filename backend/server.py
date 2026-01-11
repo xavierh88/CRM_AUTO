@@ -4419,14 +4419,29 @@ async def submit_prequalify_with_file(
     from reportlab.lib.pagesizes import letter
     from reportlab.pdfgen import canvas
     
+    # === HELPER FUNCTION to safely convert to int ===
+    def safe_int(value):
+        """Convert value to int, return None if not possible"""
+        if value is None or value == '' or value == 'null' or value == 'undefined':
+            return None
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return None
+    
     # === NORMALIZE FIELD NAMES (support both naming conventions) ===
     # Date of birth
     final_dateOfBirth = dateOfBirth or date_of_birth
     # Down payment
     final_downPayment = estimatedDownPayment or downPayment
-    # Employment time (use whichever is provided)
-    final_employmentYears = timeWithEmployerYears or employmentTimeYears
-    final_employmentMonths = timeWithEmployerMonths or employmentTimeMonths
+    
+    # Time at address - convert to int safely
+    final_timeAtAddressYears = safe_int(timeAtAddressYears)
+    final_timeAtAddressMonths = safe_int(timeAtAddressMonths)
+    
+    # Employment time (use whichever is provided) - convert to int safely
+    final_employmentYears = safe_int(timeWithEmployerYears) or safe_int(employmentTimeYears)
+    final_employmentMonths = safe_int(timeWithEmployerMonths) or safe_int(employmentTimeMonths)
     
     # Debug log - DETAILED for all critical fields
     logger.info(f"=== PRE-QUALIFY SUBMISSION RECEIVED ===")
@@ -4436,8 +4451,8 @@ async def submit_prequalify_with_file(
     logger.info(f"ssn: '{ssn}'")
     logger.info(f"ssnType: '{ssnType}'")
     logger.info(f"dateOfBirth: '{dateOfBirth}' | date_of_birth: '{date_of_birth}' -> final: '{final_dateOfBirth}'")
-    logger.info(f"timeAtAddressYears: '{timeAtAddressYears}'")
-    logger.info(f"timeAtAddressMonths: '{timeAtAddressMonths}'")
+    logger.info(f"timeAtAddressYears RAW: '{timeAtAddressYears}' -> final: '{final_timeAtAddressYears}'")
+    logger.info(f"timeAtAddressMonths RAW: '{timeAtAddressMonths}' -> final: '{final_timeAtAddressMonths}'")
     logger.info(f"employmentTimeYears: '{employmentTimeYears}' | timeWithEmployerYears: '{timeWithEmployerYears}' -> final: '{final_employmentYears}'")
     logger.info(f"employmentTimeMonths: '{employmentTimeMonths}' | timeWithEmployerMonths: '{timeWithEmployerMonths}' -> final: '{final_employmentMonths}'")
     logger.info(f"estimatedDownPayment: '{estimatedDownPayment}' | downPayment: '{downPayment}' -> final: '{final_downPayment}'")
