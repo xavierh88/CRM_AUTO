@@ -4237,6 +4237,56 @@ async def restore_backup(
         logger.error(f"Restore error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error al restaurar: {str(e)}")
 
+
+@api_router.delete("/admin/delete-all-data")
+async def delete_all_data(current_user: dict = Depends(get_current_user)):
+    """Delete ALL CRM data permanently (Admin only) - DANGEROUS OPERATION"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores pueden eliminar datos")
+    
+    try:
+        delete_stats = {}
+        
+        # Collections to delete (NOT including users to keep admin access)
+        collections_to_delete = [
+            "clients",
+            "records",
+            "cosigner_records",
+            "appointments",
+            "prequalify_submissions",
+            "record_comments",
+            "imported_contacts"
+        ]
+        
+        for collection_name in collections_to_delete:
+            try:
+                result = await db[collection_name].delete_many({})
+                delete_stats[collection_name] = result.deleted_count
+                logger.warning(f"DELETED ALL from {collection_name}: {result.deleted_count} documents")
+            except Exception as e:
+                logger.error(f"Error deleting {collection_name}: {str(e)}")
+                delete_stats[collection_name] = f"Error: {str(e)}"
+        
+        # Log the deletion
+        delete_log = {
+            "id": str(uuid.uuid4()),
+            "deleted_by": current_user["email"],
+            "deleted_at": datetime.now(timezone.utc).isoformat(),
+            "stats": delete_stats
+        }
+        await db.delete_logs.insert_one(delete_log)
+        
+        total_deleted = sum(v for v in delete_stats.values() if isinstance(v, int))
+        
+        return {
+            "message": f"Todos los datos eliminados. {total_deleted} registros eliminados en total.",
+            "stats": delete_stats
+        }
+        
+    except Exception as e:
+        logger.error(f"Delete all error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al eliminar datos: {str(e)}")
+
 # ==================== SCHEDULER ENDPOINTS ====================
 
 @api_router.get("/scheduler/status")
