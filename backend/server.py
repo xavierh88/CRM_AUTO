@@ -4527,6 +4527,7 @@ async def submit_prequalify_with_file(
         "idNumber": idNumber,
         "idType": idType,
         "ssn": ssn,
+        "ssnType": ssnType,
         "dateOfBirth": dateOfBirth,
         "address": address,
         "apartment": apartment,
