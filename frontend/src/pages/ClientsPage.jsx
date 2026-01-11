@@ -3925,6 +3925,24 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                 <Label className="form-label">Date of Birth</Label>
                 <p className="font-medium">{client.date_of_birth || '-'}</p>
               </div>
+              {/* ID Information - Admin Only */}
+              {isAdmin && (client.id_type || client.id_number) && (
+                <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                  <Label className="form-label text-amber-700 flex items-center gap-1">
+                    🔒 ID Information (Admin Only)
+                  </Label>
+                  <div className="flex items-center gap-4 mt-2">
+                    <div>
+                      <span className="text-xs text-amber-600">Tipo:</span>
+                      <p className="font-medium">{client.id_type || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-amber-600">Número:</span>
+                      <p className="font-medium font-mono">{client.id_number || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div>
                 <Label className="form-label">{t('clients.address')}</Label>
                 <p className="font-medium">{client.address || '-'} {client.apartment && `Apt ${client.apartment}`}</p>
