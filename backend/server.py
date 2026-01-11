@@ -639,6 +639,11 @@ async def create_client(client: ClientCreate, current_user: dict = Depends(get_c
         "email": client.email,
         "address": client.address,
         "apartment": client.apartment,
+        "date_of_birth": client.date_of_birth,
+        "time_at_address_years": client.time_at_address_years,
+        "time_at_address_months": client.time_at_address_months,
+        "housing_type": client.housing_type,
+        "rent_amount": client.rent_amount,
         "id_uploaded": False,
         "income_proof_uploaded": False,
         "last_record_date": None,  # No records yet
