@@ -3887,6 +3887,34 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                   <p className="font-medium">{client.rent_amount || '-'}</p>
                 </div>
               )}
+              {/* SSN/ITIN - Admin Only */}
+              {isAdmin && (client.ssn || client.ssn_type) && (
+                <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                  <Label className="form-label text-red-700 flex items-center gap-1">
+                    🔒 Información Confidencial (Solo Admin)
+                  </Label>
+                  <div className="flex items-center gap-4 mt-2">
+                    <div>
+                      <span className="text-xs text-red-500">Tipo:</span>
+                      <p className="font-medium">{client.ssn_type || 'SSN'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-red-500">Número:</span>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium font-mono">
+                          {showClientSSN ? (client.ssn || '-') : '•••-••-••••'}
+                        </p>
+                        <button 
+                          onClick={() => setShowClientSSN(!showClientSSN)}
+                          className="p-1 hover:bg-red-100 rounded"
+                        >
+                          {showClientSSN ? '🙈' : '👁️'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
