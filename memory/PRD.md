@@ -21,6 +21,9 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - ✅ Housing Type (Dueño/Renta/Vivo con familiares)
 - ✅ Rent Amount (conditional)
 - ✅ UI modals fixed - no more overlay issues
+- ✅ **ID Type field** (Licencia de Conducir, Pasaporte, etc.) - Admin only
+- ✅ **ID Number field** - Admin only
+- ✅ **SSN/ITIN fields** - Admin only
 
 ### User Records (Oportunidades)
 - ✅ Nested sales opportunities per client
@@ -28,6 +31,7 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - ✅ Employment section with time at employment (years/months)
 - ✅ Income Frequency and Net Income Amount
 - ✅ Commission fields (Admin-only)
+- ✅ **ID Type field now properly mapped from Pre-Qualify**
 
 ### Pre-Qualify Module
 - ✅ Public form for lead capture
@@ -37,11 +41,25 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - ✅ **Time fields separated (years/months) - FIXED**
 - ✅ **Notes include formatted time strings (e.g., "2 años, 6 meses")**
 - ✅ Email notifications to ALL admins on new submission
+- ✅ **In-app notifications for new submissions (Admin only)**
+- ✅ **ID Type mapping from website to CRM** (DL→Licencia, Passport→Pasaporte, etc.)
+
+### Backup & Restore (Admin Only)
+- ✅ Download complete database backup as JSON
+- ✅ Restore database from backup file
+- ✅ Delete all data option (with confirmation)
+- ✅ Reset ID Type options
 
 ### Communications
 - ✅ Twilio SMS integration (pending A2P approval)
 - ✅ Two-way SMS inbox
 - ✅ SMTP Email notifications (Gmail)
+
+### Notifications System
+- ✅ In-app notifications for admins
+- ✅ New Pre-Qualify submissions trigger notifications
+- ✅ Click notification to navigate to Pre-Qualify page
+- ✅ Mark all as read functionality
 
 ## Technical Stack
 - **Backend:** FastAPI + MongoDB (motor) + Pydantic
