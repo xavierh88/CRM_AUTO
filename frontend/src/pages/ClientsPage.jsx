@@ -3801,8 +3801,10 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                         <SelectContent>
                           <SelectItem value="Licencia de Conducir">Licencia de Conducir</SelectItem>
                           <SelectItem value="Pasaporte">Pasaporte</SelectItem>
-                          <SelectItem value="Matrícula Consular">Matrícula Consular</SelectItem>
-                          <SelectItem value="ID Estatal">ID Estatal</SelectItem>
+                          <SelectItem value="Pasaporte USA">Pasaporte USA</SelectItem>
+                          <SelectItem value="Matrícula">Matrícula</SelectItem>
+                          <SelectItem value="Credencial de Elector">Credencial de Elector</SelectItem>
+                          <SelectItem value="ID de Residente">ID de Residente</SelectItem>
                           <SelectItem value="Otro">Otro</SelectItem>
                         </SelectContent>
                       </Select>
