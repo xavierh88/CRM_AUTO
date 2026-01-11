@@ -3713,11 +3713,11 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
           </div>
           <p className="text-sm text-slate-500">View and manage client details</p>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-4 py-2">
           {isEditing ? (
             // Edit Mode
-            <>
-              <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="form-label">{t('clients.firstName')}</Label>
                   <Input
@@ -3732,6 +3732,8 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                     onChange={(e) => setEditData({ ...editData, last_name: e.target.value })}
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="form-label">{t('clients.phone')}</Label>
                   <Input
@@ -3752,22 +3754,24 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                     onChange={(e) => setEditData({ ...editData, email: e.target.value })}
                   />
                 </div>
-                <div>
-                  <Label className="form-label">Date of Birth</Label>
-                  <Input
-                    type="date"
-                    value={editData.date_of_birth}
-                    onChange={(e) => setEditData({ ...editData, date_of_birth: e.target.value })}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label className="form-label">{t('clients.address')}</Label>
-                  <AddressAutocomplete
-                    value={editData.address}
-                    onChange={(value) => setEditData({ ...editData, address: value })}
-                    placeholder="Start typing an address..."
-                  />
-                </div>
+              </div>
+              <div>
+                <Label className="form-label">Date of Birth</Label>
+                <Input
+                  type="date"
+                  value={editData.date_of_birth}
+                  onChange={(e) => setEditData({ ...editData, date_of_birth: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="form-label">{t('clients.address')}</Label>
+                <AddressAutocomplete
+                  value={editData.address}
+                  onChange={(value) => setEditData({ ...editData, address: value })}
+                  placeholder="Start typing an address..."
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="form-label">{t('clients.apartment')}</Label>
                   <Input
@@ -3783,17 +3787,22 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                       placeholder="Years"
                       value={editData.time_at_address_years}
                       onChange={(e) => setEditData({ ...editData, time_at_address_years: e.target.value })}
-                      className="w-20"
+                      min="0"
+                      className="flex-1"
                     />
                     <Input
                       type="number"
                       placeholder="Months"
                       value={editData.time_at_address_months}
                       onChange={(e) => setEditData({ ...editData, time_at_address_months: e.target.value })}
-                      className="w-20"
+                      min="0"
+                      max="11"
+                      className="flex-1"
                     />
                   </div>
                 </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="form-label">Housing Type</Label>
                   <Select value={editData.housing_type} onValueChange={(v) => setEditData({ ...editData, housing_type: v, rent_amount: v !== 'Renta' ? '' : editData.rent_amount })}>
@@ -3818,33 +3827,37 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                   </div>
                 )}
               </div>
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
+              <div className="flex gap-3 pt-3">
+                <Button variant="outline" onClick={() => setIsEditing(false)} className="flex-1">
                   {t('common.cancel')}
                 </Button>
-                <Button onClick={handleSave} data-testid="save-client-edit">
+                <Button onClick={handleSave} data-testid="save-client-edit" className="flex-1">
                   {t('common.save')}
                 </Button>
               </div>
-            </>
+            </div>
           ) : (
             // View Mode
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="form-label">{t('clients.firstName')}</Label>
-                <p className="font-medium">{client.first_name}</p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="form-label">{t('clients.firstName')}</Label>
+                  <p className="font-medium">{client.first_name}</p>
+                </div>
+                <div>
+                  <Label className="form-label">{t('clients.lastName')}</Label>
+                  <p className="font-medium">{client.last_name}</p>
+                </div>
               </div>
-              <div>
-                <Label className="form-label">{t('clients.lastName')}</Label>
-                <p className="font-medium">{client.last_name}</p>
-              </div>
-              <div>
-                <Label className="form-label">{t('clients.phone')}</Label>
-                <p className="font-medium">{client.phone}</p>
-              </div>
-              <div>
-                <Label className="form-label">{t('clients.email')}</Label>
-                <p className="font-medium">{client.email || '-'}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="form-label">{t('clients.phone')}</Label>
+                  <p className="font-medium">{client.phone}</p>
+                </div>
+                <div>
+                  <Label className="form-label">{t('clients.email')}</Label>
+                  <p className="font-medium">{client.email || '-'}</p>
+                </div>
               </div>
               <div>
                 <Label className="form-label">Date of Birth</Label>
@@ -3854,17 +3867,19 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                 <Label className="form-label">{t('clients.address')}</Label>
                 <p className="font-medium">{client.address || '-'} {client.apartment && `Apt ${client.apartment}`}</p>
               </div>
-              <div>
-                <Label className="form-label">Time at Address</Label>
-                <p className="font-medium">
-                  {(client.time_at_address_years || client.time_at_address_months) 
-                    ? `${client.time_at_address_years || 0} yrs, ${client.time_at_address_months || 0} mos` 
-                    : '-'}
-                </p>
-              </div>
-              <div>
-                <Label className="form-label">Housing Type</Label>
-                <p className="font-medium">{client.housing_type || '-'}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="form-label">Time at Address</Label>
+                  <p className="font-medium">
+                    {(client.time_at_address_years || client.time_at_address_months) 
+                      ? `${client.time_at_address_years || 0} yrs, ${client.time_at_address_months || 0} mos` 
+                      : '-'}
+                  </p>
+                </div>
+                <div>
+                  <Label className="form-label">Housing Type</Label>
+                  <p className="font-medium">{client.housing_type || '-'}</p>
+                </div>
               </div>
               {client.housing_type === 'Renta' && (
                 <div>
