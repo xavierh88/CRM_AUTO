@@ -4654,7 +4654,17 @@ async def get_prequalify_submission(submission_id: str, current_user: dict = Dep
     if submission.get("matched_client_id"):
         client = await db.clients.find_one({"id": submission["matched_client_id"]}, {"_id": 0})
         if client:
-            comparison = {"client": client, "differences": []}
+            # Get the most recent record for this client
+            latest_record = await db.user_records.find_one(
+                {"client_id": client["id"], "is_deleted": {"$ne": True}},
+                {"_id": 0, "id": 1},
+                sort=[("created_at", -1)]
+            )
+            comparison = {
+                "client": client, 
+                "differences": [],
+                "latest_record_id": latest_record["id"] if latest_record else None
+            }
             if client.get("first_name", "").lower() != submission.get("firstName", "").lower():
                 comparison["differences"].append({"field": "Nombre", "prequalify": submission.get("firstName"), "client": client.get("first_name")})
             if client.get("last_name", "").lower() != submission.get("lastName", "").lower():
