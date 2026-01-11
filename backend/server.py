@@ -4768,7 +4768,9 @@ Down Payment: {submission.get('estimatedDownPayment', 'N/A')}"""
     note_doc = {
         "id": str(uuid.uuid4()),
         "record_id": record_doc["id"],
-        "content": notes_content,
+        "comment": notes_content,
+        "user_id": current_user["id"],
+        "user_name": current_user.get("name") or current_user.get("email"),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by_id": current_user["id"],
         "created_by_name": current_user.get("name") or current_user.get("email")
