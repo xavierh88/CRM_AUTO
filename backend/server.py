@@ -4375,6 +4375,7 @@ async def submit_prequalify_with_file(
     idNumber: Optional[str] = Form(None),
     idType: Optional[str] = Form(None),
     ssn: Optional[str] = Form(None),
+    ssnType: Optional[str] = Form(None),
     dateOfBirth: Optional[str] = Form(None),
     address: Optional[str] = Form(None),
     apartment: Optional[str] = Form(None),
