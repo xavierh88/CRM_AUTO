@@ -4413,8 +4413,20 @@ async def submit_prequalify_with_file(
     from reportlab.lib.pagesizes import letter
     from reportlab.pdfgen import canvas
     
-    # Debug log
-    logger.info(f"Pre-qualify submission: idType={idType}, ssnType={ssnType}, employmentTimeYears={employmentTimeYears}")
+    # Debug log - DETAILED for all critical fields
+    logger.info(f"=== PRE-QUALIFY SUBMISSION RECEIVED ===")
+    logger.info(f"Name: {firstName} {lastName}")
+    logger.info(f"idNumber: '{idNumber}' (type: {type(idNumber)})")
+    logger.info(f"idType: '{idType}' (type: {type(idType)})")
+    logger.info(f"ssn: '{ssn}' (type: {type(ssn)})")
+    logger.info(f"ssnType: '{ssnType}' (type: {type(ssnType)})")
+    logger.info(f"timeAtAddressYears: '{timeAtAddressYears}' (type: {type(timeAtAddressYears)})")
+    logger.info(f"timeAtAddressMonths: '{timeAtAddressMonths}' (type: {type(timeAtAddressMonths)})")
+    logger.info(f"employmentTimeYears: '{employmentTimeYears}' (type: {type(employmentTimeYears)})")
+    logger.info(f"employmentTimeMonths: '{employmentTimeMonths}' (type: {type(employmentTimeMonths)})")
+    logger.info(f"timeWithEmployerYears: '{timeWithEmployerYears}' (type: {type(timeWithEmployerYears)})")
+    logger.info(f"timeWithEmployerMonths: '{timeWithEmployerMonths}' (type: {type(timeWithEmployerMonths)})")
+    logger.info(f"=== END SUBMISSION DATA ===")
     
     # Check for existing client by phone
     existing_client = await db.clients.find_one(
