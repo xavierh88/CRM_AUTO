@@ -3597,6 +3597,7 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null); // 'id', 'income', or 'residence'
   const [uploading, setUploading] = useState(null); // 'id', 'income', or 'residence'
+  const [showClientSSN, setShowClientSSN] = useState(false);
   const [clientDocs, setClientDocs] = useState({
     id_uploaded: client.id_uploaded || false,
     income_proof_uploaded: client.income_proof_uploaded || false,
