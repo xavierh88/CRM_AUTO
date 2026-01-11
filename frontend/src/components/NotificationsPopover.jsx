@@ -4,7 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { Bell, MessageSquare, Users, Check, CheckCheck } from 'lucide-react';
+import { Bell, MessageSquare, Users, Check, CheckCheck, FileText } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -65,7 +65,10 @@ export default function NotificationsPopover() {
 
   const handleNotificationClick = (notification) => {
     // Navigate based on notification type
-    if (notification.client_id) {
+    if (notification.type === 'prequalify') {
+      navigate('/prequalify');
+      setOpen(false);
+    } else if (notification.client_id) {
       navigate(`/clients?client=${notification.client_id}`);
       setOpen(false);
     }
@@ -79,6 +82,8 @@ export default function NotificationsPopover() {
       case 'collaboration_accepted':
       case 'collaboration_rejected':
         return <Users className="w-4 h-4 text-purple-600" />;
+      case 'prequalify':
+        return <FileText className="w-4 h-4 text-green-600" />;
       default:
         return <Bell className="w-4 h-4 text-slate-600" />;
     }
