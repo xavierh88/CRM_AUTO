@@ -245,6 +245,12 @@ class ClientCreate(BaseModel):
     apartment: Optional[str] = None
     # Date of birth
     date_of_birth: Optional[str] = None
+    # ID fields (admin only for id_number)
+    id_type: Optional[str] = None  # Licencia, Pasaporte, Matrícula Consular, etc.
+    id_number: Optional[str] = None  # ID/License number (admin only)
+    # SSN/ITIN fields
+    ssn_type: Optional[str] = None  # SSN, ITIN, Ninguno
+    ssn: Optional[str] = None  # Last 4 digits (admin only)
     # Time at address
     time_at_address_years: Optional[int] = None
     time_at_address_months: Optional[int] = None
