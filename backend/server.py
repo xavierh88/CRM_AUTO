@@ -4287,6 +4287,43 @@ async def delete_all_data(current_user: dict = Depends(get_current_user)):
         logger.error(f"Delete all error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error al eliminar datos: {str(e)}")
 
+
+@api_router.post("/admin/reset-id-types")
+async def reset_id_types(current_user: dict = Depends(get_current_user)):
+    """Reset ID Type options to new Spanish values (Admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores pueden resetear opciones")
+    
+    try:
+        # New ID types in Spanish
+        new_id_types = [
+            "Licencia de Conducir", "Pasaporte", "Pasaporte USA", "Matrícula", 
+            "Credencial de Elector", "ID de Residente", "Otro"
+        ]
+        
+        # Delete existing id_type entries
+        await db.config_lists.delete_many({"category": "id_type"})
+        
+        # Insert new values
+        for item in new_id_types:
+            await db.config_lists.insert_one({
+                "id": str(uuid.uuid4()),
+                "category": "id_type",
+                "value": item,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+        
+        logger.info(f"ID Types reset by {current_user['email']}")
+        
+        return {
+            "message": f"Opciones de ID Type actualizadas: {len(new_id_types)} opciones",
+            "options": new_id_types
+        }
+        
+    except Exception as e:
+        logger.error(f"Reset ID types error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 # ==================== SCHEDULER ENDPOINTS ====================
 
 @api_router.get("/scheduler/status")
