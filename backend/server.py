@@ -4376,9 +4376,13 @@ async def submit_prequalify_with_file(
     zipCode: Optional[str] = Form(None),
     housingType: Optional[str] = Form(None),
     rentAmount: Optional[str] = Form(None),
-    timeAtAddress: Optional[str] = Form(None),
+    # Time at address - separated fields
+    timeAtAddressYears: Optional[int] = Form(None),
+    timeAtAddressMonths: Optional[int] = Form(None),
     employerName: Optional[str] = Form(None),
-    timeWithEmployer: Optional[str] = Form(None),
+    # Time with employer - separated fields
+    timeWithEmployerYears: Optional[int] = Form(None),
+    timeWithEmployerMonths: Optional[int] = Form(None),
     incomeType: Optional[str] = Form(None),
     netIncome: Optional[str] = Form(None),
     incomeFrequency: Optional[str] = Form(None),
