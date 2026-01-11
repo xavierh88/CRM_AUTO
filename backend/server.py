@@ -4981,22 +4981,21 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
     
     # Map ID type from pre-qualify to CRM format
     id_type_mapping = {
+        # From website form
         "DL": "Licencia de Conducir",
-        "Licencia": "Licencia de Conducir",
-        "Licencia de Conducir": "Licencia de Conducir",
-        "Driver License": "Licencia de Conducir",
         "Passport": "Pasaporte",
-        "Pasaporte": "Pasaporte",
-        "US Passport": "Pasaporte",
-        "Matricula": "Matrícula Consular",
-        "Matrícula": "Matrícula Consular",
-        "Matrícula Consular": "Matrícula Consular",
-        "Matricula Consular": "Matrícula Consular",
-        "State ID": "ID Estatal",
-        "ID Estatal": "ID Estatal",
-        "Votacion ID": "ID Estatal",
-        "Resident ID": "ID Estatal",
+        "Matricula": "Matrícula",
+        "Votacion ID": "Credencial de Elector",
+        "US Passport": "Pasaporte USA",
+        "Resident ID": "ID de Residente",
         "Other": "Otro",
+        # Also accept Spanish values directly
+        "Licencia de Conducir": "Licencia de Conducir",
+        "Pasaporte": "Pasaporte",
+        "Matrícula": "Matrícula",
+        "Credencial de Elector": "Credencial de Elector",
+        "Pasaporte USA": "Pasaporte USA",
+        "ID de Residente": "ID de Residente",
         "Otro": "Otro"
     }
     
