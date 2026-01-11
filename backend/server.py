@@ -4518,7 +4518,7 @@ async def submit_prequalify(submission: PreQualifySubmission):
     try:
         admin_users = await db.users.find(
             {"role": "admin", "approved": {"$ne": False}},
-            {"_id": 0, "email": 1, "full_name": 1}
+            {"_id": 0, "id": 1, "email": 1, "full_name": 1}
         ).to_list(100)
         
         if admin_users:
