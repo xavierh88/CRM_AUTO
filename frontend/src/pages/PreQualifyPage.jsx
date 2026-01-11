@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { 
   FileText, Clock, CheckCircle2, AlertCircle, User, Phone, Mail, 
   MapPin, Briefcase, DollarSign, Calendar, ExternalLink, Plus,
-  MessageSquare, Eye, UserPlus, RefreshCw, Search
+  MessageSquare, Eye, EyeOff, UserPlus, RefreshCw, Search, Shield
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,10 +24,24 @@ export default function PreQualifyPage() {
   const [detailData, setDetailData] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
+  const [showSSN, setShowSSN] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
     fetchSubmissions();
+    fetchCurrentUser();
   }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await axios.get(`${API}/auth/me`);
+      setCurrentUser(response.data);
+    } catch (error) {
+      console.error('Error fetching user');
+    }
+  };
+
+  const isAdmin = currentUser?.role === 'admin';
 
   const fetchSubmissions = async () => {
     try {
