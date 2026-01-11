@@ -5187,9 +5187,10 @@ async def initialize_default_config_lists():
         "Audi A4", "Audi Q5", "Lexus ES", "Lexus RX", "Acura TLX", "Acura MDX"
     ]
     
-    # Default ID Types (for identification documents)
+    # Default ID Types (for identification documents) - in Spanish
     default_id_types = [
-        "DL", "Passport", "Matricula", "Votacion ID", "US Passport", "Resident ID", "Other Driver Licenses"
+        "Licencia de Conducir", "Pasaporte", "Pasaporte USA", "Matrícula", 
+        "Credencial de Elector", "ID de Residente", "Otro"
     ]
     
     # Default POI Types (Proof of Income)
