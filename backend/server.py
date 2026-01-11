@@ -4107,6 +4107,136 @@ async def restore_client(client_id: str, current_user: dict = Depends(get_curren
         raise HTTPException(status_code=404, detail="Deleted client not found")
     return {"message": "Client restored"}
 
+# ==================== BACKUP & RESTORE ENDPOINTS (Admin Only) ====================
+
+@api_router.get("/admin/backup")
+async def download_backup(current_user: dict = Depends(get_current_user)):
+    """Download complete database backup as JSON (Admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores pueden descargar backups")
+    
+    try:
+        backup_data = {
+            "backup_date": datetime.now(timezone.utc).isoformat(),
+            "backup_version": "1.0",
+            "collections": {}
+        }
+        
+        # List of collections to backup
+        collections_to_backup = [
+            "users",
+            "clients",
+            "records",
+            "cosigner_records",
+            "appointments",
+            "prequalify_submissions",
+            "config_lists",
+            "record_comments"
+        ]
+        
+        for collection_name in collections_to_backup:
+            try:
+                collection = db[collection_name]
+                # Get all documents, excluding MongoDB _id
+                documents = await collection.find({}, {"_id": 0}).to_list(length=None)
+                backup_data["collections"][collection_name] = documents
+                logger.info(f"Backup: {collection_name} - {len(documents)} documents")
+            except Exception as e:
+                logger.warning(f"Could not backup {collection_name}: {str(e)}")
+                backup_data["collections"][collection_name] = []
+        
+        # Convert to JSON
+        json_data = json_lib.dumps(backup_data, ensure_ascii=False, indent=2, default=str)
+        
+        # Return as downloadable file
+        return StreamingResponse(
+            iter([json_data]),
+            media_type="application/json",
+            headers={
+                "Content-Disposition": f"attachment; filename=carplus_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            }
+        )
+    except Exception as e:
+        logger.error(f"Backup error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al crear backup: {str(e)}")
+
+
+@api_router.post("/admin/restore")
+async def restore_backup(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Restore database from JSON backup file (Admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores pueden restaurar backups")
+    
+    if not file.filename.endswith('.json'):
+        raise HTTPException(status_code=400, detail="El archivo debe ser .json")
+    
+    try:
+        # Read and parse JSON
+        content = await file.read()
+        backup_data = json_lib.loads(content.decode('utf-8'))
+        
+        # Validate backup structure
+        if "collections" not in backup_data:
+            raise HTTPException(status_code=400, detail="Formato de backup inválido")
+        
+        # Collections to restore
+        collections_to_restore = [
+            "clients",
+            "records",
+            "cosigner_records",
+            "appointments",
+            "prequalify_submissions",
+            "config_lists",
+            "record_comments"
+        ]
+        
+        # Note: We don't restore 'users' to avoid locking out the current admin
+        
+        restore_stats = {}
+        
+        for collection_name in collections_to_restore:
+            if collection_name in backup_data["collections"]:
+                documents = backup_data["collections"][collection_name]
+                
+                if documents:
+                    # Clear existing data
+                    await db[collection_name].delete_many({})
+                    
+                    # Insert backup data
+                    await db[collection_name].insert_many(documents)
+                    restore_stats[collection_name] = len(documents)
+                    logger.info(f"Restored {collection_name}: {len(documents)} documents")
+                else:
+                    # Clear collection if backup has empty array
+                    await db[collection_name].delete_many({})
+                    restore_stats[collection_name] = 0
+        
+        # Create restore log
+        restore_log = {
+            "id": str(uuid.uuid4()),
+            "restored_by": current_user["email"],
+            "restored_at": datetime.now(timezone.utc).isoformat(),
+            "backup_date": backup_data.get("backup_date"),
+            "stats": restore_stats
+        }
+        
+        # Save restore log
+        await db.restore_logs.insert_one(restore_log)
+        
+        return {
+            "message": f"Backup restaurado exitosamente. {sum(restore_stats.values())} registros restaurados.",
+            "stats": restore_stats
+        }
+        
+    except json_lib.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="El archivo JSON no es válido")
+    except Exception as e:
+        logger.error(f"Restore error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al restaurar: {str(e)}")
+
 # ==================== SCHEDULER ENDPOINTS ====================
 
 @api_router.get("/scheduler/status")
