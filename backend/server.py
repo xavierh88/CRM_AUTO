@@ -371,8 +371,8 @@ class UserRecordResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     client_id: str
-    salesperson_id: str
-    salesperson_name: str
+    salesperson_id: Optional[str] = None
+    salesperson_name: Optional[str] = None
     # ID fields
     has_id: bool = False
     id_type: Optional[str] = None
