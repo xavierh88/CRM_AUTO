@@ -1005,6 +1005,16 @@ async def update_user_record(record_id: str, record_data: dict, current_user: di
     await db.clients.update_one({"id": client_id}, {"$set": {"last_contact": datetime.now(timezone.utc).isoformat()}})
     
     updated = await db.user_records.find_one({"id": record_id}, {"_id": 0})
+    
+    # Clean boolean fields that might have empty strings
+    bool_fields = ['has_id', 'ssn', 'has_poi', 'has_por', 'self_employed', 'has_trade', 
+                   'commission_locked', 'dl', 'checks', 'is_deleted']
+    for field in bool_fields:
+        if field in updated and updated[field] == '':
+            updated[field] = False
+        elif field in updated and updated[field] is None:
+            updated[field] = False
+    
     return updated
 
 @api_router.delete("/user-records/{record_id}")
