@@ -317,12 +317,12 @@ export default function PreQualifyPage() {
                   <p className="font-medium">{detailData.submission.dateOfBirth || 'N/A'}</p>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500">ID/Pasaporte</label>
-                  <p className="font-medium">{detailData.submission.idNumber || 'N/A'}</p>
+                  <label className="text-xs text-slate-500">Tipo de ID</label>
+                  <p className="font-medium">{detailData.submission.idType || 'N/A'}</p>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500">SSN/ITIN</label>
-                  <p className="font-medium">{detailData.submission.ssn || 'N/A'}</p>
+                  <label className="text-xs text-slate-500">ID/Pasaporte</label>
+                  <p className="font-medium">{detailData.submission.idNumber || 'N/A'}</p>
                 </div>
               </div>
 
@@ -332,17 +332,21 @@ export default function PreQualifyPage() {
                   <MapPin className="w-4 h-4" /> Dirección
                 </h4>
                 <p className="text-sm">
-                  {detailData.submission.address}, {detailData.submission.city}, {detailData.submission.state} {detailData.submission.zipCode}
+                  {detailData.submission.address}{detailData.submission.apartment ? `, Apt ${detailData.submission.apartment}` : ''}, {detailData.submission.city}, {detailData.submission.state} {detailData.submission.zipCode}
                 </p>
                 <div className="grid grid-cols-3 gap-4 mt-2 text-sm">
                   <div>
                     <span className="text-blue-500">Tipo:</span> {detailData.submission.housingType || 'N/A'}
                   </div>
                   <div>
-                    <span className="text-blue-500">Renta:</span> ${detailData.submission.rentAmount || 'N/A'}
+                    <span className="text-blue-500">Renta:</span> {detailData.submission.rentAmount || 'N/A'}
                   </div>
                   <div>
-                    <span className="text-blue-500">Tiempo:</span> {detailData.submission.timeAtAddress || 'N/A'}
+                    <span className="text-blue-500">Tiempo:</span> {
+                      (detailData.submission.timeAtAddressYears || detailData.submission.timeAtAddressMonths)
+                        ? `${detailData.submission.timeAtAddressYears || 0} años, ${detailData.submission.timeAtAddressMonths || 0} meses`
+                        : 'N/A'
+                    }
                   </div>
                 </div>
               </div>
@@ -357,17 +361,21 @@ export default function PreQualifyPage() {
                     <span className="text-emerald-600">Empleador:</span> {detailData.submission.employerName || 'N/A'}
                   </div>
                   <div>
-                    <span className="text-emerald-600">Tiempo:</span> {detailData.submission.timeWithEmployer || 'N/A'}
+                    <span className="text-emerald-600">Tiempo:</span> {
+                      (detailData.submission.timeWithEmployerYears || detailData.submission.timeWithEmployerMonths)
+                        ? `${detailData.submission.timeWithEmployerYears || 0} años, ${detailData.submission.timeWithEmployerMonths || 0} meses`
+                        : 'N/A'
+                    }
                   </div>
                   <div>
                     <span className="text-emerald-600">Tipo Ingreso:</span> {detailData.submission.incomeType || 'N/A'}
                   </div>
                   <div>
-                    <span className="text-emerald-600">Ingreso Neto:</span> ${detailData.submission.netIncome || 'N/A'} / {detailData.submission.incomeFrequency || 'N/A'}
+                    <span className="text-emerald-600">Ingreso Neto:</span> {detailData.submission.netIncome || 'N/A'} / {detailData.submission.incomeFrequency || 'N/A'}
                   </div>
                 </div>
                 <div className="mt-3 p-2 bg-white rounded border border-emerald-200">
-                  <span className="text-emerald-700 font-medium">💰 Down Payment Estimado: ${detailData.submission.estimatedDownPayment || 'N/A'}</span>
+                  <span className="text-emerald-700 font-medium">💰 Down Payment Estimado: {detailData.submission.estimatedDownPayment || 'N/A'}</span>
                 </div>
               </div>
 
