@@ -16,6 +16,10 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - ✅ Import functionality with duplicate handling
 - ✅ Progress bar with instant updates
 - ✅ Sold status indicators (star/car icons)
+- ✅ Date of Birth field
+- ✅ Time at Address (years/months)
+- ✅ Housing Type (Dueño/Renta/Vivo con familiares)
+- ✅ Rent Amount (conditional)
 
 ### User Records (Oportunidades)
 - ✅ Nested sales opportunities per client
@@ -25,13 +29,26 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - ✅ Record status: Completed/No-Show
 - ✅ Admin-only Commission fields (locks status)
 - ✅ Mark as Completed functionality
+- ✅ Employment section with:
+  - Employment Type (Company/Retired/Unemployed/Self employed)
+  - Company/Business Name
+  - Time at Employment (years/months)
+  - Income Frequency (Semanal/Cada dos semanas/Dos veces al mes/Mensual)
+  - Net Income Amount
 
-### Pre-Qualify Module (NEW)
+### Pre-Qualify Module
 - ✅ Public form for lead capture
 - ✅ Admin-only review page (/prequalify)
 - ✅ Client matching by phone number
 - ✅ Create client or add to existing notes
-- ✅ **Email notifications to ALL admins on new submission** (Implemented Jan 9, 2025)
+- ✅ Email notifications to ALL admins on new submission
+- ✅ **Multiple file upload support** (combines into single PDF)
+- ✅ **Document preview in Pre-Qualify panel**
+- ✅ **Automatic document transfer when converting to client**
+
+### Public Document Upload
+- ✅ When client already has ID from pre-qualify, shows message:
+  "Ya tiene un documento de ID previamente subido. Puede subir uno nuevo si lo desea."
 
 ### Co-Signers
 - ✅ Link co-signers to client records
@@ -64,11 +81,13 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - **Auth:** JWT tokens
 - **SMS:** Twilio
 - **Email:** SMTP (Gmail)
+- **PDF Processing:** PyPDF2, Pillow, reportlab
 
 ## Deployment
 - ✅ CRM.zip package created for Hostinger deployment
 - ✅ README.md with comprehensive setup instructions
 - ✅ .env.example files for both backend and frontend
+- ✅ Pre-qualify form HTML for website integration
 
 ## Pending/Future Tasks
 
@@ -85,8 +104,8 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - [ ] Bulk operations on clients
 
 ## Credentials
-- **Admin:** xadmin / Cali2020
+- **Admin:** admin@carplus.com / Cali2020
 - **Salesperson:** vendedor1@test.com / Test1234
 
 ## Last Updated
-January 9, 2025 - Added email notifications for Pre-Qualify submissions
+January 11, 2025 - Added multiple file upload for pre-qualify with PDF merging, document transfer to client
