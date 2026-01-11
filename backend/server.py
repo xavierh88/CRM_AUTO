@@ -4144,9 +4144,13 @@ class PreQualifySubmission(BaseModel):
     zipCode: Optional[str] = None
     housingType: Optional[str] = None
     rentAmount: Optional[str] = None
-    timeAtAddress: Optional[str] = None
+    # Time at address - separated fields
+    timeAtAddressYears: Optional[int] = None
+    timeAtAddressMonths: Optional[int] = None
     employerName: Optional[str] = None
-    timeWithEmployer: Optional[str] = None
+    # Time with employer - separated fields
+    timeWithEmployerYears: Optional[int] = None
+    timeWithEmployerMonths: Optional[int] = None
     incomeType: Optional[str] = None
     netIncome: Optional[str] = None
     incomeFrequency: Optional[str] = None
