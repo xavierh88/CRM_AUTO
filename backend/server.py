@@ -4346,7 +4346,7 @@ async def submit_prequalify(submission: PreQualifySubmission):
     
     return {"message": "Pre-qualify submission received", "id": doc["id"], "matched": existing_client is not None}
 
-# New endpoint with file upload support
+# New endpoint with file upload support (multiple files)
 @api_router.post("/prequalify/submit-with-file")
 async def submit_prequalify_with_file(
     email: str = Form(...),
@@ -4370,9 +4370,14 @@ async def submit_prequalify_with_file(
     incomeFrequency: Optional[str] = Form(None),
     estimatedDownPayment: Optional[str] = Form(None),
     consentAccepted: bool = Form(False),
-    id_file: Optional[UploadFile] = File(None)
+    id_file: Optional[UploadFile] = File(None),
+    id_files: List[UploadFile] = File(default=[])
 ):
-    """Submit pre-qualify form with optional ID document upload"""
+    """Submit pre-qualify form with optional ID document upload (supports multiple files)"""
+    from PyPDF2 import PdfMerger, PdfReader
+    from PIL import Image
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
     
     # Check for existing client by phone
     existing_client = await db.clients.find_one(
@@ -4383,33 +4388,105 @@ async def submit_prequalify_with_file(
     submission_id = str(uuid.uuid4())
     id_file_url = None
     
-    # Handle file upload if provided
+    # Collect all files (single file + multiple files)
+    all_files = []
     if id_file and id_file.filename:
+        all_files.append(id_file)
+    if id_files:
+        all_files.extend([f for f in id_files if f.filename])
+    
+    # Handle file upload if provided
+    if all_files:
         try:
-            # Create uploads directory if not exists
             upload_dir = Path(__file__).parent / "uploads"
             upload_dir.mkdir(exist_ok=True)
+            temp_dir = upload_dir / "temp"
+            temp_dir.mkdir(exist_ok=True)
             
-            # Generate unique filename
-            file_extension = Path(id_file.filename).suffix.lower()
-            if file_extension not in ['.pdf', '.jpg', '.jpeg', '.png']:
-                raise HTTPException(status_code=400, detail="Invalid file type. Allowed: PDF, JPG, PNG")
+            temp_files = []
             
-            unique_filename = f"prequalify_{submission_id}_id{file_extension}"
-            file_path = upload_dir / unique_filename
+            for idx, file in enumerate(all_files):
+                file_extension = Path(file.filename).suffix.lower()
+                if file_extension not in ['.pdf', '.jpg', '.jpeg', '.png']:
+                    continue  # Skip invalid files
+                
+                content = await file.read()
+                temp_filename = f"temp_{submission_id}_{idx}{file_extension}"
+                temp_path = temp_dir / temp_filename
+                
+                with open(temp_path, "wb") as f:
+                    f.write(content)
+                
+                temp_files.append((temp_path, file_extension))
             
-            # Save file
-            content = await id_file.read()
-            with open(file_path, "wb") as f:
-                f.write(content)
-            
-            id_file_url = f"/uploads/{unique_filename}"
-            logger.info(f"Pre-qualify ID file uploaded: {id_file_url}")
+            if temp_files:
+                # If only one file and it's a PDF, just use it directly
+                if len(temp_files) == 1 and temp_files[0][1] == '.pdf':
+                    final_filename = f"prequalify_{submission_id}_id.pdf"
+                    final_path = upload_dir / final_filename
+                    shutil.move(str(temp_files[0][0]), str(final_path))
+                    id_file_url = f"/uploads/{final_filename}"
+                
+                # If only one file and it's an image, convert to PDF
+                elif len(temp_files) == 1 and temp_files[0][1] in ['.jpg', '.jpeg', '.png']:
+                    final_filename = f"prequalify_{submission_id}_id.pdf"
+                    final_path = upload_dir / final_filename
+                    
+                    img = Image.open(temp_files[0][0])
+                    if img.mode == 'RGBA':
+                        img = img.convert('RGB')
+                    img.save(str(final_path), 'PDF', resolution=100.0)
+                    
+                    # Remove temp file
+                    temp_files[0][0].unlink()
+                    id_file_url = f"/uploads/{final_filename}"
+                
+                # Multiple files - combine into single PDF
+                else:
+                    final_filename = f"prequalify_{submission_id}_id.pdf"
+                    final_path = upload_dir / final_filename
+                    merger = PdfMerger()
+                    
+                    for temp_path, ext in temp_files:
+                        if ext == '.pdf':
+                            try:
+                                merger.append(str(temp_path))
+                            except Exception as e:
+                                logger.error(f"Error merging PDF {temp_path}: {e}")
+                        elif ext in ['.jpg', '.jpeg', '.png']:
+                            # Convert image to PDF first
+                            img_pdf_path = temp_path.with_suffix('.temp.pdf')
+                            try:
+                                img = Image.open(temp_path)
+                                if img.mode == 'RGBA':
+                                    img = img.convert('RGB')
+                                img.save(str(img_pdf_path), 'PDF', resolution=100.0)
+                                merger.append(str(img_pdf_path))
+                                img_pdf_path.unlink()  # Remove temp PDF
+                            except Exception as e:
+                                logger.error(f"Error converting image {temp_path}: {e}")
+                    
+                    if merger.pages:
+                        merger.write(str(final_path))
+                        merger.close()
+                        id_file_url = f"/uploads/{final_filename}"
+                    
+                    # Clean up temp files
+                    for temp_path, _ in temp_files:
+                        try:
+                            if temp_path.exists():
+                                temp_path.unlink()
+                        except:
+                            pass
+                
+                logger.info(f"Pre-qualify ID file(s) uploaded and combined: {id_file_url}")
+                
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error uploading pre-qualify ID file: {str(e)}")
-            # Continue without file if upload fails
+            logger.error(f"Error uploading/combining pre-qualify ID files: {str(e)}")
+            import traceback
+            traceback.print_exc()
     
     doc = {
         "id": submission_id,
