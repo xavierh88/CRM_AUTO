@@ -3992,11 +3992,12 @@ class ConfigListItem(BaseModel):
 class ConfigListItemResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
-    name: str
+    name: Optional[str] = None  # For banks, dealers, cars
+    value: Optional[str] = None  # For id_type, poi_type, por_type
     category: str
     address: Optional[str] = None
-    created_at: str
-    created_by: str
+    created_at: Optional[str] = None
+    created_by: Optional[str] = None
 
 @api_router.get("/config-lists/{category}", response_model=List[ConfigListItemResponse])
 async def get_config_list(category: str, current_user: dict = Depends(get_current_user)):
@@ -4004,8 +4005,20 @@ async def get_config_list(category: str, current_user: dict = Depends(get_curren
     valid_categories = ['bank', 'dealer', 'car', 'id_type', 'poi_type', 'por_type']
     if category not in valid_categories:
         raise HTTPException(status_code=400, detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}")
-    items = await db.config_lists.find({"category": category}, {"_id": 0}).sort("name", 1).to_list(1000)
-    return items
+    
+    items = await db.config_lists.find({"category": category}, {"_id": 0}).to_list(1000)
+    
+    # Normalize items - ensure 'name' field exists for frontend compatibility
+    normalized_items = []
+    for item in items:
+        if 'value' in item and 'name' not in item:
+            item['name'] = item['value']
+        normalized_items.append(item)
+    
+    # Sort by name/value
+    normalized_items.sort(key=lambda x: x.get('name') or x.get('value') or '')
+    
+    return normalized_items
 
 @api_router.post("/config-lists", response_model=ConfigListItemResponse)
 async def create_config_list_item(item: ConfigListItem, current_user: dict = Depends(get_current_user)):
