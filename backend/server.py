@@ -4373,9 +4373,11 @@ async def submit_prequalify_with_file(
     lastName: str = Form(...),
     phone: str = Form(...),
     idNumber: Optional[str] = Form(None),
+    idType: Optional[str] = Form(None),
     ssn: Optional[str] = Form(None),
     dateOfBirth: Optional[str] = Form(None),
     address: Optional[str] = Form(None),
+    apartment: Optional[str] = Form(None),
     city: Optional[str] = Form(None),
     state: Optional[str] = Form(None),
     zipCode: Optional[str] = Form(None),
@@ -4396,6 +4398,7 @@ async def submit_prequalify_with_file(
     incomeFrequency: Optional[str] = Form(None),
     estimatedDownPayment: Optional[str] = Form(None),
     consentAccepted: bool = Form(False),
+    language: Optional[str] = Form(None),
     id_file: Optional[UploadFile] = File(None),
     id_files: List[UploadFile] = File(default=[])
 ):
