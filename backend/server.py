@@ -409,6 +409,7 @@ class UserRecordResponse(BaseModel):
     auto_loan_amount: Optional[str] = None  # Amount when On Time
     # Down Payment
     down_payment_type: Optional[str] = None
+    down_payment_types: Optional[List[str]] = None  # Multiple selection
     down_payment_cash: Optional[str] = None
     down_payment_card: Optional[str] = None
     # Trade-in
