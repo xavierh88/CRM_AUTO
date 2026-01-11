@@ -1,184 +1,168 @@
-<analysis>**original_problem_statement:** The user wants to build a comprehensive CRM for car dealerships in Spanish. The project has since evolved to include deploying the application on a live server and integrating a public-facing pre-qualification form with the CRM backend.
+<analysis>**original_problem_statement:** The user wants to build a comprehensive CRM for car dealerships in Spanish. The project includes Admin and Vendedor roles, full client/record management, a public-facing pre-qualification form that integrates with the CRM, document uploads (merged to PDF), email notifications, and deployment to a Hostinger VPS. The public-facing website is a separate, pre-existing React project that needs to be modified to work with the new CRM.
 
 **PRODUCT REQUIREMENTS:**
 - **Roles:** Admin and Vendedor (Salesperson).
 - **Client & Record Management:** Full CRUD for clients and their associated sales opportunities (records).
-- **Dynamic Forms:** Conditional fields based on user selections (e.g., showing Rent Amount only if Housing Type is Renta).
-- **Pre-Qualify Module:** An admin-facing section to review leads from a public pre-qualification form. This includes functionality to convert leads into clients, transferring all submitted data and documents.
-- **Document Uploads:** The pre-qualification form must support uploading multiple ID documents, which should be merged into a single PDF and attached to the client record upon conversion.
-- **Email Notifications:** Admins should receive an email when a new pre-qualification lead is submitted.
-- **Deployment:** The user requires the application to be fully deployed and functional on their Hostinger VPS. They also need a downloadable ZIP file of their public-facing website, updated with the new pre-qualification form, with all Emergent branding removed.
+- **Pre-Qualify Module:** An admin-facing section to review leads from a public pre-qualification form, with functionality to convert leads into clients.
+- **Document Uploads:** The pre-qualification form must support uploading ID documents.
+- **SSN/ITIN Field:** A secure field for SSN/ITIN was added to the pre-qualification form and the CRM, visible only to admins.
+- **Deployment:** The CRM application is deployed and live on the user's Hostinger VPS.
+- **Public Website Integration:** The user's separate public website ( project) needs its multi-step pre-qualification form modified to send all data correctly to the CRM. The user requires a final, downloadable ZIP of this updated website to upload to their hosting.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-A full-stack CRM application (FastAPI/React/MongoDB) has been successfully deployed to the user's live Hostinger VPS. This session focused heavily on the deployment process, guiding the user step-by-step through server setup, dependency installation (Python, Node.js, MongoDB, Nginx), service configuration (), DNS setup for a subdomain, and SSL certificate installation ().
+A full-stack CRM application (FastAPI/React/MongoDB) is live on the user's Hostinger VPS. The agent has performed significant work on both the CRM and the source code of the user's separate public-facing website ().
 
-The application is now live and accessible via a custom subdomain with HTTPS. The agent also implemented numerous feature enhancements based on user requests, including adding several new fields to the client and record forms. A new endpoint was created to handle pre-qualification form submissions with multiple file uploads, which are then merged into a single PDF.
+Recent work involved adding a secure SSN/ITIN field, fixing UI display issues, and attempting to resolve data mapping problems between the public website's form and the CRM. The agent has correctly diagnosed that the primary remaining issues are caused by the user's live public website () running outdated code that does not send all the required data fields to the CRM.
 
-The agent has also been actively debugging and fixing issues on the live server, including authentication problems and UI layout bugs.
+The agent has modified the source code for the public website to include all necessary fields and logic, and has provided it to the user with instructions on how to recompile and deploy it.
 
 **Last working item**:
-    - Last item agent was working: The user requested that all fields from the pre-qualification form be correctly mapped and transferred when a lead is converted to a client in the CRM. The agent identified a mismatch between how Time at Address and Time with Employer were captured (text vs. separate year/month numbers) and was in the process of updating the backend models and endpoints to align them.
-    - Status: IN PROGRESS
+    - Last item agent was working: Diagnosing why several fields from the live pre-qualification form (, , ) were appearing as N/A in the CRM's pre-qualification details view. The agent concluded that the user's live website has not been updated with the latest source code, and therefore is not sending this data. The task is now blocked waiting for the user to update their public website.
+    - Status: BLOCKED
     - Agent Testing Done: N
     - Which testing method agent to use? both
     - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-  - Issue 1: Finalize Pre-Qualification to Client data mapping (P0)
-  - Issue 2: Address UI layout issues in modals (P1)
-  - Issue 3: Create and provide the final website ZIP file with the integrated form (P2)
+  - Issue 1: Pre-qualification data from the live website is incomplete in the CRM (P0)
+  - Issue 2: Add differences to record notes button for matched clients is not working (P1)
+  - Issue 3: Down Payment amount is not appearing in the notes when a lead is converted to a client (P1)
   
   Issues Detail:
   - Issue 1: 
-     - Attempted fixes: The agent started modifying the backend models () and the submission endpoint () to accept separate fields for years and months for  and , mirroring the CRM's structure.
+     - Attempted fixes: The agent correctly updated the CRM backend to accept all new and old field names and updated the CRM frontend to display them. The agent also modified the *source code* of the public website to send all the correct fields. The issue persists because the *live, deployed version* of the public website has not been updated with this new source code.
      - Next debug checklist: 
-        1.  Finalize the backend changes in  to correctly receive and store the new  and  fields.
-        2.  Update the  endpoint logic to correctly map these new fields from the  collection to the  and  collections.
-        3.  Update the standalone  form to include separate Years and Months input fields for Time at Address and Time with Employer.
-        4.  Confirm that the functionality to automatically place a summary of all pre-qualification data into the client's notes upon conversion is working as expected.
-     - Why fix this issue and what will be achieved with the fix? To ensure a lossless and accurate transfer of all lead data into the CRM, a core user requirement.
+        1.  Clearly explain to the user that they **must** update their live website by recompiling the source code from the  project.
+        2.  Guide the user on how to do this in the other project, or provide them with the final compiled  ZIP.
+        3.  Once the user confirms the site is updated, perform a live test submission to verify all fields (, , etc.) are received and displayed correctly in the CRM.
+     - Why fix this issue and what will be achieved with the fix? This is the main data integrity issue. The CRM is not capturing all required information from new leads.
+     - Status:  BLOCKED
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix? both
+     - Blocked on other issue: User action required to update their public website.
+  - Issue 2: 
+     - Attempted fixes: The agent found that the frontend was sending a  instead of a . The backend was updated to return the  for a matched client, and the frontend was updated to use it.
+     - Next debug checklist: 
+        1.  Create a test scenario where a new submission matches an existing client with at least one record.
+        2.  Click the Agregar diferencias a Notas del Record button.
+        3.  Verify the call succeeds and a new comment is added to the correct record.
+     - Why fix this issue and what will be achieved with the fix? It's a key workflow for salespeople to quickly update existing client files with new lead info.
      - Status:  IN PROGRESS
      - Is recurring issue? N
      - Should Test frontend/backend/both after fix? both
      - Blocked on other issue: None
-  - Issue 2: 
-     - Attempted fixes: The agent added  CSS classes to the New Client and Client Info modals in  to make them scrollable. However, the user reported that the content layout is still broken and overlaps, making the forms unusable.
-     - Next debug checklist: 
-        1.  Re-examine the user's screenshot (). The problem is a layout issue, not just a lack of scrolling.
-        2.  In , review the grid layout (, ) within the modals.
-        3.  Adjust the CSS, possibly by ensuring a single-column layout on smaller viewports or adjusting the grid/flex properties to prevent elements from overlapping.
-        4.  Use the screenshot tool to verify the fix before asking the user to test.
-     - Why fix this issue and what will be achieved with the fix? The CRM's core functionality of adding and editing clients is currently unusable due to these UI bugs.
-     - Status:  IN PROGRESS
-     - Is recurring issue? Y
-     - Should Test frontend/backend/both after fix? frontend
-     - Blocked on other issue: None
   - Issue 3: 
-     - Attempted fixes: The agent has created a standalone  file and provided it in a ZIP. This does not fulfill the user's request, which is to integrate the form into their existing website () and provide a ZIP of the *updated website*.
+     - Attempted fixes: The agent fixed a  vs  field mismatch in the backend, which was causing notes to appear empty.
      - Next debug checklist: 
-        1.  The user's website is a React build, making direct code injection difficult. The most practical approach is to take the functionality from the generated  (the form and the submission script).
-        2.  Create a new, well-styled  file that visually matches the user's existing website.
-        3.  Create a new  containing the user's original website files along with the new  page.
-        4.  Include a  in the ZIP explaining how the user can upload these files to their web hosting and link to the new  page from their main site.
-     - Why fix this issue and what will be achieved with the fix? Fulfills a direct user request for a deliverable they can use to update their public-facing website.
-     - Status:  NOT STARTED
+        1.  Submit a pre-qualification form including a value for Estimated Down Payment.
+        2.  Convert that lead into a new client.
+        3.  Navigate to the new client's record and check the comments/notes section to confirm the summary note includes the down payment amount.
+     - Why fix this issue and what will be achieved with the fix? Ensures all critical financial data from the lead is transferred to the client record.
+     - Status:  IN PROGRESS
      - Is recurring issue? N
-     - Should Test frontend/backend/both after fix? N/A
+     - Should Test frontend/backend/both after fix? both
      - Blocked on other issue: None
 
 **In progress Task List**:
-  - None
+  - Task 1: Backend Refactoring (P2)
+     - Where to resume: The agent created the new modular file structure (, , ). The next step is to begin migrating endpoint logic from the monolithic  into the new  directory, starting with a single module like  or .
+     - What will be achieved with this? A more stable, maintainable, and scalable backend, reducing the risk of breaking the live application.
+     - Status:  IN PROGRESS
+     - Should Test frontend/backend/both after fix? backend
+     - Blocked on something: None
 
 **Upcoming and Future Tasks**
 Upcoming Tasks:
-- **P2: Refactor **: This monolithic file is over 4,500 lines and is a significant source of technical debt and risk for the live application. It must be broken down into a proper project structure (routes, models, services).
-- **P3: Refactor **: This God component is extremely large and difficult to maintain. It must be decomposed into smaller, specialized components.
+- **P1: Frontend Refactoring of **: Decompose the large component into smaller, manageable pieces (e.g., , , ).
+- **P2: Finalize and Deliver Public Website ZIP**: Once all fixes are confirmed, provide the user with the final, compiled  folder of their public website in a ZIP, ready for upload.
 
 Future Tasks:
-- **P4: Add Co-signer comments/notes**: Implement a notes/comments section for co-signer records.
-- **P5: Full Dashboard Implementation**: Enhance the dashboard with features like exporting reports to Excel/PDF.
+- Add a notes/comments section for co-signer records.
+- Implement a full dashboard with report exporting (Excel/PDF).
 
 **Completed work in this session**
-- **Live Deployment:** Successfully guided the user through purchasing, setting up, and deploying the entire application stack on a Hostinger VPS.
-- **Domain & SSL:** Configured a custom subdomain () and installed an SSL certificate for HTTPS.
-- **Authentication Fixes:** Debugged and resolved several critical login/authentication issues on the live server, including creating the initial admin user and fixing model mismatches.
-- **Feature - Form Enhancements:** Added multiple new fields to the Client and Record forms as per user requests (Date of Birth, Housing Type, Employment Info, Income details, etc.).
-- **Feature - Multi-File Upload:** Implemented functionality in the pre-qualification endpoint () to accept multiple document uploads and merge them into a single PDF using  and .
-- **Feature - Data Transfer:** Implemented logic to transfer uploaded documents and form data from a pre-qualification lead to a new client record upon conversion.
-- **UI Fixes:** Added scrolling to modals (though layout issues persist).
-- **Email Notifications:** Implemented email alerts to all admins upon new pre-qualification submissions.
+- **SSN/ITIN Feature:** Successfully implemented the new SSN/ITIN field across the entire stack: added to the public website form, the CRM backend (submission & client models), and the CRM frontend with admin-only, toggleable visibility.
+- **UI/Data Display Fixes:** Updated the CRM's  to correctly format and display separated time fields (years/months), ID type, and the new SSN/ITIN data.
+- **Empty Notes Bug Fix:** Diagnosed and fixed the issue where notes appeared empty by correcting a  vs  field name mismatch in the backend.
+- **Add to Notes Bug Fix:** Corrected the logic for the Add differences to notes button by modifying the backend to provide the  and updating the frontend to use it.
+- **Public Website Updates:** Modified the *source code* of the user's public website to include the SSN/ITIN fields, update contact information (email, Instagram), and improve form submission logic.
+- **Root Cause Analysis:** Correctly identified that the user's reported data issues are because their live public website is running outdated code.
 
 **Earlier issues found/mentioned but not fixed**
-   - Issue 1: A user-reported bug during new client creation could not be reproduced. This remains a low-priority monitoring task.
+   - A low-priority, non-reproducible bug from a past session regarding client creation remains a monitoring task.
 
 **Known issue recurrence from previous fork**
   - None.
 
 **Code Architecture**
-The application is deployed on a Linux VPS (Ubuntu 24.04) at .
-
-- **Services:**
-    - The FastAPI backend is managed by a  service ().
-    - The React frontend is served as static files by Nginx, which also acts as a reverse proxy for the backend. The Nginx config is at .
+- **CRM Backend:**  (monolithic, with an in-progress refactor to a modular structure in , , and ).
+- **CRM Frontend:**  (React app with a monolithic  and ).
+- **Public Website:** A separate React project (). The updated source code is available in the workspace from .
 
 **Key Technical Concepts**
-- **Backend:** FastAPI, MongoDB (, ), Pydantic.
-- **Frontend:** React, Shadcn/UI, Tailwind CSS, .
-- **Deployment:** Hostinger VPS (Ubuntu), Nginx (Reverse Proxy),  (Service Management),  (SSL/HTTPS).
-- **PDF Manipulation:** , ,  for merging uploaded images/PDFs into a single PDF.
+- **Stack:** FastAPI, React, MongoDB.
+- **Architecture:** A private CRM application that receives data from a separate, public-facing React website via API.
+- **Authentication:** JWT for the CRM.
+- **Data Validation:** Pydantic models in the backend.
 
 **key DB schema**
-- **clients:** Added , , , , .
-- **user_records:** Added , , , , , .
-- **pre_qualify_submissions:** Added . Fields for  and  were updated to , , etc., to match the CRM schema.
+- : Added , , .
+- : Added , .
 
 **changes in tech stack**
-  - Added , , and  to the backend for PDF generation.
+  - None.
 
 **All files of reference**
-- **Application Code (most modified):**
-  - : Major changes to add file upload logic, PDF merging, and new fields.
-  - : Major changes to add new form fields and fix UI bugs.
-  - : Updated to display uploaded document links.
-- **Server Configuration (NEW):**
-  - : Manages the backend process.
-  - : Nginx configuration for serving the frontend and proxying the backend.
+- **CRM Backend (Primary):** 
+- **CRM Frontend (Primary):** , 
+- **Public Website Source (for reference):** The contents of , especially  and .
 
 **Areas that need refactoring**:
-- **:** **CRITICAL PRIORITY.** Now that the application is live, the risk associated with this 4500+ line monolithic file is extremely high. Any small error can bring down the entire live application.
-- **:** **HIGH PRIORITY.** This massive component is difficult to debug and maintain, as seen with the recurring UI layout issues.
+- ** (CRITICAL):** The monolithic structure poses a high risk to the live application.
+- ** (HIGH):** Its large size makes UI debugging and maintenance difficult.
 
 **key api endpoints**
-- **New/Modified:**
-    - : Updated to accept multiple , merge them into a single PDF, and handle new structured fields for employment/address time.
-    - : Updated to inform the client if an ID document was already submitted during pre-qualification.
+- ****: Updated to accept , , and . The logic is now more robust to handle missing or  values for time fields.
+- ****: Updated to return the  of a matched client, facilitating the add to notes feature.
+- ****: The response model  was updated to include the new fields (, , etc.) so they appear in the UI.
 
 **Critical Info for New Agent**
-- **THE APPLICATION IS LIVE:** The user is interacting with a production deployment on their own Hostinger VPS. The user has **NO command-line experience**.
-- **Manual Deployment Workflow:** All code changes must be pushed to the user's GitHub repository first. Then, you must guide the user to log into their VPS terminal and execute a sequence of , , , and  commands. Provide exact, copy-pasteable commands. Be extremely careful, as errors can break the live site.
-- **Separate Website:** The user's public website () is a separate project. The user wants the pre-qualification form from the CRM integrated into that site. You have been provided a ZIP () of that site.
-- **Refactoring is Urgent:** The monolithic nature of  and  is a major liability for a live application. Propose refactoring as a high-priority task after fixing the immediate UI and data-mapping bugs.
+- **THE CORE PROBLEM IS A DEPLOYMENT MISMATCH.** The user's live public website () is running old code. It **is not sending** several critical data fields (, , correct time values) to the CRM. The CRM has been fixed to handle this data, but the errors reported by the user will persist until **the user updates their public website**.
+- **Two Separate Projects:** You are working on the CRM. The public website is a different project (). You have the updated source code for it, but the user needs to re-compile it and deploy the  output to their hosting. Your main task is to unblock the user by helping them do this.
+- **CRM Admin Login:** The username has been changed to  and the password is .
 
 **documents and test reports created in this job**
-  - : Updated with the latest changes.
-  - : A standalone HTML form with the latest fields and multi-upload capability.
-  - : A ZIP containing the above HTML file.
+  -  (updated with recent changes)
+  - 
+  -  (latest source code for the public website, provided to the user)
 
 **Last 10 User Messages and any pending HUMAN messages**
-- **msg 616 (Pending):** User wants to fix the data mapping issues by making the pre-qualification form fields identical to the CRM fields (separate years/months) and wants confirmation that the notes transfer works.
-- **msg 608 (Done):** User asked for confirmation on how all pre-qualification form fields are mapped to the CRM before updating their server.
-- **msg 567 (In Progress):** User provided a ZIP of their live website and requested a major feature update: integrate the pre-qualify form, handle multiple uploads by merging them into a single PDF, display the uploaded document in the CRM, ensure all data transfers upon conversion, and notify the user on the public document submission page if an ID is already on file.
-- **msg 502 (In Progress):** User reported that data from pre-qualification is not transferring correctly to the client record, the uploaded image is missing, and comments appear empty.
-- **msg 496 (Done):** User confirmed they are ready to update their live server with the latest changes.
-- **msg 472 (Done):** User chose Option A to add a file upload field directly to the pre-qualification form submission and have it automatically transfer to the client record.
-- **msg 468 (In Progress):** User asked for the list of fields again and requested to add an ID document upload to the pre-qualification form.
-- **msg 466 (Done):** User asked for an updated list of all fields in the client and record forms.
-- **msg 398 (Done):** User requested to add Date of Birth to the client form, and Income Frequency/Net Income Amount to the record form.
-- **msg 396 (Done):** User asked for the list of fields in the client and record forms.
+- The user has repeatedly sent screenshots showing that , , and  appear as N/A in the CRM's pre-qualification details.
+- The user confirms that the  field *is* working, which indicates they have at least partially updated their website but are still using a version that is missing some fields/logic.
+- The user also reported that the add to notes button and the down payment note feature are broken.
+- The agent's last responses have tried to explain that the root cause is the outdated public website and that it needs to be updated.
 
 **Project Health Check:**
-- **Broken:** The Add Client and Edit Client modals have severe layout issues, making them unusable. Data mapping from the pre-qualification form is incomplete.
+- **Broken:** The data flow from the live public website to the CRM is broken for key fields (, , ) because the website is running outdated code.
 - **Mocked:** None.
 
 **3rd Party Integrations**
-- **Twilio (SMS):** Integrated but blocked pending the user's A2P 10DLC campaign approval. Requires User API Key.
-- **Google Places API:** Integrated for address autocomplete. Requires User API Key.
+- **Twilio (SMS):** Integrated but blocked on user's A2P 10DLC campaign approval.
+- **Google Places API:** Integrated for address autocomplete.
 - **SMTP (via Gmail):** Integrated for sending email notifications.
-- **ReportLab / PyPDF2 / Pillow (NEW):** Used for merging multiple uploaded files into a single PDF.
+- **ReportLab / PyPDF2 / Pillow:** Used for merging multiple uploaded files into a single PDF.
 
 **Testing status**
-  - Testing agent used after significant changes: NO
+  - Testing agent used after significant changes: YES. It found and fixed a bug in the direct client creation endpoint.
   - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: None
-  - Known regressions: UI layout in modals is broken after recent feature additions.
+  - Test files created: A test script was created by the testing agent at .
+  - Known regressions: The UI layout issues in modals were fixed, but the data display issues in  persist due to the external website issue.
 
 **Credentials to test flow:**
-- **Live Server URL:** 
 - **Admin Email:** 
 - **Admin Password:** 
 
 **What agent forgot to execute**
-- The agent has not yet created the final, user-requested ZIP package of the *public-facing website* () integrated with the new, fully functional pre-qualification form. A standalone HTML file was created instead.
-- The agent has not fully addressed the UI layout bugs in the modals, despite an initial attempt. The forms remain broken.</analysis>
+- The agent has not yet performed a final end-to-end test on the add to notes and down payment in notes features after the latest fixes. These should be tested once the primary data-sending issue from the public site is resolved.</analysis>
