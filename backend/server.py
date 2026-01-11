@@ -4996,7 +4996,7 @@ async def restore_backup(
     try:
         # Read and parse JSON
         content = await file.read()
-        backup_data = json.loads(content.decode('utf-8'))
+        backup_data = json_lib.loads(content.decode('utf-8'))
         
         # Validate backup structure
         if "collections" not in backup_data:
