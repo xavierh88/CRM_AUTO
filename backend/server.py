@@ -4564,7 +4564,7 @@ async def submit_prequalify_with_file(
         "idType": idType,
         "ssn": ssn,
         "ssnType": ssnType,
-        "dateOfBirth": dateOfBirth,
+        "dateOfBirth": final_dateOfBirth,  # Use normalized value
         "address": address,
         "apartment": apartment,
         "city": city,
@@ -4576,13 +4576,13 @@ async def submit_prequalify_with_file(
         "timeAtAddressYears": timeAtAddressYears,
         "timeAtAddressMonths": timeAtAddressMonths,
         "employerName": employerName,
-        # Time with employer - use whichever is provided (support both naming conventions)
-        "timeWithEmployerYears": timeWithEmployerYears or employmentTimeYears,
-        "timeWithEmployerMonths": timeWithEmployerMonths or employmentTimeMonths,
+        # Time with employer - use normalized values
+        "timeWithEmployerYears": final_employmentYears,
+        "timeWithEmployerMonths": final_employmentMonths,
         "incomeType": incomeType,
         "netIncome": netIncome,
         "incomeFrequency": incomeFrequency,
-        "estimatedDownPayment": estimatedDownPayment,
+        "estimatedDownPayment": final_downPayment,  # Use normalized value
         "consentAccepted": consentAccepted,
         "language": language,
         "created_at": datetime.now(timezone.utc).isoformat(),
