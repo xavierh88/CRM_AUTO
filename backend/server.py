@@ -709,6 +709,12 @@ async def get_client(client_id: str, current_user: dict = Depends(get_current_us
     client = await db.clients.find_one({"id": client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Hide sensitive fields from non-admin users
+    if current_user["role"] != "admin":
+        client.pop("id_number", None)
+        client.pop("ssn", None)
+    
     return client
 
 @api_router.put("/clients/{client_id}", response_model=ClientResponse)
