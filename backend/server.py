@@ -4170,9 +4170,12 @@ class PreQualifyResponse(BaseModel):
     lastName: str
     phone: str
     idNumber: Optional[str] = None
+    idType: Optional[str] = None
     ssn: Optional[str] = None
+    ssnType: Optional[str] = None
     dateOfBirth: Optional[str] = None
     address: Optional[str] = None
+    apartment: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
     zipCode: Optional[str] = None
@@ -4190,6 +4193,7 @@ class PreQualifyResponse(BaseModel):
     incomeFrequency: Optional[str] = None
     estimatedDownPayment: Optional[str] = None
     consentAccepted: bool = False
+    language: Optional[str] = None
     created_at: str
     status: str = "pending"
     matched_client_id: Optional[str] = None
