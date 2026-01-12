@@ -853,10 +853,11 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
     // Income fields
     income_frequency: '', net_income_amount: '',
     // Bank info
-    bank: '', bank_deposit_type: '', direct_deposit_amount: '',
+    bank: '', bank_deposit_type: '',
     // Vehicle & finance
     auto: '', credit: '', 
     // Auto Loan fields
+    first_time_buyer: false,
     auto_loan_status: '', auto_loan_bank: '', auto_loan_amount: '',
     // Down payment (now supports multiple selections)
     down_payment: '', down_payment_types: [], down_payment_cash: '', down_payment_card: '',
