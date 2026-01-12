@@ -171,18 +171,6 @@ code {
   .dashboard-card {
     padding: 0.75rem;
   }
-  
-  /* Fix card content overflow */
-  .dashboard-card > div {
-    overflow: hidden;
-  }
-}
-
-/* Custom breakpoint for extra small screens */
-@media (min-width: 375px) {
-  .xs\:grid-cols-2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @layer base {
