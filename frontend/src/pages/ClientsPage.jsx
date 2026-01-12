@@ -688,24 +688,24 @@ export default function ClientsPage() {
 
       {/* Client Notes Dialog */}
       {notesClient && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setNotesClient(null)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4" onClick={() => setNotesClient(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b bg-amber-50 rounded-t-xl">
-              <div>
-                <h3 className="font-semibold text-lg text-amber-800 flex items-center gap-2">
-                  <MessageCircle className="w-5 h-5" />
+            <div className="flex items-center justify-between p-3 sm:p-4 border-b bg-amber-50 rounded-t-xl">
+              <div className="min-w-0">
+                <h3 className="font-semibold text-base sm:text-lg text-amber-800 flex items-center gap-2">
+                  <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                   Notas / Reseñas
                 </h3>
-                <p className="text-sm text-amber-600">{notesClient.first_name} {notesClient.last_name}</p>
+                <p className="text-sm text-amber-600 truncate">{notesClient.first_name} {notesClient.last_name}</p>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setNotesClient(null)}>
+              <Button variant="ghost" size="icon" onClick={() => setNotesClient(null)} className="flex-shrink-0">
                 <X className="w-5 h-5" />
               </Button>
             </div>
 
             {/* Add Note */}
-            <div className="p-4 border-b">
+            <div className="p-3 sm:p-4 border-b">
               <div className="flex gap-2">
                 <Input
                   placeholder="Escribir una nota o reseña..."
@@ -714,14 +714,14 @@ export default function ClientsPage() {
                   onKeyDown={(e) => e.key === 'Enter' && addClientNote()}
                   className="flex-1"
                 />
-                <Button onClick={addClientNote} disabled={!newClientNote.trim()}>
+                <Button onClick={addClientNote} disabled={!newClientNote.trim()} className="flex-shrink-0">
                   Agregar
                 </Button>
               </div>
             </div>
 
             {/* Notes List */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4">
               {loadingNotes ? (
                 <p className="text-center text-slate-400">Cargando notas...</p>
               ) : clientNotes.length === 0 ? (
@@ -730,7 +730,7 @@ export default function ClientsPage() {
                 <div className="space-y-3">
                   {clientNotes.map((note) => (
                     <div key={note.id} className="bg-slate-50 rounded-lg p-3 border">
-                      <p className="text-slate-700">{note.comment}</p>
+                      <p className="text-slate-700 text-sm sm:text-base">{note.comment}</p>
                       <div className="flex items-center justify-between mt-2">
                         <p className="text-xs text-slate-400">
                           <span className="font-medium text-amber-600">{note.user_name}</span>
