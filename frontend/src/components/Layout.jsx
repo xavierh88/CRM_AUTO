@@ -109,7 +109,9 @@ export const Layout = ({ children }) => {
       </aside>
 
       {/* Main content - with left margin on desktop for sidebar */}
-      <div className="min-h-screen flex flex-col lg:ml-64">
+      <div className="min-h-screen flex flex-col" style={{ marginLeft: 0 }}>
+        {/* Desktop spacer for sidebar - only visible on lg screens */}
+        <div className="hidden lg:block lg:pl-64">
         {/* Top bar */}
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/50 px-4 py-3">
           <div className="flex items-center gap-3">
