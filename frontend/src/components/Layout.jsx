@@ -35,21 +35,40 @@ export const Layout = ({ children }) => {
 
   const isActive = (path) => location.pathname === path;
 
+  // Check if we're on desktop (lg breakpoint = 1024px)
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+
   return (
-    <>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.5)',
+            zIndex: 40
+          }}
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside 
-        className={`sidebar noise-texture fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        }`}
+        className="sidebar noise-texture"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: '256px',
+          zIndex: 50,
+          transform: sidebarOpen ? 'translateX(0)' : (isDesktop ? 'translateX(0)' : 'translateX(-100%)'),
+          transition: 'transform 0.2s ease-in-out'
+        }}
       >
         <div className="flex flex-col h-full relative z-10">
           {/* Logo */}
@@ -108,9 +127,24 @@ export const Layout = ({ children }) => {
       </aside>
 
       {/* Main content */}
-      <div className="min-h-screen bg-slate-50 lg:pl-64">
+      <div 
+        style={{ 
+          marginLeft: isDesktop ? '256px' : '0',
+          minHeight: '100vh'
+        }}
+      >
         {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/50 px-4 py-3">
+        <header 
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 30,
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(12px)',
+            borderBottom: '1px solid rgba(226, 232, 240, 0.5)',
+            padding: '12px 16px'
+          }}
+        >
           <div className="flex items-center gap-3">
             <button 
               className="lg:hidden p-2 rounded-lg hover:bg-slate-100"
@@ -132,11 +166,11 @@ export const Layout = ({ children }) => {
         </header>
 
         {/* Page content */}
-        <main className="p-4">
+        <main style={{ padding: '16px' }}>
           {children}
         </main>
       </div>
-    </>
+    </div>
   );
 };
 
