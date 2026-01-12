@@ -180,7 +180,7 @@ export default function DashboardPage() {
       )}
 
       {/* Main Stat Cards - Row 1 */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         <Card className="dashboard-card">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -267,7 +267,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Cards - Row 2 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card className="dashboard-card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
