@@ -46,11 +46,11 @@ export const Layout = ({ children }) => {
         />
       )}
 
-      {/* Sidebar - Desktop: static, Mobile: fixed overlay */}
+      {/* Sidebar */}
       <aside 
-        className={`sidebar noise-texture fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:fixed`}
+        className={`sidebar noise-texture fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
       >
         <div className="flex flex-col h-full relative z-10">
           {/* Logo */}
@@ -108,10 +108,8 @@ export const Layout = ({ children }) => {
         </div>
       </aside>
 
-      {/* Main content - with left margin on desktop for sidebar */}
-      <div className="min-h-screen flex flex-col" style={{ marginLeft: 0 }}>
-        {/* Desktop spacer for sidebar - only visible on lg screens */}
-        <div className="hidden lg:block lg:pl-64">
+      {/* Main content wrapper */}
+      <div className="lg:pl-64">
         {/* Top bar */}
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/50 px-4 py-3">
           <div className="flex items-center gap-3">
@@ -135,7 +133,7 @@ export const Layout = ({ children }) => {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4 lg:p-6 overflow-x-hidden">
+        <main className="p-4 lg:p-6">
           {children}
         </main>
       </div>
