@@ -169,20 +169,12 @@ code {
 /* Mobile responsive improvements */
 @media (max-width: 639px) {
   .dashboard-card {
-    @apply p-3;
-  }
-  
-  .dashboard-card .text-2xl {
-    @apply text-xl;
-  }
-  
-  .dashboard-card .text-3xl {
-    @apply text-2xl;
+    padding: 0.75rem;
   }
   
   /* Fix card content overflow */
   .dashboard-card > div {
-    @apply overflow-hidden;
+    overflow: hidden;
   }
 }
 
