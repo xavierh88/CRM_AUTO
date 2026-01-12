@@ -269,49 +269,49 @@ export default function DashboardPage() {
       {/* KPI Cards - Row 2 */}
       <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card className="dashboard-card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100 text-sm">Tasa de Conversión</p>
-                <p className="text-3xl font-bold mt-1">{conversionRate}%</p>
+              <div className="min-w-0">
+                <p className="text-blue-100 text-xs sm:text-sm">Tasa de Conversión</p>
+                <p className="text-xl sm:text-3xl font-bold mt-1">{conversionRate}%</p>
               </div>
-              <Target className="w-10 h-10 text-blue-200" />
+              <Target className="w-8 h-8 sm:w-10 sm:h-10 text-blue-200 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="dashboard-card bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-emerald-100 text-sm">Citas Cumplidas</p>
-                <p className="text-3xl font-bold mt-1">{completionRate}%</p>
+              <div className="min-w-0">
+                <p className="text-emerald-100 text-xs sm:text-sm">Citas Cumplidas</p>
+                <p className="text-xl sm:text-3xl font-bold mt-1">{completionRate}%</p>
               </div>
-              <Activity className="w-10 h-10 text-emerald-200" />
+              <Activity className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-200 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="dashboard-card bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100 text-sm">Total Records</p>
-                <p className="text-3xl font-bold mt-1">{stats?.total_records || 0}</p>
+              <div className="min-w-0">
+                <p className="text-purple-100 text-xs sm:text-sm">Total Records</p>
+                <p className="text-xl sm:text-3xl font-bold mt-1">{stats?.total_records || 0}</p>
               </div>
-              <FileCheck className="w-10 h-10 text-purple-200" />
+              <FileCheck className="w-8 h-8 sm:w-10 sm:h-10 text-purple-200 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="dashboard-card bg-gradient-to-br from-amber-500 to-amber-600 text-white">
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-amber-100 text-sm">Co-Signers</p>
-                <p className="text-3xl font-bold mt-1">{stats?.total_cosigners || 0}</p>
+              <div className="min-w-0">
+                <p className="text-amber-100 text-xs sm:text-sm">Co-Signers</p>
+                <p className="text-xl sm:text-3xl font-bold mt-1">{stats?.total_cosigners || 0}</p>
               </div>
-              <Users2 className="w-10 h-10 text-amber-200" />
+              <Users2 className="w-8 h-8 sm:w-10 sm:h-10 text-amber-200 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
