@@ -1290,11 +1290,16 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
               </div>
               <div>
                 <Label className="form-label">Dealer</Label>
-                <Input 
-                  placeholder="Ubicación del dealer"
-                  value={appointmentData.dealer}
-                  onChange={(e) => setAppointmentData({ ...appointmentData, dealer: e.target.value })}
-                />
+                <Select value={appointmentData.dealer} onValueChange={(value) => setAppointmentData({ ...appointmentData, dealer: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar dealer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {configLists.dealers.map((dealer) => (
+                      <SelectItem key={dealer.id} value={dealer.name}>{dealer.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label className="form-label">Idioma del Cliente</Label>
