@@ -798,7 +798,7 @@ export default function ClientsPage() {
                             hour: '2-digit', minute: '2-digit' 
                           })}
                         </p>
-                        {(note.user_id === user?.id || isAdmin) && (
+                        {isAdmin && (
                           <Button 
                             size="sm" 
                             variant="ghost" 
