@@ -166,6 +166,33 @@ code {
   @apply uppercase tracking-widest text-xs font-bold text-slate-500 mb-1.5;
 }
 
+/* Mobile responsive improvements */
+@media (max-width: 639px) {
+  .dashboard-card {
+    @apply p-3;
+  }
+  
+  .dashboard-card .text-2xl {
+    @apply text-xl;
+  }
+  
+  .dashboard-card .text-3xl {
+    @apply text-2xl;
+  }
+  
+  /* Fix card content overflow */
+  .dashboard-card > div {
+    @apply overflow-hidden;
+  }
+}
+
+/* Custom breakpoint for extra small screens */
+@media (min-width: 375px) {
+  .xs\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @layer base {
   [data-debug-wrapper="true"] {
     display: contents !important;
