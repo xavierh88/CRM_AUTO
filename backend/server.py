@@ -5226,7 +5226,8 @@ Down Payment: {submission.get('estimatedDownPayment', 'N/A')}"""
         "user_name": current_user.get("name") or current_user.get("email"),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by_id": current_user["id"],
-        "created_by_name": current_user.get("name") or current_user.get("email")
+        "created_by_name": current_user.get("name") or current_user.get("email"),
+        "admin_only": True  # Only admin can see pre-qualify data
     }
     await db.record_comments.insert_one(note_doc)
     await db.prequalify_submissions.update_one(
