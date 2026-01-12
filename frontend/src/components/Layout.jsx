@@ -37,7 +37,7 @@ export const Layout = ({ children }) => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
@@ -46,11 +46,11 @@ export const Layout = ({ children }) => {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Desktop: static, Mobile: fixed overlay */}
       <aside 
-        className={`sidebar noise-texture fixed lg:static inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+        className={`sidebar noise-texture fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        } lg:fixed`}
       >
         <div className="flex flex-col h-full relative z-10">
           {/* Logo */}
@@ -108,11 +108,11 @@ export const Layout = ({ children }) => {
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen min-w-0">
+      {/* Main content - with left margin on desktop for sidebar */}
+      <div className="min-h-screen flex flex-col lg:ml-64">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/50 px-3 sm:px-4 lg:px-8 py-3 sm:py-4">
-          <div className="flex items-center gap-2 sm:gap-4">
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/50 px-4 py-3">
+          <div className="flex items-center gap-3">
             <button 
               className="lg:hidden p-2 rounded-lg hover:bg-slate-100 flex-shrink-0"
               onClick={() => setSidebarOpen(true)}
@@ -121,11 +121,8 @@ export const Layout = ({ children }) => {
               <Menu className="w-5 h-5 text-slate-600" />
             </button>
             <div className="flex-1" />
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2">
               <NotificationsPopover />
-              <span className="text-sm text-slate-500 hidden sm:block">
-                {isAdmin ? 'Admin' : 'Salesperson'}
-              </span>
               <div className={`px-2 py-1 rounded text-xs font-medium ${
                 isAdmin ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
               }`}>
@@ -136,7 +133,7 @@ export const Layout = ({ children }) => {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-3 sm:p-4 lg:p-8 animate-fade-in overflow-x-hidden">
+        <main className="flex-1 p-4 lg:p-6 overflow-x-hidden">
           {children}
         </main>
       </div>
