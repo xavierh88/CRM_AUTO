@@ -172,8 +172,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Loading overlay */}
-      {loading && (
+      {/* Loading overlay - only show briefly */}
+      {loading && stats && (
         <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50">
           <div className="loading-spinner"></div>
         </div>
