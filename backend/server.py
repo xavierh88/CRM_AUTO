@@ -1032,8 +1032,13 @@ async def delete_user_record(record_id: str, permanent: bool = False, current_us
 @api_router.get("/user-records/{record_id}/comments")
 async def get_record_comments(record_id: str, current_user: dict = Depends(get_current_user)):
     """Get all comments for a user record"""
+    # Build query - if not admin, exclude admin_only comments
+    query = {"record_id": record_id}
+    if current_user["role"] != "admin":
+        query["admin_only"] = {"$ne": True}
+    
     comments = await db.record_comments.find(
-        {"record_id": record_id},
+        query,
         {"_id": 0}
     ).sort("created_at", -1).to_list(100)
     return comments
