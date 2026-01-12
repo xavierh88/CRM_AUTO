@@ -291,12 +291,12 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="space-y-6" data-testid="clients-page">
+    <div className="space-y-4 sm:space-y-6" data-testid="clients-page">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">{t('clients.title')}</h1>
-          <p className="text-slate-500 mt-1">{clients.length} total clients</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{t('clients.title')}</h1>
+          <p className="text-slate-500 mt-1 text-sm">{clients.length} total clients</p>
         </div>
         <Dialog open={showAddClient} onOpenChange={setShowAddClient}>
           <DialogTrigger asChild>
