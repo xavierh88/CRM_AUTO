@@ -1060,13 +1060,13 @@ async def add_record_comment(record_id: str, comment: str = Form(...), current_u
 
 @api_router.delete("/user-records/{record_id}/comments/{comment_id}")
 async def delete_record_comment(record_id: str, comment_id: str, current_user: dict = Depends(get_current_user)):
-    """Delete a comment (only by the author or admin)"""
+    """Delete a comment (only admin can delete)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Only admin can delete comments")
+    
     comment = await db.record_comments.find_one({"id": comment_id, "record_id": record_id})
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
-    
-    if comment["user_id"] != current_user["id"] and current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Can only delete your own comments")
     
     await db.record_comments.delete_one({"id": comment_id})
     return {"message": "Comment deleted"}
