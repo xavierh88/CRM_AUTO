@@ -1512,40 +1512,6 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
             )}
           </div>
 
-          {/* POR Section (Proof of Residence) */}
-          <div className="space-y-3 mb-4">
-            <div className="flex items-center gap-3">
-              <Checkbox
-                checked={newRecord.has_por}
-                onCheckedChange={(checked) => setNewRecord({ ...newRecord, has_por: checked, por_types: checked ? newRecord.por_types : [] })}
-                id="new-has_por"
-              />
-              <Label htmlFor="new-has_por" className="font-medium">POR (Proof of Residence)</Label>
-            </div>
-            {newRecord.has_por && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 ml-6">
-                {configLists.por_type.map((item) => (
-                  <div key={item.id} className="flex items-center gap-2">
-                    <Checkbox
-                      checked={(newRecord.por_types || []).includes(item.name)}
-                      onCheckedChange={(checked) => {
-                        const current = newRecord.por_types || [];
-                        setNewRecord({
-                          ...newRecord,
-                          por_types: checked 
-                            ? [...current, item.name]
-                            : current.filter(t => t !== item.name)
-                        });
-                      }}
-                      id={`new-por_${item.id}`}
-                    />
-                    <Label htmlFor={`new-por_${item.id}`} className="text-sm">{item.name}</Label>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* Bank Section */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
             <div>
