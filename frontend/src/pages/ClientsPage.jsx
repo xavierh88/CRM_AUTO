@@ -1208,9 +1208,9 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 
       {/* Appointment Form Modal - Create or Edit */}
       {showAppointmentForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md m-4">
-            <h3 className="text-lg font-semibold mb-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 className="text-base sm:text-lg font-semibold mb-4">
               {appointments[showAppointmentForm] ? '📅 Modificar Cita' : '📅 Agendar Cita'}
             </h3>
             <div className="space-y-4">
@@ -1255,37 +1255,37 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
               {/* Show different buttons based on whether we're editing or creating */}
               {appointments[showAppointmentForm] ? (
                 <div className="space-y-2 pt-2">
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Button variant="outline" onClick={() => { setShowAppointmentForm(null); setAppointmentData({ date: '', time: '', dealer: '', language: 'en' }); }} className="flex-1">
                       Cancelar
                     </Button>
                     <Button onClick={() => handleUpdateAppointment()} className="flex-1">
-                      💾 Guardar Cambios
+                      💾 Guardar
                     </Button>
                   </div>
-                  <div className="flex gap-2 border-t pt-2">
+                  <div className="flex flex-col sm:flex-row gap-2 border-t pt-2">
                     <Button onClick={() => sendAppointmentSMS(clientId, appointments[showAppointmentForm].id)} variant="outline" className="flex-1" size="sm">
                       <Send className="w-4 h-4 mr-1" />
-                      Reenviar SMS
+                      SMS
                     </Button>
                     <Button onClick={() => sendAppointmentEmail(clientId, appointments[showAppointmentForm].id)} className="flex-1 bg-green-600 hover:bg-green-700" size="sm">
                       <Mail className="w-4 h-4 mr-1" />
-                      Reenviar Email
+                      Email
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="flex gap-2 pt-2">
+                <div className="flex flex-col sm:flex-row gap-2 pt-2">
                   <Button variant="outline" onClick={() => setShowAppointmentForm(null)} className="flex-1">
                     Cancelar
                   </Button>
                   <Button onClick={() => handleCreateAppointment('sms')} variant="outline" className="flex-1">
                     <Send className="w-4 h-4 mr-1" />
-                    Crear + SMS
+                    <span className="hidden sm:inline">Crear + </span>SMS
                   </Button>
                   <Button onClick={() => handleCreateAppointment('email')} className="flex-1 bg-green-600 hover:bg-green-700">
                     <Mail className="w-4 h-4 mr-1" />
-                    Crear + Email
+                    <span className="hidden sm:inline">Crear + </span>Email
                   </Button>
                 </div>
               )}
