@@ -109,19 +109,19 @@ export const Layout = ({ children }) => {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/50 px-4 lg:px-8 py-4">
-          <div className="flex items-center gap-4">
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/50 px-3 sm:px-4 lg:px-8 py-3 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button 
-              className="lg:hidden p-2 rounded-lg hover:bg-slate-100"
+              className="lg:hidden p-2 rounded-lg hover:bg-slate-100 flex-shrink-0"
               onClick={() => setSidebarOpen(true)}
               data-testid="mobile-menu-btn"
             >
               <Menu className="w-5 h-5 text-slate-600" />
             </button>
             <div className="flex-1" />
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <NotificationsPopover />
               <span className="text-sm text-slate-500 hidden sm:block">
                 {isAdmin ? 'Admin' : 'Salesperson'}
@@ -136,7 +136,7 @@ export const Layout = ({ children }) => {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4 lg:p-8 animate-fade-in">
+        <main className="flex-1 p-3 sm:p-4 lg:p-8 animate-fade-in overflow-x-hidden">
           {children}
         </main>
       </div>
