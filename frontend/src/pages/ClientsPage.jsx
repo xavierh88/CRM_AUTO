@@ -434,6 +434,63 @@ export default function ClientsPage() {
                   />
                 </div>
               )}
+              {/* ID Type and Number - Admin Only */}
+              {isAdmin && (
+                <>
+                  <div className="border-t pt-4 mt-4">
+                    <p className="text-sm font-medium text-slate-700 mb-3">ID Information (Admin Only)</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="form-label">ID Type</Label>
+                        <Select value={newClient.id_type} onValueChange={(v) => setNewClient({ ...newClient, id_type: v })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select ID Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {configLists.id_type.map((item) => (
+                              <SelectItem key={item.id} value={item.value || item.name}>{item.value || item.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="form-label">ID Number</Label>
+                        <Input
+                          value={newClient.id_number}
+                          onChange={(e) => setNewClient({ ...newClient, id_number: e.target.value })}
+                          placeholder="Enter ID number"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-700 mb-3">SSN/ITIN Information (Admin Only)</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="form-label">SSN/ITIN Type</Label>
+                        <Select value={newClient.ssn_type} onValueChange={(v) => setNewClient({ ...newClient, ssn_type: v })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="SSN">SSN</SelectItem>
+                            <SelectItem value="ITIN">ITIN</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="form-label">SSN/ITIN Number</Label>
+                        <Input
+                          value={newClient.ssn}
+                          onChange={(e) => setNewClient({ ...newClient, ssn: e.target.value })}
+                          placeholder="XXX-XX-XXXX"
+                          type="password"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="flex gap-3 pt-3">
                 <Button type="button" variant="outline" onClick={() => setShowAddClient(false)} className="flex-1">
                   {t('common.cancel')}
