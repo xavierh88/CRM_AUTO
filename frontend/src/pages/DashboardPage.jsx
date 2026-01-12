@@ -182,84 +182,84 @@ export default function DashboardPage() {
       {/* Main Stat Cards - Row 1 */}
       <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         <Card className="dashboard-card">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Users className="w-5 h-5 text-blue-600" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
               </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900">{stats?.total_clients || 0}</p>
-                <p className="text-xs text-slate-500">Clientes {selectedMonth || period !== 'all' ? '(Período)' : 'Total'}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="dashboard-card">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <UserPlus className="w-5 h-5 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900">{stats?.new_clients_month || 0}</p>
-                <p className="text-xs text-slate-500">Nuevos (Mes)</p>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold text-slate-900">{stats?.total_clients || 0}</p>
+                <p className="text-xs text-slate-500 truncate">Clientes {selectedMonth || period !== 'all' ? '(Período)' : 'Total'}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="dashboard-card">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-amber-600" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
               </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900">{stats?.sales || 0}</p>
-                <p className="text-xs text-slate-500">Ventas {selectedMonth || period !== 'all' ? '(Período)' : 'Total'}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="dashboard-card">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-                <CarFront className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900">{stats?.sales_month || 0}</p>
-                <p className="text-xs text-slate-500">Ventas (Mes Actual)</p>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold text-slate-900">{stats?.new_clients_month || 0}</p>
+                <p className="text-xs text-slate-500 truncate">Nuevos (Mes)</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="dashboard-card">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-rose-600" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
               </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900">{stats?.today_appointments || 0}</p>
-                <p className="text-xs text-slate-500">Citas Hoy</p>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold text-slate-900">{stats?.sales || 0}</p>
+                <p className="text-xs text-slate-500 truncate">Ventas {selectedMonth || period !== 'all' ? '(Período)' : 'Total'}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="dashboard-card">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-cyan-50 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-cyan-600" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+                <CarFront className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
               </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900">{stats?.week_appointments || 0}</p>
-                <p className="text-xs text-slate-500">Citas Semana</p>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold text-slate-900">{stats?.sales_month || 0}</p>
+                <p className="text-xs text-slate-500 truncate">Ventas (Mes)</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="dashboard-card">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-rose-50 flex items-center justify-center flex-shrink-0">
+                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-rose-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold text-slate-900">{stats?.today_appointments || 0}</p>
+                <p className="text-xs text-slate-500 truncate">Citas Hoy</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="dashboard-card">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-cyan-50 flex items-center justify-center flex-shrink-0">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold text-slate-900">{stats?.week_appointments || 0}</p>
+                <p className="text-xs text-slate-500 truncate">Citas Semana</p>
               </div>
             </div>
           </CardContent>
