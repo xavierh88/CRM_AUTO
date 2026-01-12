@@ -11,7 +11,6 @@ import {
   Menu, 
   X,
   Shield,
-  Car,
   FileSpreadsheet,
   FileText
 } from 'lucide-react';
@@ -37,7 +36,7 @@ export const Layout = ({ children }) => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <>
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
@@ -69,7 +68,7 @@ export const Layout = ({ children }) => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-3 py-6 space-y-1">
+          <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
             {navItems.map((item) => (
               <Link
                 key={item.path}
@@ -108,13 +107,13 @@ export const Layout = ({ children }) => {
         </div>
       </aside>
 
-      {/* Main content wrapper */}
-      <div className="lg:pl-64">
+      {/* Main content */}
+      <div className="min-h-screen bg-slate-50 lg:pl-64">
         {/* Top bar */}
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/50 px-4 py-3">
           <div className="flex items-center gap-3">
             <button 
-              className="lg:hidden p-2 rounded-lg hover:bg-slate-100 flex-shrink-0"
+              className="lg:hidden p-2 rounded-lg hover:bg-slate-100"
               onClick={() => setSidebarOpen(true)}
               data-testid="mobile-menu-btn"
             >
@@ -133,11 +132,11 @@ export const Layout = ({ children }) => {
         </header>
 
         {/* Page content */}
-        <main className="p-4 lg:p-6">
+        <main className="p-4">
           {children}
         </main>
       </div>
-    </div>
+    </>
   );
 };
 
