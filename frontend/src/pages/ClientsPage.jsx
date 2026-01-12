@@ -1563,7 +1563,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
             </div>
             <div>
               <Label className="form-label mb-1 block">Tipo de Depósito</Label>
-              <Select value={newRecord.bank_deposit_type} onValueChange={(value) => setNewRecord({ ...newRecord, bank_deposit_type: value, direct_deposit_amount: value !== 'Deposito Directo' ? '' : newRecord.direct_deposit_amount })}>
+              <Select value={newRecord.bank_deposit_type} onValueChange={(value) => setNewRecord({ ...newRecord, bank_deposit_type: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar tipo" />
                 </SelectTrigger>
@@ -1574,19 +1574,6 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
               </Select>
             </div>
           </div>
-
-          {/* Direct Deposit Amount - shown when Deposito Directo is selected */}
-          {newRecord.bank_deposit_type === 'Deposito Directo' && (
-            <div className="mb-4">
-              <Label className="form-label mb-1 block">Monto de Depósito Directo</Label>
-              <Input
-                placeholder="$0.00"
-                value={newRecord.direct_deposit_amount || ''}
-                onChange={(e) => setNewRecord({ ...newRecord, direct_deposit_amount: e.target.value })}
-                className="max-w-xs"
-              />
-            </div>
-          )}
 
           {/* Cosigner Alert */}
           {newRecord.bank_deposit_type === 'No deposito directo' && newRecord.has_poi && newRecord.poi_type === 'Cash' && (
@@ -1599,7 +1586,46 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
             </div>
           )}
 
-          {/* Auto, Credit, Auto Loan */}
+          {/* POR Section - Moved here, below Bank */}
+          <div className="border rounded-lg p-3 mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Checkbox 
+                checked={newRecord.has_por}
+                onCheckedChange={(checked) => {
+                  setNewRecord({ 
+                    ...newRecord, 
+                    has_por: checked,
+                    por_types: checked ? newRecord.por_types : []
+                  });
+                }}
+              />
+              <Label className="form-label mb-0 font-medium">POR (Proof of Residence)</Label>
+            </div>
+            {newRecord.has_por && (
+              <div className="ml-6 mt-2">
+                <p className="text-xs text-slate-500 mb-2">Select applicable types:</p>
+                <div className="flex flex-wrap gap-3">
+                  {['Utility Bill', 'Bank Statement', 'Lease Agreement', 'Government Letter'].map((type) => (
+                    <div key={type} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={newRecord.por_types?.includes(type) || false}
+                        onCheckedChange={(checked) => {
+                          const currentTypes = newRecord.por_types || [];
+                          const updatedTypes = checked 
+                            ? [...currentTypes, type]
+                            : currentTypes.filter(t => t !== type);
+                          setNewRecord({ ...newRecord, por_types: updatedTypes });
+                        }}
+                      />
+                      <span className="text-sm">{type}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Auto and Auto Loan Section - Reorganized */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
             <div>
               <Label className="form-label mb-1 block">Auto</Label>
@@ -1623,6 +1649,14 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
           {/* Auto Loan Section */}
           <div className="border rounded-lg p-3 mb-4">
             <Label className="form-label mb-2 block font-medium">Auto Loan</Label>
+            {/* First Time Buyer */}
+            <div className="flex items-center gap-2 mb-3">
+              <Checkbox
+                checked={newRecord.first_time_buyer || false}
+                onCheckedChange={(checked) => setNewRecord({ ...newRecord, first_time_buyer: checked })}
+              />
+              <span className="text-sm font-medium">First Time Buyer</span>
+            </div>
             <div className="flex flex-wrap gap-4 mb-3">
               {['Paid', 'Late', 'On Time'].map((status) => (
                 <div key={status} className="flex items-center gap-2">
