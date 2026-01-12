@@ -143,7 +143,8 @@ export default function ClientsPage() {
     first_name: '', last_name: '', phone: '', email: '', address: '', apartment: '',
     date_of_birth: '',
     time_at_address_years: '', time_at_address_months: '',
-    housing_type: '', rent_amount: ''
+    housing_type: '', rent_amount: '',
+    id_type: '', id_number: '', ssn_type: '', ssn: ''
   });
 
   useEffect(() => {
