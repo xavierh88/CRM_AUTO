@@ -130,25 +130,25 @@ export default function DashboardPage() {
     : 0;
 
   return (
-    <div className="space-y-6" data-testid="dashboard-page">
+    <div className="space-y-4 sm:space-y-6" data-testid="dashboard-page">
       {/* Header with Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">{t('dashboard.title')}</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{t('dashboard.title')}</h1>
+          <p className="text-slate-500 mt-1 text-sm sm:text-base">
             Mostrando: <span className="font-medium text-blue-600">{getPeriodLabel()}</span>
           </p>
         </div>
         
         {/* Period Filters */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <Filter className="w-4 h-4" />
             <span>Filtrar:</span>
           </div>
           
           <Select value={period} onValueChange={handlePeriodChange}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-32 sm:w-40">
               <SelectValue placeholder="Período" />
             </SelectTrigger>
             <SelectContent>
@@ -159,7 +159,7 @@ export default function DashboardPage() {
           </Select>
           
           <Select value={selectedMonth || "none"} onValueChange={(v) => handleMonthChange(v === "none" ? "" : v)}>
-            <SelectTrigger className="w-36">
+            <SelectTrigger className="w-28 sm:w-36">
               <SelectValue placeholder="Mes específico" />
             </SelectTrigger>
             <SelectContent>
