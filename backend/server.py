@@ -1099,13 +1099,13 @@ async def add_client_comment(client_id: str, comment: str = Form(...), current_u
 
 @api_router.delete("/clients/{client_id}/comments/{comment_id}")
 async def delete_client_comment(client_id: str, comment_id: str, current_user: dict = Depends(get_current_user)):
-    """Delete a client comment (only by the author or admin)"""
+    """Delete a client comment (only admin can delete)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Only admin can delete comments")
+    
     comment = await db.client_comments.find_one({"id": comment_id, "client_id": client_id})
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
-    
-    if comment["user_id"] != current_user["id"] and current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Can only delete your own comments")
     
     await db.client_comments.delete_one({"id": comment_id})
     return {"message": "Comment deleted"}
