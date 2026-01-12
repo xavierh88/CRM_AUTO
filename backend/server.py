@@ -321,11 +321,11 @@ class UserRecordCreate(BaseModel):
     # Bank info with deposit type
     bank: Optional[str] = None
     bank_deposit_type: Optional[str] = None  # Deposito Directo, No deposito directo
-    direct_deposit_amount: Optional[str] = None  # Amount when Deposito Directo is selected
     # Other fields
     auto: Optional[str] = None
     credit: Optional[str] = None
     # Auto Loan fields - Paid, Late, On Time (with bank and amount for On Time)
+    first_time_buyer: bool = False  # New field
     auto_loan: Optional[str] = None  # Legacy field
     auto_loan_status: Optional[str] = None  # Paid, Late, On Time
     auto_loan_bank: Optional[str] = None  # Bank name when On Time
