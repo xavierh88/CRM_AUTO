@@ -2454,15 +2454,16 @@ async def send_appointment_email(client_id: str, appointment_id: str, current_us
 <style>
 body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }}
 .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-.header {{ background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+.header {{ background: #1e3a8a; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+.header img {{ max-width: 180px; height: auto; margin-bottom: 15px; }}
 .content {{ background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }}
-.appointment-box {{ background: white; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #8b5cf6; }}
+.appointment-box {{ background: white; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #1e3a8a; }}
 .detail-row {{ padding: 8px 0; border-bottom: 1px solid #f1f5f9; }}
 .detail-row:last-child {{ border-bottom: none; }}
 .label {{ color: #64748b; font-weight: 500; }}
 .value {{ color: #1e293b; font-weight: bold; }}
-.button {{ display: inline-block; background: #8b5cf6; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 10px 5px; }}
-.button:hover {{ background: #7c3aed; }}
+.button {{ display: inline-block; background: #dc2626; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 10px 5px; }}
+.button:hover {{ background: #b91c1c; }}
 .button-secondary {{ background: #64748b; }}
 .footer {{ text-align: center; padding: 20px; color: #64748b; font-size: 12px; }}
 </style>
@@ -2470,8 +2471,9 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0
 <body>
 <div class="container">
 <div class="header">
+<img src="{COMPANY_LOGO_URL}" alt="{COMPANY_NAME}">
 <h1 style="margin: 0;">📅 Su Cita</h1>
-<p style="margin: 10px 0 0 0; opacity: 0.9;">DealerCRM</p>
+<p style="margin: 10px 0 0 0; opacity: 0.9; color: #dc2626;">{COMPANY_TAGLINE}</p>
 </div>
 <div class="content">
 <p>Hola <strong>{client_name}</strong>,</p>
@@ -2502,11 +2504,11 @@ Desde el link podrá ver los detalles, reprogramar o cancelar su cita.
 
 <p style="color: #64748b; font-size: 13px;">
 Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
-<a href="{appointment_link}" style="color: #8b5cf6; word-break: break-all;">{appointment_link}</a>
+<a href="{appointment_link}" style="color: #1e3a8a; word-break: break-all;">{appointment_link}</a>
 </p>
 </div>
 <div class="footer">
-<p>Este mensaje fue enviado automáticamente por DealerCRM.<br>
+<p>Este mensaje fue enviado automáticamente por {COMPANY_NAME}.<br>
 Si tiene preguntas, contacte a su vendedor.</p>
 </div>
 </div>
