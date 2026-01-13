@@ -77,6 +77,20 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 
 ## Session Work Completed (January 13, 2025)
 
+### Logo Updated Across CRM
+- ✅ Updated logo from: `/logo.png` to: `https://carplusautosalesgroup.com/img/carplus.png`
+- ✅ Logo updated in:
+  - Login page (`/app/frontend/src/pages/LoginPage.jsx`)
+  - Sidebar (`/app/frontend/src/components/Layout.jsx`)
+  - Public appointment page (`/app/frontend/src/pages/PublicAppointmentPage.jsx`)
+  - Public documents page (`/app/frontend/src/pages/PublicDocumentsPage.jsx`)
+  - Pre-qualify form (`/app/frontend/public/prequalify-FINAL.html`)
+  - All email templates in backend (appointment, documents, collaboration, pre-qualify notifications)
+- ✅ Company branding constants added to backend:
+  - `COMPANY_LOGO_URL = "https://carplusautosalesgroup.com/img/carplus.png"`
+  - `COMPANY_NAME = "CARPLUS AUTOSALE"`
+  - `COMPANY_TAGLINE = "Friendly Brokerage"`
+
 ### Appointment System Issues - VERIFIED & FIXED
 - ✅ Appointment form works correctly for vendedor (salesperson) role - NOT blank
 - ✅ Dealer dropdown shows all options (verified with 5 dealers)
