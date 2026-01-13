@@ -1592,10 +1592,26 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
             )}
           </div>
 
-          {/* Auto and Auto Loan Section - Reorganized */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-            <div>
-              <Label className="form-label mb-1 block">Auto</Label>
+          {/* Credit Score - separate field */}
+          <div className="mb-4">
+            <Label className="form-label mb-1 block">Credit Score</Label>
+            <Input placeholder="Score" value={newRecord.credit} onChange={(e) => setNewRecord({ ...newRecord, credit: e.target.value })} className="max-w-xs" />
+          </div>
+
+          {/* Auto Loan Section - with First Time Buyer and Auto inside */}
+          <div className="border rounded-lg p-3 mb-4">
+            <Label className="form-label mb-2 block font-medium">Auto Loan</Label>
+            {/* First Time Buyer */}
+            <div className="flex items-center gap-2 mb-3">
+              <Checkbox
+                checked={newRecord.first_time_buyer || false}
+                onCheckedChange={(checked) => setNewRecord({ ...newRecord, first_time_buyer: checked })}
+              />
+              <span className="text-sm font-medium">First Time Buyer</span>
+            </div>
+            {/* Auto Select - inside Auto Loan */}
+            <div className="mb-3">
+              <Label className="form-label mb-1 block text-xs">Auto</Label>
               <Select value={newRecord.auto} onValueChange={(value) => setNewRecord({ ...newRecord, auto: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar auto" />
@@ -1607,23 +1623,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label className="form-label mb-1 block">Credit</Label>
-              <Input placeholder="Score" value={newRecord.credit} onChange={(e) => setNewRecord({ ...newRecord, credit: e.target.value })} />
-            </div>
-          </div>
-
-          {/* Auto Loan Section */}
-          <div className="border rounded-lg p-3 mb-4">
-            <Label className="form-label mb-2 block font-medium">Auto Loan</Label>
-            {/* First Time Buyer */}
-            <div className="flex items-center gap-2 mb-3">
-              <Checkbox
-                checked={newRecord.first_time_buyer || false}
-                onCheckedChange={(checked) => setNewRecord({ ...newRecord, first_time_buyer: checked })}
-              />
-              <span className="text-sm font-medium">First Time Buyer</span>
-            </div>
+            {/* Auto Loan Status */}
             <div className="flex flex-wrap gap-4 mb-3">
               {['Paid', 'Late', 'On Time'].map((status) => (
                 <div key={status} className="flex items-center gap-2">
