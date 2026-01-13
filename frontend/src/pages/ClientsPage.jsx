@@ -2759,26 +2759,26 @@ function RecordCard({
       <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100">
         {!record.record_status ? (
           <>
-            <Button size="sm" variant="outline" className="text-emerald-600 hover:bg-emerald-50"
+            <Button size="sm" variant="outline" className="text-emerald-600 hover:bg-emerald-50 text-xs"
               onClick={() => onMarkRecordStatus(record.id, 'completed')}>
-              ✓ Marcar como Completado
+              ✓ Completado
             </Button>
-            <Button size="sm" variant="outline" className="text-slate-500 hover:bg-slate-50"
+            <Button size="sm" variant="outline" className="text-slate-500 hover:bg-slate-50 text-xs"
               onClick={() => onMarkRecordStatus(record.id, 'no_show')}>
-              ✗ Mark as No-Show
+              ✗ No-Show
             </Button>
           </>
         ) : (
           <>
-            <span className={`text-sm font-medium flex items-center gap-1 ${record.record_status === 'completed' ? 'text-emerald-600' : 'text-slate-500'}`}>
+            <span className={`text-xs font-medium flex items-center gap-1 ${record.record_status === 'completed' ? 'text-emerald-600' : 'text-slate-500'}`}>
               {record.record_status === 'completed' ? '✅ Completado' : '❌ No-Show'}
             </span>
             {record.commission_locked && !isAdmin ? (
               <span className="text-xs text-amber-600 flex items-center gap-1">
-                🔒 Bloqueado por Admin
+                🔒 Bloqueado
               </span>
             ) : (
-              <Button size="sm" variant="outline" className="text-slate-400 hover:bg-slate-50"
+              <Button size="sm" variant="outline" className="text-slate-400 hover:bg-slate-50 text-xs"
                 onClick={() => onMarkRecordStatus(record.id, null)}>
                 ↩ Desmarcar
               </Button>
@@ -2787,8 +2787,8 @@ function RecordCard({
         )}
         {/* Show commission info if available (admin only view) */}
         {isAdmin && record.commission_percentage && record.commission_value && (
-          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded ml-auto">
-            💰 {record.commission_percentage}% de ${record.commission_value} = ${((record.commission_percentage / 100) * record.commission_value).toFixed(2)}
+          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">
+            💰 {record.commission_percentage}%
           </span>
         )}
       </div>
