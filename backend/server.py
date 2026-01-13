@@ -4716,12 +4716,21 @@ async def delete_all_data(current_user: dict = Depends(get_current_user)):
         # Collections to delete (NOT including users to keep admin access)
         collections_to_delete = [
             "clients",
-            "records",
+            "user_records",          # Changed from "records" to correct name
             "cosigner_records",
+            "cosigner_relations",
             "appointments",
             "prequalify_submissions",
             "record_comments",
-            "imported_contacts"
+            "client_comments",
+            "client_requests",
+            "notifications",
+            "sms_logs",
+            "email_logs",
+            "sms_conversations",
+            "imported_contacts",
+            "public_links",
+            "collaboration_requests"
         ]
         
         for collection_name in collections_to_delete:
