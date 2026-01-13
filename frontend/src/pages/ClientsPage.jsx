@@ -50,6 +50,9 @@ export default function ClientsPage() {
     id_type: [], poi_type: [], por_type: [] 
   });
   
+  // Status filter for client colors
+  const [statusFilter, setStatusFilter] = useState('all');
+  
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const clientsPerPage = 10;
