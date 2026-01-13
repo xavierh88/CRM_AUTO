@@ -2795,14 +2795,14 @@ function RecordCard({
 
       {/* Appointment Actions - Only show if has appointment */}
       {appointments[record.id] && appointments[record.id].status === 'scheduled' && (
-        <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-          <Button size="sm" variant="outline" className="text-emerald-600 hover:bg-emerald-50"
+        <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100">
+          <Button size="sm" variant="outline" className="text-emerald-600 hover:bg-emerald-50 text-xs"
             onClick={() => updateAppointmentStatus(appointments[record.id].id, 'cumplido')}>
-            {t('appointments.markCompleted')}
+            ✓ Cumplido
           </Button>
-          <Button size="sm" variant="outline" className="text-slate-600 hover:bg-slate-50"
+          <Button size="sm" variant="outline" className="text-slate-600 hover:bg-slate-50 text-xs"
             onClick={() => updateAppointmentStatus(appointments[record.id].id, 'no_show')}>
-            {t('appointments.markNoShow')}
+            ✗ No-Show
           </Button>
         </div>
       )}
