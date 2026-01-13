@@ -84,14 +84,35 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - ✅ `send_appointment_email` endpoint now uses dealer full address (from config_lists)
 - ✅ `send_appointment_sms` endpoint already using dealer full address (confirmed)
 
-### New Test Suite Created
+### Dealer Addresses Configured
+- ✅ Downey: 7444 Florence Ave, Downey, CA 90240
+- ✅ Fullerton: 1100 S Harbor Blvd, Fullerton, CA 92832
+- ✅ Hollywood: 6200 Hollywood Blvd, Los Angeles, CA 90028
+- ✅ Long Beach: 1500 E Anaheim St, Long Beach, CA 90813
+
+### Backup System - EXPANDED
+- ✅ Backup now includes ALL 19 collections (previously only 8):
+  - users, clients, user_records, cosigner_records, cosigner_relations
+  - appointments, prequalify_submissions, config_lists, record_comments
+  - client_comments, client_requests, notifications, sms_logs, email_logs
+  - sms_templates, sms_conversations, imported_contacts, public_links, collaboration_requests
+- ✅ Restore function updated to support all collections
+- ✅ Delete-all-data function updated to clear all collections
+
+### Pre-Qualify to Client Conversion - VERIFIED
+- ✅ Admin can convert pre-qualify submission to client
+- ✅ Client is assigned to the admin who converts it (`salesperson_id = admin_id`)
+- ✅ Record is created with employment data from pre-qualify
+- ✅ Notes are created with `admin_only=True` flag (only admins can see pre-qualify data)
+- ✅ Submission status changes to `converted` with `matched_client_id`
+
+### New Test Suites Created
 - ✅ `/app/tests/test_appointments_and_config.py` - 14 tests for appointments and config lists
-- ✅ Tests cover: login, config lists access, appointment CRUD, notifications
+- ✅ `/app/tests/test_backup_and_prequalify_conversion.py` - 14 tests for backup and pre-qualify conversion
 
 ### Test Credentials Created
 - ✅ Vendedor test account: `test_vendedor@test.com` / `test123`
 - ✅ Test client: Juan Perez (+15551234567) with record
-- ✅ Downey dealer configured with address: "7444 Florence Ave, Downey, CA 90240"
 
 ---
 
