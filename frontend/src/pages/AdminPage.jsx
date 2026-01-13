@@ -192,6 +192,19 @@ export default function AdminPage() {
     }
   };
 
+  // Initialize config lists with default data
+  const initConfigLists = async () => {
+    try {
+      const res = await axios.post(`${API}/admin/init-config-lists`);
+      toast.success('Datos inicializados correctamente');
+      console.log('Config lists initialized:', res.data);
+      // Refresh the data
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al inicializar datos');
+    }
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString();
