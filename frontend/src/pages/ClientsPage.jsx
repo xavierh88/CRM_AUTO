@@ -524,15 +524,53 @@ export default function ClientsPage() {
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <Input
-          placeholder={t('clients.search')}
-          className="pl-10 max-w-md"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          data-testid="search-clients"
-        />
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder={t('clients.search')}
+            className="pl-10 max-w-md"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            data-testid="search-clients"
+          />
+        </div>
+        {/* Status color filters */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-500">Filtrar:</span>
+          <Button
+            size="sm"
+            variant={statusFilter === 'all' ? 'default' : 'outline'}
+            onClick={() => setStatusFilter('all')}
+            className="h-8"
+          >
+            Todos
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter === 'green' ? 'default' : 'outline'}
+            onClick={() => setStatusFilter('green')}
+            className="h-8 bg-green-500 hover:bg-green-600 text-white"
+          >
+            Recientes
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter === 'orange' ? 'default' : 'outline'}
+            onClick={() => setStatusFilter('orange')}
+            className="h-8 bg-orange-500 hover:bg-orange-600 text-white"
+          >
+            +3 días
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter === 'red' ? 'default' : 'outline'}
+            onClick={() => setStatusFilter('red')}
+            className="h-8 bg-red-500 hover:bg-red-600 text-white"
+          >
+            +7 días
+          </Button>
+        </div>
       </div>
 
       {/* Client List */}
