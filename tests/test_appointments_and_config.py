@@ -199,10 +199,16 @@ class TestAppointmentsForVendedor:
         # Check admin received notification
         admin_notifs_after = admin_client.get(f"{BASE_URL}/api/notifications")
         assert admin_notifs_after.status_code == 200
-        notifs_after = admin_notifs_after.json()
+        notifs_response = admin_notifs_after.json()
+        
+        # Handle both list and dict response formats
+        if isinstance(notifs_response, dict):
+            notifs_after = notifs_response.get("notifications", [])
+        else:
+            notifs_after = notifs_response
         
         # Find the new notification about this appointment
-        new_notifs = [n for n in notifs_after if "Nueva cita" in n.get("message", "")]
+        new_notifs = [n for n in notifs_after if isinstance(n, dict) and "Nueva cita" in n.get("message", "")]
         
         if new_notifs:
             print(f"✓ Admin received notification about new appointment: {new_notifs[0]['message']}")
@@ -252,15 +258,25 @@ class TestAdminNotifications:
         """Verify admin can access notifications"""
         response = admin_client.get(f"{BASE_URL}/api/notifications")
         assert response.status_code == 200, f"Failed to get notifications: {response.text}"
-        notifications = response.json()
+        notifs_response = response.json()
+        
+        # Handle both list and dict response formats
+        if isinstance(notifs_response, dict):
+            notifications = notifs_response.get("notifications", [])
+            unread_count = notifs_response.get("unread_count", 0)
+            print(f"✓ Admin can access notifications - found {len(notifications)} notifications (unread: {unread_count})")
+        else:
+            notifications = notifs_response
+            print(f"✓ Admin can access notifications - found {len(notifications)} notifications")
+        
         assert isinstance(notifications, list)
-        print(f"✓ Admin can access notifications - found {len(notifications)} notifications")
         
         # Check for appointment notifications
-        appt_notifs = [n for n in notifications if n.get("type") == "appointment"]
+        appt_notifs = [n for n in notifications if isinstance(n, dict) and n.get("type") == "appointment"]
         print(f"  - Appointment notifications: {len(appt_notifs)}")
         
-        return notifications
+        for notif in appt_notifs[:3]:  # Show first 3
+            print(f"    - {notif.get('message', 'No message')}")
 
 
 # Fixtures
