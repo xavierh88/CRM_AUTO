@@ -643,8 +643,21 @@ async def create_client(client: ClientCreate, current_user: dict = Depends(get_c
         ],
         "is_deleted": {"$ne": True}
     })
+    
     if existing:
-        raise HTTPException(status_code=400, detail="Client with this phone already exists")
+        # If client exists and belongs to someone else, return info to create a request
+        if existing.get("created_by") != current_user["id"]:
+            owner = await db.users.find_one({"id": existing.get("created_by")}, {"_id": 0, "name": 1})
+            return {
+                "error": "client_exists_other_user",
+                "message": f"Este cliente ya existe y pertenece a {owner.get('name', 'otro usuario')}",
+                "client_id": existing.get("id"),
+                "owner_id": existing.get("created_by"),
+                "owner_name": owner.get("name", "Unknown") if owner else "Unknown",
+                "can_request": True
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Ya tienes este cliente registrado")
     
     now = datetime.now(timezone.utc).isoformat()
     client_doc = {
