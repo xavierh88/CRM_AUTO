@@ -278,7 +278,10 @@ export default function ClientsPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const filteredClients = clients; // Search is now done server-side
+  // Filter clients by status color
+  const filteredClients = statusFilter === 'all' 
+    ? clients 
+    : clients.filter(c => c.status_color === statusFilter);
   
   // Pagination logic
   const totalPages = Math.ceil(filteredClients.length / clientsPerPage);
