@@ -12,7 +12,9 @@ import {
   X,
   Shield,
   FileSpreadsheet,
-  FileText
+  FileText,
+  MessageSquare,
+  BarChart3
 } from 'lucide-react';
 import { Button } from './ui/button';
 import NotificationsPopover from './NotificationsPopover';
@@ -23,11 +25,16 @@ export const Layout = ({ children }) => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const isBDC = user?.role === 'bdc';
+  const isAdminOrBDC = isAdmin || isBDC;
+
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { path: '/clients', icon: Users, label: t('nav.clients') },
     { path: '/agenda', icon: Calendar, label: t('nav.agenda') },
+    { path: '/solicitudes', icon: MessageSquare, label: 'Solicitudes' },
     { path: '/import', icon: FileSpreadsheet, label: t('nav.import') || 'Importar' },
+    ...(isAdminOrBDC ? [{ path: '/vendedores', icon: BarChart3, label: 'Vendedores' }] : []),
     ...(isAdmin ? [{ path: '/prequalify', icon: FileText, label: 'Pre-Qualify' }] : []),
     ...(isAdmin ? [{ path: '/admin', icon: Shield, label: t('nav.admin') }] : []),
     { path: '/settings', icon: Settings, label: t('nav.settings') },
