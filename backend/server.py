@@ -674,8 +674,17 @@ async def create_client(client: ClientCreate, current_user: dict = Depends(get_c
 import re as regex_module
 
 @api_router.get("/clients", response_model=List[dict])
-async def get_clients(include_deleted: bool = False, search: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+async def get_clients(include_deleted: bool = False, search: Optional[str] = None, salesperson_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     query = {} if include_deleted and current_user["role"] == "admin" else {"is_deleted": {"$ne": True}}
+    
+    # Filter by owner - salespeople can only see their own clients
+    # Admin and BDC can see all clients or filter by salesperson
+    if current_user["role"] in ["admin", "bdc"]:
+        if salesperson_id:
+            query["created_by"] = salesperson_id
+    else:
+        # Salespeople only see their own clients
+        query["created_by"] = current_user["id"]
     
     # Add search filter for name and phone (escape special regex characters)
     if search:
@@ -689,7 +698,9 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
     
     clients = await db.clients.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
-    # For each client, get the last record date and sold count
+    now = datetime.now(timezone.utc)
+    
+    # For each client, get the last record date, sold count, and status color
     for client in clients:
         last_record = await db.user_records.find_one(
             {"client_id": client["id"], "is_deleted": {"$ne": True}},
@@ -705,6 +716,30 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
             "record_status": "completed"
         })
         client["sold_count"] = sold_count
+        
+        # Calculate status color based on last interaction
+        # Use last_record_date or created_at as fallback
+        last_interaction_str = client.get("last_record_date") or client.get("last_contact") or client.get("created_at")
+        if last_interaction_str:
+            try:
+                # Parse the ISO date string
+                if "T" in last_interaction_str:
+                    last_interaction = datetime.fromisoformat(last_interaction_str.replace("Z", "+00:00"))
+                else:
+                    last_interaction = datetime.fromisoformat(last_interaction_str + "T00:00:00+00:00")
+                
+                days_since = (now - last_interaction).days
+                
+                if days_since >= 7:
+                    client["status_color"] = "red"  # +7 days without interaction
+                elif days_since >= 3:
+                    client["status_color"] = "orange"  # +3 days without interaction
+                else:
+                    client["status_color"] = "green"  # Recent interaction
+            except:
+                client["status_color"] = "gray"  # Unable to determine
+        else:
+            client["status_color"] = "gray"
     
     return clients
 
