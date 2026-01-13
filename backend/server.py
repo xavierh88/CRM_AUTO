@@ -1919,6 +1919,36 @@ async def get_dashboard_stats(
         {"$limit": 12}
     ]).to_list(12)
     
+    # Calculate total down payment collected
+    dp_match = {"is_deleted": {"$ne": True}}
+    if date_filter:
+        dp_match["created_at"] = date_filter
+    
+    # Get all records with down payment info
+    records_with_dp = await db.user_records.find(
+        dp_match,
+        {"down_payment_cash": 1, "down_payment_card": 1, "_id": 0}
+    ).to_list(None)
+    
+    total_down_payment = 0
+    for rec in records_with_dp:
+        # Parse and sum down_payment_cash
+        if rec.get("down_payment_cash"):
+            try:
+                cash_str = str(rec["down_payment_cash"]).replace("$", "").replace(",", "").strip()
+                if cash_str:
+                    total_down_payment += float(cash_str)
+            except (ValueError, TypeError):
+                pass
+        # Parse and sum down_payment_card
+        if rec.get("down_payment_card"):
+            try:
+                card_str = str(rec["down_payment_card"]).replace("$", "").replace(",", "").strip()
+                if card_str:
+                    total_down_payment += float(card_str)
+            except (ValueError, TypeError):
+                pass
+    
     return {
         "total_clients": total_clients,
         "total_clients_all": total_clients_all,
