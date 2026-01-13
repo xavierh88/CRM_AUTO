@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Switch } from '../components/ui/switch';
 import { toast } from 'sonner';
-import { Trash2, RotateCcw, Users, Shield, CheckCircle2, XCircle, UserCog, Plus, Building2, Car, Landmark, MessageSquare, Save, CreditCard, Home, FileText } from 'lucide-react';
+import { Trash2, RotateCcw, Users, Shield, CheckCircle2, XCircle, UserCog, Plus, Building2, Car, Landmark, MessageSquare, Save, CreditCard, Home, FileText, RefreshCw } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
