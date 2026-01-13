@@ -2440,46 +2440,45 @@ function RecordCard({
   }
 
   return (
-    <div className={`bg-white rounded-lg border p-4 ${isPurple ? 'border-purple-200' : 'border-slate-200'}`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+    <div className={`bg-white rounded-lg border p-3 sm:p-4 ${isPurple ? 'border-purple-200' : 'border-slate-200'}`}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
           <span className={`text-sm font-medium ${isPurple ? 'text-purple-600' : 'text-blue-600'}`}>
             Record
           </span>
           <span className="text-xs text-slate-400">by {record.salesperson_name}</span>
           {/* Record completion status badge */}
           {record.record_status === 'completed' && (
-            <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-medium">
-              ✓ Completado
+            <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs font-medium">
+              ✓
             </span>
           )}
           {record.record_status === 'no_show' && (
-            <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-medium">
-              ✗ No-Show
+            <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-xs font-medium">
+              ✗
             </span>
           )}
           {record.finance_status && record.finance_status !== 'no' && (
-            <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-medium uppercase">
-              SOLD - {record.finance_status}
+            <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-xs font-medium uppercase">
+              SOLD
             </span>
           )}
           {/* Show collaborator badge if exists */}
           {record.collaborator_name && (
-            <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1">
+            <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-xs font-medium flex items-center gap-1">
               <Users className="w-3 h-3" />
-              {record.collaborator_name}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap">
           {/* Email Report button - Admin Only */}
           {isAdmin && (
-            <Button size="sm" variant="ghost" onClick={() => setShowEmailDialog(true)} title="Enviar Reporte por Email" className="relative">
+            <Button size="sm" variant="ghost" onClick={() => setShowEmailDialog(true)} title="Enviar Reporte por Email" className="h-7 w-7 p-0">
               <Mail className="w-4 h-4 text-green-500" />
             </Button>
           )}
           {/* Comments button with counter */}
-          <Button size="sm" variant="ghost" onClick={openCommentsDialog} title="Comentarios" className="relative">
+          <Button size="sm" variant="ghost" onClick={openCommentsDialog} title="Comentarios" className="relative h-7 w-7 p-0">
             <MessageCircle className="w-4 h-4 text-blue-400" />
             {commentsCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
@@ -2488,26 +2487,26 @@ function RecordCard({
             )}
           </Button>
           {/* Edit button - available to all */}
-          <Button size="sm" variant="ghost" onClick={() => onEdit(record)} title="Edit">
+          <Button size="sm" variant="ghost" onClick={() => onEdit(record)} title="Edit" className="h-7 w-7 p-0">
             <RefreshCw className="w-4 h-4 text-slate-400" />
           </Button>
           {/* Delete button - only for owner */}
           {isOwner && (
-            <Button size="sm" variant="ghost" onClick={() => onDelete(record.id)} title="Delete">
+            <Button size="sm" variant="ghost" onClick={() => onDelete(record.id)} title="Delete" className="h-7 w-7 p-0">
               <Trash2 className="w-4 h-4 text-red-400" />
             </Button>
           )}
           {appointments[record.id] ? (
             <div className="flex items-center gap-1">
               {getStatusBadge(appointments[record.id].status)}
-              <Button size="sm" variant="ghost" onClick={() => onOpenAppointmentForm(record.id)} title="Editar/Modificar Cita">
+              <Button size="sm" variant="ghost" onClick={() => onOpenAppointmentForm(record.id)} title="Editar Cita" className="h-7 w-7 p-0">
                 <Calendar className="w-4 h-4 text-purple-500" />
               </Button>
             </div>
           ) : (
-            <Button size="sm" variant="outline" onClick={() => onOpenAppointmentForm(record.id)}>
-              <Calendar className="w-4 h-4 mr-1" />
-              Appt
+            <Button size="sm" variant="outline" onClick={() => onOpenAppointmentForm(record.id)} className="h-7 px-2 text-xs">
+              <Calendar className="w-3 h-3 mr-1" />
+              Cita
             </Button>
           )}
         </div>
