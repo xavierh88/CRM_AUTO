@@ -2776,10 +2776,13 @@ function RecordCard({
       <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100">
         {!record.record_status ? (
           <>
-            <Button size="sm" variant="outline" className="text-emerald-600 hover:bg-emerald-50 text-xs"
-              onClick={() => onMarkRecordStatus(record.id, 'completed')}>
-              ✓ Completado
-            </Button>
+            {/* Only admin can mark as completed (SOLD) */}
+            {isAdmin && (
+              <Button size="sm" variant="outline" className="text-emerald-600 hover:bg-emerald-50 text-xs"
+                onClick={() => onMarkRecordStatus(record.id, 'completed')}>
+                ✓ Completado
+              </Button>
+            )}
             <Button size="sm" variant="outline" className="text-slate-500 hover:bg-slate-50 text-xs"
               onClick={() => onMarkRecordStatus(record.id, 'no_show')}>
               ✗ No-Show
@@ -2795,10 +2798,12 @@ function RecordCard({
                 🔒 Bloqueado
               </span>
             ) : (
-              <Button size="sm" variant="outline" className="text-slate-400 hover:bg-slate-50 text-xs"
-                onClick={() => onMarkRecordStatus(record.id, null)}>
-                ↩ Desmarcar
-              </Button>
+              isAdmin && (
+                <Button size="sm" variant="outline" className="text-slate-400 hover:bg-slate-50 text-xs"
+                  onClick={() => onMarkRecordStatus(record.id, null)}>
+                  ↩ Desmarcar
+                </Button>
+              )
             )}
           </>
         )}
