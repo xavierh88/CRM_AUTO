@@ -2171,24 +2171,26 @@ function RecordCard({
           <div className="flex items-center gap-2 mb-3">
             <Checkbox
               checked={editData.first_time_buyer || false}
-              onCheckedChange={(checked) => setEditData({ ...editData, first_time_buyer: checked })}
+              onCheckedChange={(checked) => setEditData({ ...editData, first_time_buyer: checked, auto: checked ? '' : editData.auto })}
             />
             <span className="text-sm font-medium">First Time Buyer</span>
           </div>
-          {/* Auto Select - inside Auto Loan */}
-          <div className="mb-3">
-            <Label className="form-label mb-1 block text-xs">Auto</Label>
-            <Select value={editData.auto || ''} onValueChange={(value) => setEditData({ ...editData, auto: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar auto" />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                {configLists?.cars?.map((car) => (
-                  <SelectItem key={car.id} value={car.name}>{car.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Auto Select - only show if NOT First Time Buyer */}
+          {!editData.first_time_buyer && (
+            <div className="mb-3">
+              <Label className="form-label mb-1 block text-xs">Auto</Label>
+              <Select value={editData.auto || ''} onValueChange={(value) => setEditData({ ...editData, auto: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar auto" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {configLists?.cars?.map((car) => (
+                    <SelectItem key={car.id} value={car.name}>{car.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {/* Auto Loan Status */}
           <div className="flex flex-wrap gap-4 mb-3">
             {['Paid', 'Late', 'On Time'].map((status) => (
