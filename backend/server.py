@@ -58,6 +58,11 @@ SMTP_USER = os.environ.get('SMTP_USER', '')  # Your email
 SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')  # App password
 SMTP_FROM_NAME = os.environ.get('SMTP_FROM_NAME', 'DealerCRM')
 
+# Company Logo URL for emails and public forms
+COMPANY_LOGO_URL = "https://carplusautosalesgroup.com/img/carplus.png"
+COMPANY_NAME = "CARPLUS AUTOSALE"
+COMPANY_TAGLINE = "Friendly Brokerage"
+
 # Initialize Twilio client
 twilio_client = None
 if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
