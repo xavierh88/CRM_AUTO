@@ -1678,6 +1678,7 @@ async def create_appointment(appt: AppointmentCreate, current_user: dict = Depen
         "user_record_id": appt.user_record_id,
         "client_id": appt.client_id,
         "salesperson_id": current_user["id"],
+        "salesperson_name": current_user.get("name", current_user.get("email", "")),
         "date": appt.date,
         "time": appt.time,
         "dealer": appt.dealer,
@@ -1690,6 +1691,26 @@ async def create_appointment(appt: AppointmentCreate, current_user: dict = Depen
     }
     await db.appointments.insert_one(appt_doc)
     del appt_doc["_id"]
+    
+    # Get client name for notification
+    client = await db.clients.find_one({"id": appt.client_id}, {"_id": 0, "first_name": 1, "last_name": 1})
+    client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}" if client else "Cliente"
+    
+    # Notify all admins about the new appointment
+    admins = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
+    for admin in admins:
+        if admin["id"] != current_user["id"]:  # Don't notify the creator if they're admin
+            notif_doc = {
+                "id": str(uuid.uuid4()),
+                "user_id": admin["id"],
+                "message": f"Nueva cita: {client_name} - {appt.date} {appt.time} ({appt.dealer}) por {current_user.get('name', '')}",
+                "type": "appointment",
+                "link": "/agenda",
+                "is_read": False,
+                "created_at": now
+            }
+            await db.notifications.insert_one(notif_doc)
+    
     return appt_doc
 
 @api_router.get("/appointments", response_model=List[AppointmentResponse])
