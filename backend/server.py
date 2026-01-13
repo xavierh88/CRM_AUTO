@@ -4969,7 +4969,8 @@ async def submit_prequalify(submission: PreQualifySubmission):
             <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
                 <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                     <div style="text-align: center; margin-bottom: 20px;">
-                        <h1 style="color: #1e40af; margin: 0;">🚗 CARPLUS AUTOSALE</h1>
+                        <img src="{COMPANY_LOGO_URL}" alt="{COMPANY_NAME}" style="max-width: 200px; height: auto; margin-bottom: 10px;">
+                        <p style="color: #dc2626; font-weight: 600; margin: 5px 0;">{COMPANY_TAGLINE}</p>
                         <p style="color: #6b7280; margin: 5px 0;">Nueva Solicitud de Pre-Calificación</p>
                     </div>
                     
