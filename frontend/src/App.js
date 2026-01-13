@@ -13,6 +13,8 @@ import AdminPage from "./pages/AdminPage";
 import SettingsPage from "./pages/SettingsPage";
 import ImportContactsPage from "./pages/ImportContactsPage";
 import PreQualifyPage from "./pages/PreQualifyPage";
+import SolicitudesPage from "./pages/SolicitudesPage";
+import VendedoresPage from "./pages/VendedoresPage";
 import Layout from "./components/Layout";
 
 // Public Pages (for clients)
@@ -49,6 +51,25 @@ const AdminRoute = ({ children }) => {
   }
   
   if (!user || !isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return children;
+};
+
+const AdminOrBDCRoute = ({ children }) => {
+  const { user, isAdmin, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+  
+  const isBDC = user?.role === 'bdc';
+  if (!user || (!isAdmin && !isBDC)) {
     return <Navigate to="/dashboard" replace />;
   }
   
@@ -97,6 +118,16 @@ function App() {
             }
           />
           <Route
+            path="/solicitudes"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <SolicitudesPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/import"
             element={
               <ProtectedRoute>
@@ -104,6 +135,16 @@ function App() {
                   <ImportContactsPage />
                 </Layout>
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vendedores"
+            element={
+              <AdminOrBDCRoute>
+                <Layout>
+                  <VendedoresPage />
+                </Layout>
+              </AdminOrBDCRoute>
             }
           />
           <Route
