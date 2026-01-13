@@ -544,6 +544,21 @@ export default function ClientsPage() {
             // Documents are shown as indicators but don't affect progress
             const docsUploaded = [client.id_uploaded, client.income_proof_uploaded, client.residence_proof_uploaded].filter(Boolean).length;
             
+            // Status color indicator based on last interaction
+            const statusColor = client.status_color || 'gray';
+            const statusColorClasses = {
+              green: 'bg-green-500',
+              orange: 'bg-orange-500',
+              red: 'bg-red-500',
+              gray: 'bg-gray-400'
+            };
+            const statusColorTitles = {
+              green: 'Interacción reciente',
+              orange: '+3 días sin interacción',
+              red: '+7 días sin interacción',
+              gray: 'Sin datos'
+            };
+            
             return (
             <Card key={client.id} className="dashboard-card overflow-hidden" data-testid={`client-card-${client.id}`}>
               <Collapsible open={expandedClients[client.id]} onOpenChange={() => toggleClientExpand(client.id)}>
@@ -552,6 +567,11 @@ export default function ClientsPage() {
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold relative">
                         {client.first_name.charAt(0)}
+                        {/* Status color indicator */}
+                        <div 
+                          className={`absolute -top-1 -left-1 w-3 h-3 rounded-full border-2 border-white ${statusColorClasses[statusColor]}`}
+                          title={statusColorTitles[statusColor]}
+                        />
                         {/* Sold cars indicator */}
                         {soldCount > 0 && (
                           <div className="absolute -bottom-1 -right-1 bg-amber-400 text-white text-xs rounded-full px-1 flex items-center gap-0.5" title={`${soldCount} venta(s)`}>
