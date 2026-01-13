@@ -1606,24 +1606,26 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
             <div className="flex items-center gap-2 mb-3">
               <Checkbox
                 checked={newRecord.first_time_buyer || false}
-                onCheckedChange={(checked) => setNewRecord({ ...newRecord, first_time_buyer: checked })}
+                onCheckedChange={(checked) => setNewRecord({ ...newRecord, first_time_buyer: checked, auto: checked ? '' : newRecord.auto })}
               />
               <span className="text-sm font-medium">First Time Buyer</span>
             </div>
-            {/* Auto Select - inside Auto Loan */}
-            <div className="mb-3">
-              <Label className="form-label mb-1 block text-xs">Auto</Label>
-              <Select value={newRecord.auto} onValueChange={(value) => setNewRecord({ ...newRecord, auto: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar auto" />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  {configLists.cars.map((car) => (
-                    <SelectItem key={car.id} value={car.name}>{car.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Auto Select - only show if NOT First Time Buyer */}
+            {!newRecord.first_time_buyer && (
+              <div className="mb-3">
+                <Label className="form-label mb-1 block text-xs">Auto</Label>
+                <Select value={newRecord.auto} onValueChange={(value) => setNewRecord({ ...newRecord, auto: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar auto" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {configLists.cars.map((car) => (
+                      <SelectItem key={car.id} value={car.name}>{car.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {/* Auto Loan Status */}
             <div className="flex flex-wrap gap-4 mb-3">
               {['Paid', 'Late', 'On Time'].map((status) => (
