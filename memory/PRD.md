@@ -75,6 +75,26 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - ✅ Nginx reverse proxy
 - ✅ systemd service management
 
+## Session Work Completed (January 13, 2025)
+
+### Appointment System Issues - VERIFIED & FIXED
+- ✅ Appointment form works correctly for vendedor (salesperson) role - NOT blank
+- ✅ Dealer dropdown shows all options (verified with 5 dealers)
+- ✅ Admin notifications are created when appointments are created
+- ✅ `send_appointment_email` endpoint now uses dealer full address (from config_lists)
+- ✅ `send_appointment_sms` endpoint already using dealer full address (confirmed)
+
+### New Test Suite Created
+- ✅ `/app/tests/test_appointments_and_config.py` - 14 tests for appointments and config lists
+- ✅ Tests cover: login, config lists access, appointment CRUD, notifications
+
+### Test Credentials Created
+- ✅ Vendedor test account: `test_vendedor@test.com` / `test123`
+- ✅ Test client: Juan Perez (+15551234567) with record
+- ✅ Downey dealer configured with address: "7444 Florence Ave, Downey, CA 90240"
+
+---
+
 ## Session Work Completed (January 11, 2025)
 
 ### Pre-Qualify to Client Data Mapping - FIXED
