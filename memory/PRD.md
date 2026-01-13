@@ -170,7 +170,8 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - **Live URL:** https://crm.carplusautosalesgroup.com
 
 ## Test Files
-- `/app/tests/test_prequalify_and_clients.py` - Comprehensive test suite
+- `/app/tests/test_prequalify_and_clients.py` - Pre-qualify and client tests
+- `/app/tests/test_appointments_and_config.py` - Appointments and config lists tests (14 tests)
 
 ## Last Updated
-January 11, 2025 - Refactoring backend structure, created website package with pre-qualify form
+January 13, 2025 - Verified appointment system works for vendedor role, added dealer address to email notifications
