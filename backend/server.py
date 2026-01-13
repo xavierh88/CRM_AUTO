@@ -4562,16 +4562,27 @@ async def download_backup(current_user: dict = Depends(get_current_user)):
             "collections": {}
         }
         
-        # List of collections to backup
+        # List of collections to backup - ALL important collections
         collections_to_backup = [
             "users",
             "clients",
-            "records",
+            "user_records",          # Changed from "records" to correct name
             "cosigner_records",
+            "cosigner_relations",    # Added
             "appointments",
             "prequalify_submissions",
             "config_lists",
-            "record_comments"
+            "record_comments",
+            "client_comments",       # Added - client notes
+            "client_requests",       # Added - ownership transfer requests
+            "notifications",         # Added - in-app notifications
+            "sms_logs",              # Added - SMS history
+            "email_logs",            # Added - Email history
+            "sms_templates",         # Added - SMS templates
+            "sms_conversations",     # Added - SMS conversation threads
+            "imported_contacts",     # Added - Marketing contacts
+            "public_links",          # Added - Public appointment links
+            "collaboration_requests" # Added - Collaboration requests
         ]
         
         for collection_name in collections_to_backup:
