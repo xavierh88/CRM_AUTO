@@ -1927,7 +1927,7 @@ async def get_dashboard_stats(
     # Get all records with down payment info
     records_with_dp = await db.user_records.find(
         dp_match,
-        {"down_payment_cash": 1, "down_payment_card": 1, "_id": 0}
+        {"down_payment_cash": 1, "down_payment_card": 1, "trade_estimated_value": 1, "_id": 0}
     ).to_list(None)
     
     total_down_payment = 0
@@ -1946,6 +1946,14 @@ async def get_dashboard_stats(
                 card_str = str(rec["down_payment_card"]).replace("$", "").replace(",", "").strip()
                 if card_str:
                     total_down_payment += float(card_str)
+            except (ValueError, TypeError):
+                pass
+        # Parse and sum trade_estimated_value
+        if rec.get("trade_estimated_value"):
+            try:
+                trade_str = str(rec["trade_estimated_value"]).replace("$", "").replace(",", "").strip()
+                if trade_str:
+                    total_down_payment += float(trade_str)
             except (ValueError, TypeError):
                 pass
     
