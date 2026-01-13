@@ -1573,19 +1573,19 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
               <div className="ml-6 mt-2">
                 <p className="text-xs text-slate-500 mb-2">Select applicable types:</p>
                 <div className="flex flex-wrap gap-3">
-                  {['Utility Bill', 'Bank Statement', 'Lease Agreement', 'Government Letter'].map((type) => (
-                    <div key={type} className="flex items-center gap-2">
+                  {configLists.por_type.map((item) => (
+                    <div key={item.id} className="flex items-center gap-2">
                       <Checkbox
-                        checked={newRecord.por_types?.includes(type) || false}
+                        checked={newRecord.por_types?.includes(item.name) || false}
                         onCheckedChange={(checked) => {
                           const currentTypes = newRecord.por_types || [];
                           const updatedTypes = checked 
-                            ? [...currentTypes, type]
-                            : currentTypes.filter(t => t !== type);
+                            ? [...currentTypes, item.name]
+                            : currentTypes.filter(t => t !== item.name);
                           setNewRecord({ ...newRecord, por_types: updatedTypes });
                         }}
                       />
-                      <span className="text-sm">{type}</span>
+                      <span className="text-sm">{item.name}</span>
                     </div>
                   ))}
                 </div>
