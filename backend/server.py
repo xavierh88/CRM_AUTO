@@ -4633,16 +4633,31 @@ async def restore_backup(
         if "collections" not in backup_data:
             raise HTTPException(status_code=400, detail="Formato de backup inválido")
         
-        # Collections to restore
+        # Collections to restore - ALL data collections (not users to avoid lockout)
         collections_to_restore = [
             "clients",
-            "records",
+            "user_records",          # Changed from "records" to correct name
             "cosigner_records",
+            "cosigner_relations",    # Added
             "appointments",
             "prequalify_submissions",
             "config_lists",
-            "record_comments"
+            "record_comments",
+            "client_comments",       # Added - client notes
+            "client_requests",       # Added - ownership transfer requests
+            "notifications",         # Added - in-app notifications
+            "sms_logs",              # Added - SMS history
+            "email_logs",            # Added - Email history
+            "sms_templates",         # Added - SMS templates
+            "sms_conversations",     # Added - SMS conversation threads
+            "imported_contacts",     # Added - Marketing contacts
+            "public_links",          # Added - Public appointment links
+            "collaboration_requests" # Added - Collaboration requests
         ]
+        
+        # Also support old backup files that used "records" instead of "user_records"
+        if "records" in backup_data["collections"] and "user_records" not in backup_data["collections"]:
+            backup_data["collections"]["user_records"] = backup_data["collections"]["records"]
         
         # Note: We don't restore 'users' to avoid locking out the current admin
         
