@@ -187,6 +187,25 @@ export default function ClientsPage() {
     e.preventDefault();
     try {
       const response = await axios.post(`${API}/clients`, newClient);
+      
+      // Check if client exists and belongs to another user
+      if (response.data.error === 'client_exists_other_user') {
+        // Ask if user wants to request access
+        const confirmRequest = window.confirm(
+          `${response.data.message}.\n\n¿Deseas enviar una solicitud de acceso a este cliente?`
+        );
+        
+        if (confirmRequest) {
+          try {
+            await axios.post(`${API}/client-requests?client_id=${response.data.client_id}`);
+            toast.success('Solicitud enviada. Espera la aprobación del propietario.');
+          } catch (reqError) {
+            toast.error(reqError.response?.data?.detail || 'Error al enviar solicitud');
+          }
+        }
+        return;
+      }
+      
       setClients([response.data, ...clients]);
       setShowAddClient(false);
       setNewClient({ first_name: '', last_name: '', phone: '', email: '', address: '', apartment: '', date_of_birth: '', time_at_address_years: '', time_at_address_months: '', housing_type: '', rent_amount: '', id_type: '', id_number: '', ssn_type: '', ssn: '' });
