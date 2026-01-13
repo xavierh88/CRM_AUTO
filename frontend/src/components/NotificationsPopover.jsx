@@ -28,6 +28,8 @@ export default function NotificationsPopover() {
   useEffect(() => {
     if (open) {
       fetchNotifications();
+      // Mark all as read when opening the popover
+      markAllAsRead();
     }
   }, [open]);
 
