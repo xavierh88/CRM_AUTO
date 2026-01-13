@@ -2168,13 +2168,29 @@ function RecordCard({
           </div>
         )}
 
-        {/* Auto, Credit, Auto Loan */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-          <div>
+        {/* Credit Score - separate field */}
+        <div className="mb-4">
+          <Label className="form-label mb-1 block text-xs">Credit Score</Label>
+          <Input placeholder="Score" value={editData.credit || ''} onChange={(e) => setEditData({ ...editData, credit: e.target.value })} className="max-w-xs" />
+        </div>
+
+        {/* Auto Loan Section - with First Time Buyer and Auto inside */}
+        <div className="border rounded-lg p-3 mb-4">
+          <Label className="form-label mb-2 block font-medium text-sm">Auto Loan</Label>
+          {/* First Time Buyer */}
+          <div className="flex items-center gap-2 mb-3">
+            <Checkbox
+              checked={editData.first_time_buyer || false}
+              onCheckedChange={(checked) => setEditData({ ...editData, first_time_buyer: checked })}
+            />
+            <span className="text-sm font-medium">First Time Buyer</span>
+          </div>
+          {/* Auto Select - inside Auto Loan */}
+          <div className="mb-3">
             <Label className="form-label mb-1 block text-xs">Auto</Label>
             <Select value={editData.auto || ''} onValueChange={(value) => setEditData({ ...editData, auto: value })}>
               <SelectTrigger>
-                <SelectValue placeholder="Auto" />
+                <SelectValue placeholder="Seleccionar auto" />
               </SelectTrigger>
               <SelectContent className="max-h-60">
                 {configLists?.cars?.map((car) => (
@@ -2183,15 +2199,7 @@ function RecordCard({
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label className="form-label mb-1 block text-xs">Credit</Label>
-            <Input placeholder="Score" value={editData.credit || ''} onChange={(e) => setEditData({ ...editData, credit: e.target.value })} />
-          </div>
-        </div>
-
-        {/* Auto Loan Section */}
-        <div className="border rounded-lg p-3 mb-4">
-          <Label className="form-label mb-2 block font-medium text-sm">Auto Loan</Label>
+          {/* Auto Loan Status */}
           <div className="flex flex-wrap gap-4 mb-3">
             {['Paid', 'Late', 'On Time'].map((status) => (
               <div key={status} className="flex items-center gap-2">
