@@ -2428,7 +2428,17 @@ async def send_appointment_email(client_id: str, appointment_id: str, current_us
     salesperson_name = current_user.get('name', current_user.get('email', 'Su vendedor'))
     date_str = appointment.get("date", "Por confirmar")
     time_str = appointment.get("time", "")
-    dealer_str = appointment.get("dealer", "")
+    dealer_name = appointment.get("dealer", "")
+    
+    # Get dealer address if available (use full address instead of just name)
+    dealer_str = dealer_name
+    if dealer_name:
+        dealer_doc = await db.config_lists.find_one(
+            {"category": "dealer", "name": dealer_name},
+            {"_id": 0, "address": 1}
+        )
+        if dealer_doc and dealer_doc.get("address"):
+            dealer_str = dealer_doc["address"]
     
     email_body = f"""
 <html>
