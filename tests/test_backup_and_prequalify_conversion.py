@@ -91,7 +91,8 @@ class TestDealerAddresses:
         assert response.status_code == 200, f"Failed to get dealer list: {response.text}"
         
         data = response.json()
-        dealers = data.get("items", [])
+        # API returns list directly, not object with items
+        dealers = data if isinstance(data, list) else data.get("items", [])
         
         assert len(dealers) > 0, "No dealers found"
         print(f"✓ Found {len(dealers)} dealers")
@@ -104,7 +105,8 @@ class TestDealerAddresses:
         assert response.status_code == 200, f"Failed to get dealer list: {response.text}"
         
         data = response.json()
-        dealers = data.get("items", [])
+        # API returns list directly, not object with items
+        dealers = data if isinstance(data, list) else data.get("items", [])
         
         dealers_with_addresses = 0
         dealers_without_addresses = []
