@@ -193,6 +193,7 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 ## Test Files
 - `/app/tests/test_prequalify_and_clients.py` - Pre-qualify and client tests
 - `/app/tests/test_appointments_and_config.py` - Appointments and config lists tests (14 tests)
+- `/app/tests/test_backup_and_prequalify_conversion.py` - Backup and pre-qualify conversion tests (14 tests)
 
 ## Last Updated
-January 13, 2025 - Verified appointment system works for vendedor role, added dealer address to email notifications
+January 13, 2025 - Expanded backup to include all collections, configured dealer addresses, verified pre-qualify to client conversion flow
