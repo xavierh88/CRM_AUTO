@@ -1222,7 +1222,8 @@ async def send_record_report(request: EmailReportRequest, current_user: dict = D
 <head>
 <style>
 body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-.header {{ background: #2563eb; color: white; padding: 20px; text-align: center; }}
+.header {{ background: #1e3a8a; color: white; padding: 20px; text-align: center; }}
+.header img {{ max-width: 150px; height: auto; margin-bottom: 10px; }}
 .section {{ background: #f8fafc; padding: 15px; margin: 10px 0; border-radius: 8px; }}
 .section-title {{ color: #1e40af; font-weight: bold; margin-bottom: 10px; border-bottom: 2px solid #3b82f6; padding-bottom: 5px; }}
 .info-row {{ padding: 5px 0; }}
@@ -1234,6 +1235,7 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
 </head>
 <body>
 <div class="header">
+<img src="{COMPANY_LOGO_URL}" alt="{COMPANY_NAME}" style="max-width: 150px; height: auto;">
 <h1>📋 Reporte de Cliente</h1>
 <p>Generado por: {current_user.get('name', current_user.get('email'))}</p>
 </div>
