@@ -379,6 +379,17 @@ export default function AdminPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {/* Initialize button if no data */}
+              {banks.length === 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                  <p className="text-amber-800 font-medium mb-2">No hay datos de configuración</p>
+                  <p className="text-sm text-amber-700 mb-3">Haz clic en el botón para cargar los datos predeterminados (bancos, dealers, autos, etc.)</p>
+                  <Button onClick={initConfigLists} className="bg-amber-600 hover:bg-amber-700">
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Inicializar Datos Predeterminados
+                  </Button>
+                </div>
+              )}
               <div className="flex gap-2 mb-4">
                 <Input
                   placeholder="Enter new bank name..."
