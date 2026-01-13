@@ -49,28 +49,37 @@ export default function AdminPage() {
 
   const fetchData = async () => {
     try {
+      // Fetch each independently to prevent one failure from affecting others
       const [usersRes, trashClientsRes, trashRecordsRes, banksRes, dealersRes, carsRes, idTypesRes, poiTypesRes, porTypesRes, templatesRes] = await Promise.all([
-        axios.get(`${API}/users`),
-        axios.get(`${API}/trash/clients`),
-        axios.get(`${API}/trash/user-records`),
-        axios.get(`${API}/config-lists/bank`),
-        axios.get(`${API}/config-lists/dealer`),
-        axios.get(`${API}/config-lists/car`),
-        axios.get(`${API}/config-lists/id_type`).catch(() => ({ data: [] })),
-        axios.get(`${API}/config-lists/poi_type`).catch(() => ({ data: [] })),
-        axios.get(`${API}/config-lists/por_type`).catch(() => ({ data: [] })),
-        axios.get(`${API}/sms-templates`).catch(() => ({ data: [] }))
+        axios.get(`${API}/users`).catch(e => ({ data: [] })),
+        axios.get(`${API}/trash/clients`).catch(e => ({ data: [] })),
+        axios.get(`${API}/trash/user-records`).catch(e => ({ data: [] })),
+        axios.get(`${API}/config-lists/bank`).catch(e => ({ data: [] })),
+        axios.get(`${API}/config-lists/dealer`).catch(e => ({ data: [] })),
+        axios.get(`${API}/config-lists/car`).catch(e => ({ data: [] })),
+        axios.get(`${API}/config-lists/id_type`).catch(e => ({ data: [] })),
+        axios.get(`${API}/config-lists/poi_type`).catch(e => ({ data: [] })),
+        axios.get(`${API}/config-lists/por_type`).catch(e => ({ data: [] })),
+        axios.get(`${API}/sms-templates`).catch(e => ({ data: [] }))
       ]);
-      setUsers(usersRes.data);
-      setTrashClients(trashClientsRes.data);
-      setTrashRecords(trashRecordsRes.data);
-      setBanks(banksRes.data);
-      setDealers(dealersRes.data);
-      setCars(carsRes.data);
-      setIdTypes(idTypesRes.data);
-      setPoiTypes(poiTypesRes.data);
-      setPorTypes(porTypesRes.data);
-      setSmsTemplates(templatesRes.data);
+      
+      console.log('Admin data loaded:', {
+        users: usersRes.data?.length,
+        banks: banksRes.data?.length,
+        dealers: dealersRes.data?.length,
+        cars: carsRes.data?.length
+      });
+      
+      setUsers(usersRes.data || []);
+      setTrashClients(trashClientsRes.data || []);
+      setTrashRecords(trashRecordsRes.data || []);
+      setBanks(banksRes.data || []);
+      setDealers(dealersRes.data || []);
+      setCars(carsRes.data || []);
+      setIdTypes(idTypesRes.data || []);
+      setPoiTypes(poiTypesRes.data || []);
+      setPorTypes(porTypesRes.data || []);
+      setSmsTemplates(templatesRes.data || []);
     } catch (error) {
       console.error('Failed to fetch admin data:', error);
     } finally {
