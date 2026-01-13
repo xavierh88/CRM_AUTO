@@ -2224,10 +2224,11 @@ async def send_documents_email(client_id: str, current_user: dict = Depends(get_
 <style>
 body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }}
 .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-.header {{ background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+.header {{ background: #1e3a8a; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+.header img {{ max-width: 180px; height: auto; margin-bottom: 15px; }}
 .content {{ background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }}
-.button {{ display: inline-block; background: #22c55e; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 20px 0; }}
-.button:hover {{ background: #16a34a; }}
+.button {{ display: inline-block; background: #dc2626; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 20px 0; }}
+.button:hover {{ background: #b91c1c; }}
 .documents-list {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }}
 .doc-item {{ padding: 10px 0; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; }}
 .doc-item:last-child {{ border-bottom: none; }}
@@ -2238,8 +2239,9 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0
 <body>
 <div class="container">
 <div class="header">
+<img src="{COMPANY_LOGO_URL}" alt="{COMPANY_NAME}">
 <h1 style="margin: 0;">📄 Suba sus Documentos</h1>
-<p style="margin: 10px 0 0 0; opacity: 0.9;">DealerCRM</p>
+<p style="margin: 10px 0 0 0; color: #dc2626;">{COMPANY_TAGLINE}</p>
 </div>
 <div class="content">
 <p>Hola <strong>{client_name}</strong>,</p>
@@ -2279,11 +2281,11 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0
 
 <p style="color: #64748b; font-size: 13px;">
 Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
-<a href="{document_link}" style="color: #3b82f6; word-break: break-all;">{document_link}</a>
+<a href="{document_link}" style="color: #1e3a8a; word-break: break-all;">{document_link}</a>
 </p>
 </div>
 <div class="footer">
-<p>Este mensaje fue enviado automáticamente por DealerCRM.<br>
+<p>Este mensaje fue enviado automáticamente por {COMPANY_NAME}.<br>
 Sus documentos están protegidos y solo serán utilizados para su proceso.</p>
 </div>
 </div>
