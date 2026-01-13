@@ -2459,9 +2459,15 @@ function RecordCard({
             </span>
           )}
           {record.finance_status && record.finance_status !== 'no' && (
-            <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-xs font-medium uppercase">
-              SOLD
-            </span>
+            record.record_status === 'completed' ? (
+              <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-xs font-medium uppercase">
+                SOLD
+              </span>
+            ) : (
+              <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-xs font-medium uppercase">
+                Working
+              </span>
+            )
           )}
           {/* Show collaborator badge if exists */}
           {record.collaborator_name && (
