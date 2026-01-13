@@ -4217,6 +4217,247 @@ async def restore_client(client_id: str, current_user: dict = Depends(get_curren
         raise HTTPException(status_code=404, detail="Deleted client not found")
     return {"message": "Client restored"}
 
+# ==================== CLIENT ACCESS REQUESTS ====================
+
+@api_router.post("/client-requests")
+async def create_client_request(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Create a request to access another user's client"""
+    # Get the client
+    client = await db.clients.find_one({"id": client_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Check if user already owns this client
+    if client.get("created_by") == current_user["id"]:
+        raise HTTPException(status_code=400, detail="You already own this client")
+    
+    # Check if there's already a pending request
+    existing = await db.client_requests.find_one({
+        "client_id": client_id,
+        "requester_id": current_user["id"],
+        "status": "pending"
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="Request already pending")
+    
+    # Get owner info
+    owner = await db.users.find_one({"id": client.get("created_by")}, {"_id": 0, "name": 1, "email": 1})
+    
+    request_doc = {
+        "id": str(uuid.uuid4()),
+        "client_id": client_id,
+        "client_name": f"{client.get('first_name', '')} {client.get('last_name', '')}",
+        "client_phone": client.get("phone", ""),
+        "owner_id": client.get("created_by"),
+        "owner_name": owner.get("name", "") if owner else "Unknown",
+        "requester_id": current_user["id"],
+        "requester_name": current_user.get("name", current_user.get("email", "")),
+        "status": "pending",  # pending, approved, rejected
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.client_requests.insert_one(request_doc)
+    
+    # Create notification for owner
+    notif_doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": client.get("created_by"),
+        "message": f"{current_user.get('name', 'A user')} solicita acceso al cliente {client.get('first_name', '')} {client.get('last_name', '')}",
+        "type": "client_request",
+        "link": "/solicitudes",
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.notifications.insert_one(notif_doc)
+    
+    return {"message": "Request sent", "request_id": request_doc["id"]}
+
+@api_router.get("/client-requests")
+async def get_client_requests(current_user: dict = Depends(get_current_user)):
+    """Get all client requests (sent and received)"""
+    # Get requests I sent
+    sent = await db.client_requests.find(
+        {"requester_id": current_user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    # Get requests I received (as owner) or all if admin/bdc
+    if current_user["role"] in ["admin", "bdc"]:
+        received = await db.client_requests.find(
+            {"status": "pending"},
+            {"_id": 0}
+        ).sort("created_at", -1).to_list(100)
+    else:
+        received = await db.client_requests.find(
+            {"owner_id": current_user["id"]},
+            {"_id": 0}
+        ).sort("created_at", -1).to_list(100)
+    
+    return {"sent": sent, "received": received}
+
+@api_router.put("/client-requests/{request_id}")
+async def respond_to_request(request_id: str, action: str, current_user: dict = Depends(get_current_user)):
+    """Approve or reject a client request"""
+    if action not in ["approved", "rejected"]:
+        raise HTTPException(status_code=400, detail="Action must be 'approved' or 'rejected'")
+    
+    request = await db.client_requests.find_one({"id": request_id}, {"_id": 0})
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+    
+    # Only owner, admin, or bdc can respond
+    if current_user["role"] not in ["admin", "bdc"] and request.get("owner_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    await db.client_requests.update_one(
+        {"id": request_id},
+        {"$set": {
+            "status": action,
+            "responded_by": current_user["id"],
+            "responded_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # If approved, transfer the client
+    if action == "approved":
+        await db.clients.update_one(
+            {"id": request.get("client_id")},
+            {"$set": {
+                "created_by": request.get("requester_id"),
+                "transferred_from": request.get("owner_id"),
+                "transferred_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+    
+    # Notify the requester
+    notif_doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": request.get("requester_id"),
+        "message": f"Tu solicitud para el cliente {request.get('client_name', '')} fue {'aprobada' if action == 'approved' else 'rechazada'}",
+        "type": "client_request_response",
+        "link": "/solicitudes",
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.notifications.insert_one(notif_doc)
+    
+    return {"message": f"Request {action}"}
+
+# ==================== SALESPERSON PERFORMANCE (BDC) ====================
+
+@api_router.get("/bdc/salesperson-performance")
+async def get_salesperson_performance(current_user: dict = Depends(get_current_user)):
+    """Get performance metrics for all salespeople (BDC and Admin only)"""
+    if current_user["role"] not in ["admin", "bdc"]:
+        raise HTTPException(status_code=403, detail="BDC or Admin access required")
+    
+    # Get all salespeople
+    salespeople = await db.users.find(
+        {"role": {"$in": ["salesperson", "vendedor"]}},
+        {"_id": 0, "id": 1, "name": 1, "email": 1}
+    ).to_list(100)
+    
+    now = datetime.now(timezone.utc)
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_ago = today - timedelta(days=7)
+    month_ago = today - timedelta(days=30)
+    
+    performance = []
+    for sp in salespeople:
+        sp_id = sp["id"]
+        
+        # Clients created
+        clients_today = await db.clients.count_documents({
+            "created_by": sp_id,
+            "is_deleted": {"$ne": True},
+            "created_at": {"$gte": today.isoformat()}
+        })
+        clients_week = await db.clients.count_documents({
+            "created_by": sp_id,
+            "is_deleted": {"$ne": True},
+            "created_at": {"$gte": week_ago.isoformat()}
+        })
+        clients_month = await db.clients.count_documents({
+            "created_by": sp_id,
+            "is_deleted": {"$ne": True},
+            "created_at": {"$gte": month_ago.isoformat()}
+        })
+        clients_total = await db.clients.count_documents({
+            "created_by": sp_id,
+            "is_deleted": {"$ne": True}
+        })
+        
+        # Appointments created
+        appts_today = await db.appointments.count_documents({
+            "salesperson_id": sp_id,
+            "created_at": {"$gte": today.isoformat()}
+        })
+        appts_week = await db.appointments.count_documents({
+            "salesperson_id": sp_id,
+            "created_at": {"$gte": week_ago.isoformat()}
+        })
+        appts_month = await db.appointments.count_documents({
+            "salesperson_id": sp_id,
+            "created_at": {"$gte": month_ago.isoformat()}
+        })
+        
+        # Sales (completed records)
+        sales_today = await db.user_records.count_documents({
+            "salesperson_id": sp_id,
+            "record_status": "completed",
+            "is_deleted": {"$ne": True},
+            "updated_at": {"$gte": today.isoformat()}
+        })
+        sales_week = await db.user_records.count_documents({
+            "salesperson_id": sp_id,
+            "record_status": "completed",
+            "is_deleted": {"$ne": True},
+            "updated_at": {"$gte": week_ago.isoformat()}
+        })
+        sales_month = await db.user_records.count_documents({
+            "salesperson_id": sp_id,
+            "record_status": "completed",
+            "is_deleted": {"$ne": True},
+            "updated_at": {"$gte": month_ago.isoformat()}
+        })
+        sales_total = await db.user_records.count_documents({
+            "salesperson_id": sp_id,
+            "record_status": "completed",
+            "is_deleted": {"$ne": True}
+        })
+        
+        # Records total
+        records_total = await db.user_records.count_documents({
+            "salesperson_id": sp_id,
+            "is_deleted": {"$ne": True}
+        })
+        
+        performance.append({
+            "id": sp_id,
+            "name": sp.get("name", sp.get("email", "")),
+            "email": sp.get("email", ""),
+            "clients": {
+                "today": clients_today,
+                "week": clients_week,
+                "month": clients_month,
+                "total": clients_total
+            },
+            "appointments": {
+                "today": appts_today,
+                "week": appts_week,
+                "month": appts_month
+            },
+            "sales": {
+                "today": sales_today,
+                "week": sales_week,
+                "month": sales_month,
+                "total": sales_total
+            },
+            "records_total": records_total
+        })
+    
+    return performance
+
 # ==================== BACKUP & RESTORE ENDPOINTS (Admin Only) ====================
 
 @api_router.get("/admin/backup")
