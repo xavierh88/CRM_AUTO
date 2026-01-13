@@ -1975,7 +1975,8 @@ async def get_dashboard_stats(
         "finance_breakdown": finance_breakdown,
         "monthly_sales": [{"month": s["_id"], "sales": s["count"]} for s in monthly_sales],
         "available_months": [m["_id"] for m in available_months],
-        "current_period": month or period
+        "current_period": month or period,
+        "total_down_payment": round(total_down_payment, 2)
     }
 
 @api_router.get("/dashboard/salesperson-performance")
