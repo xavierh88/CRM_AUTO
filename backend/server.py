@@ -5383,7 +5383,10 @@ async def submit_prequalify_with_file(
             <html>
             <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
                 <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; padding: 30px;">
-                    <h1 style="color: #1e40af;">🚗 CARPLUS AUTOSALE</h1>
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <img src="{COMPANY_LOGO_URL}" alt="{COMPANY_NAME}" style="max-width: 200px; height: auto;">
+                        <p style="color: #dc2626; font-weight: 600;">{COMPANY_TAGLINE}</p>
+                    </div>
                     <p>Nueva Solicitud de Pre-Calificación</p>
                     <hr/>
                     <h3>📋 Información Personal</h3>
@@ -5413,7 +5416,7 @@ async def submit_prequalify_with_file(
                     <p><strong>Enganche Estimado:</strong> {final_downPayment or 'No proporcionado'}</p>
                     {"<p style='color: orange;'><strong>⚠️ Cliente existente encontrado: " + existing_client['first_name'] + " " + existing_client['last_name'] + "</strong></p>" if existing_client else ""}
                     <br/>
-                    <a href="{prequalify_link}" style="background: #1e40af; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Ver en Panel</a>
+                    <a href="{prequalify_link}" style="background: #dc2626; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Ver en Panel</a>
                 </div>
             </body>
             </html>
