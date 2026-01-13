@@ -2144,19 +2144,6 @@ function RecordCard({
           </div>
         </div>
 
-        {/* Direct Deposit Amount - shown when Deposito Directo is selected */}
-        {editData.bank_deposit_type === 'Deposito Directo' && (
-          <div className="mb-4">
-            <Label className="form-label mb-1 block text-xs">Monto de Depósito Directo</Label>
-            <Input
-              placeholder="$0.00"
-              value={editData.direct_deposit_amount || ''}
-              onChange={(e) => setEditData({ ...editData, direct_deposit_amount: e.target.value })}
-              className="max-w-xs"
-            />
-          </div>
-        )}
-
         {/* Cosigner Alert */}
         {editData.bank_deposit_type === 'No deposito directo' && editData.has_poi && editData.poi_type === 'Cash' && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 flex items-start gap-2">
