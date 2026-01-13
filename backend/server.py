@@ -2345,12 +2345,22 @@ async def send_appointment_sms(client_id: str, appointment_id: str, current_user
     client_name = f"{client['first_name']} {client['last_name']}"
     date_str = appointment.get("date", "pendiente")
     time_str = appointment.get("time", "")
-    dealer_str = appointment.get("dealer", "")
+    dealer_name = appointment.get("dealer", "")
+    
+    # Get dealer address if available
+    dealer_location = dealer_name
+    if dealer_name:
+        dealer_doc = await db.config_lists.find_one(
+            {"category": "dealer", "name": dealer_name},
+            {"_id": 0, "address": 1}
+        )
+        if dealer_doc and dealer_doc.get("address"):
+            dealer_location = dealer_doc["address"]
     
     if appointment.get("language") == "es":
-        message = f"Hola {client_name}, tiene una cita para el {date_str} a las {time_str} en {dealer_str}. Para ver, reprogramar o cancelar: {appointment_link} - DealerCRM"
+        message = f"Hola {client_name}, tiene una cita para el {date_str} a las {time_str} en {dealer_location}. Para ver, reprogramar o cancelar: {appointment_link} - DealerCRM"
     else:
-        message = f"Hi {client_name}, you have an appointment for {date_str} at {time_str} at {dealer_str}. To view, reschedule or cancel: {appointment_link} - DealerCRM"
+        message = f"Hi {client_name}, you have an appointment for {date_str} at {time_str} at {dealer_location}. To view, reschedule or cancel: {appointment_link} - DealerCRM"
     
     # Send SMS via Twilio
     result = await send_sms_twilio(client["phone"], message)
