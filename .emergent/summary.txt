@@ -1,168 +1,182 @@
-<analysis>**original_problem_statement:** The user wants to build a comprehensive CRM for car dealerships in Spanish. The project includes Admin and Vendedor roles, full client/record management, a public-facing pre-qualification form that integrates with the CRM, document uploads (merged to PDF), email notifications, and deployment to a Hostinger VPS. The public-facing website is a separate, pre-existing React project that needs to be modified to work with the new CRM.
+<analysis>**original_problem_statement:** The user wants to build a comprehensive CRM for car dealerships in Spanish.
 
 **PRODUCT REQUIREMENTS:**
-- **Roles:** Admin and Vendedor (Salesperson).
-- **Client & Record Management:** Full CRUD for clients and their associated sales opportunities (records).
-- **Pre-Qualify Module:** An admin-facing section to review leads from a public pre-qualification form, with functionality to convert leads into clients.
-- **Document Uploads:** The pre-qualification form must support uploading ID documents.
-- **SSN/ITIN Field:** A secure field for SSN/ITIN was added to the pre-qualification form and the CRM, visible only to admins.
-- **Deployment:** The CRM application is deployed and live on the user's Hostinger VPS.
-- **Public Website Integration:** The user's separate public website ( project) needs its multi-step pre-qualification form modified to send all data correctly to the CRM. The user requires a final, downloadable ZIP of this updated website to upload to their hosting.
+- **Roles:** Admin, Vendedor (Salesperson), and a new **BDC** (manager) role.
+- **Client & Record Management:** Full CRUD for clients and records. Salespeople should only see their own clients, while Admins/BDCs see all.
+- **Client Ownership & Requests:** Implement a system where attempting to create a client with an existing phone number triggers a request to the current owner. A new Solicitudes page will manage these requests.
+- **Client Status Indicators:** Add color-coded tags to clients based on last interaction time (Green < 3 days, Orange > 3 days, Red > 7 days) and allow filtering by status.
+- **BDC/Admin Features:** Create a Vendedores performance page with metrics on clients, appointments, and sales per salesperson.
+- **Permissions:** The Complete Record (mark as 'SOLD') button and deletion of clients/notes should be restricted to Admins. Notes generated from pre-qualification forms should be admin-only.
+- **Form/UI Enhancements:**
+    - Add admin-only  and  fields to the Create Client form.
+    - Fix the Select Dealer dropdown in the appointment form to show options.
+    - Reorganize the Record form: Move POR, add First Time Buyer checkbox, hide Auto field if First Time Buyer is checked.
+    - Add a total down payment calculation to each record card and a summary card on the dashboard.
+    - Correct the options for the POR (Proof of Residence) dropdown.
+- **Notifications:** All admins should be notified when an appointment is created. The appointment notification sent to the customer should use the dealer's full address, not just its name.
+- **Admin Page:** Fix a bug where lists of Banks, Dealers, Cars, etc., do not appear.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-A full-stack CRM application (FastAPI/React/MongoDB) is live on the user's Hostinger VPS. The agent has performed significant work on both the CRM and the source code of the user's separate public-facing website ().
-
-Recent work involved adding a secure SSN/ITIN field, fixing UI display issues, and attempting to resolve data mapping problems between the public website's form and the CRM. The agent has correctly diagnosed that the primary remaining issues are caused by the user's live public website () running outdated code that does not send all the required data fields to the CRM.
-
-The agent has modified the source code for the public website to include all necessary fields and logic, and has provided it to the user with instructions on how to recompile and deploy it.
+The application is a full-stack CRM (FastAPI/React/MongoDB) deployed on the user's Hostinger VPS. The previous session's critical login failure has been resolved, and the production environment is stable. A massive number of features were just implemented, including a new BDC role, a client ownership and request system, client status indicators, and a salesperson performance dashboard. Numerous UI/UX fixes for mobile and forms have also been completed. The application is now significantly more complex.
 
 **Last working item**:
-    - Last item agent was working: Diagnosing why several fields from the live pre-qualification form (, , ) were appearing as N/A in the CRM's pre-qualification details view. The agent concluded that the user's live website has not been updated with the latest source code, and therefore is not sending this data. The task is now blocked waiting for the user to update their public website.
-    - Status: BLOCKED
+    - Last item agent was working: The user reported three issues related to appointments: the form is blank for the  role, the appointment link sent to clients shows the dealer's name instead of the full address, and admins are not being notified of new appointments. The agent was implementing fixes in the backend.
+    - Status: IN PROGRESS
     - Agent Testing Done: N
-    - Which testing method agent to use? both
+    - Which testing method agent to use? backend testing agent
     - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-  - Issue 1: Pre-qualification data from the live website is incomplete in the CRM (P0)
-  - Issue 2: Add differences to record notes button for matched clients is not working (P1)
-  - Issue 3: Down Payment amount is not appearing in the notes when a lead is converted to a client (P1)
+  - Issue 1: Appointment functionality is broken for salespeople (P0)
+  - Issue 2: Admin page lists are not showing data (P1)
   
   Issues Detail:
   - Issue 1: 
-     - Attempted fixes: The agent correctly updated the CRM backend to accept all new and old field names and updated the CRM frontend to display them. The agent also modified the *source code* of the public website to send all the correct fields. The issue persists because the *live, deployed version* of the public website has not been updated with this new source code.
+     - Attempted fixes: The agent has modified the backend  endpoint to notify all admins. The agent has also modified the  endpoint to fetch and use the dealer's full address.
      - Next debug checklist: 
-        1.  Clearly explain to the user that they **must** update their live website by recompiling the source code from the  project.
-        2.  Guide the user on how to do this in the other project, or provide them with the final compiled  ZIP.
-        3.  Once the user confirms the site is updated, perform a live test submission to verify all fields (, , etc.) are received and displayed correctly in the CRM.
-     - Why fix this issue and what will be achieved with the fix? This is the main data integrity issue. The CRM is not capturing all required information from new leads.
-     - Status:  BLOCKED
-     - Is recurring issue? Y
+        1. Modify the  endpoint in  to match the logic of the SMS endpoint, using the dealer's full address.
+        2. Investigate why the appointment form is blank for the  role in . Check for permission issues or data not being passed correctly to the form modal for non-admin users.
+     - Why fix this issue and what will be achieved with the fix? This is a core function for salespeople (Vendedor role) to schedule appointments with clients. Fixing it will restore critical functionality.
+     - Status:  IN PROGRESS
+     - Is recurring issue? N
      - Should Test frontend/backend/both after fix? both
-     - Blocked on other issue: User action required to update their public website.
+     - Blocked on other issue: None
   - Issue 2: 
-     - Attempted fixes: The agent found that the frontend was sending a  instead of a . The backend was updated to return the  for a matched client, and the frontend was updated to use it.
+     - Attempted fixes: The agent identified that the data fetching in  used , causing all requests to fail if one did. The agent refactored this to use individual API calls in separate  blocks. However, the user immediately requested more features before this fix could be deployed and verified.
      - Next debug checklist: 
-        1.  Create a test scenario where a new submission matches an existing client with at least one record.
-        2.  Click the Agregar diferencias a Notas del Record button.
-        3.  Verify the call succeeds and a new comment is added to the correct record.
-     - Why fix this issue and what will be achieved with the fix? It's a key workflow for salespeople to quickly update existing client files with new lead info.
-     - Status:  IN PROGRESS
-     - Is recurring issue? N
-     - Should Test frontend/backend/both after fix? both
-     - Blocked on other issue: None
-  - Issue 3: 
-     - Attempted fixes: The agent fixed a  vs  field mismatch in the backend, which was causing notes to appear empty.
-     - Next debug checklist: 
-        1.  Submit a pre-qualification form including a value for Estimated Down Payment.
-        2.  Convert that lead into a new client.
-        3.  Navigate to the new client's record and check the comments/notes section to confirm the summary note includes the down payment amount.
-     - Why fix this issue and what will be achieved with the fix? Ensures all critical financial data from the lead is transferred to the client record.
-     - Status:  IN PROGRESS
-     - Is recurring issue? N
-     - Should Test frontend/backend/both after fix? both
-     - Blocked on other issue: None
+        1. Once the current appointment issues are resolved, guide the user to deploy the changes.
+        2. Ask the user to verify if the lists on the Admin page now load correctly.
+        3. If not, inspect the browser's developer console for network errors on the  calls on the Admin page.
+     - Why fix this issue and what will be achieved with the fix? Restores the admin's ability to manage core configuration data like banks, dealers, and cars.
+     - Status:  USER VERIFICATION PENDING
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix? frontend
+     - Blocked on other issue: Issue 1: Appointment functionality is broken for salespeople
 
 **In progress Task List**:
-  - Task 1: Backend Refactoring (P2)
-     - Where to resume: The agent created the new modular file structure (, , ). The next step is to begin migrating endpoint logic from the monolithic  into the new  directory, starting with a single module like  or .
-     - What will be achieved with this? A more stable, maintainable, and scalable backend, reducing the risk of breaking the live application.
+  - Task 1: Complete fixes for the appointment system
+     - Where to resume: Modify the  endpoint in  to include the dealer's full address. Then, move to the frontend to debug the blank appointment form for the 'vendedor' role in .
+     - What will be achieved with this? It will resolve all three appointment-related issues reported by the user.
      - Status:  IN PROGRESS
-     - Should Test frontend/backend/both after fix? backend
-     - Blocked on something: None
+     - Should Test frontend/backend/both after fix? both
+     - Blocked on something: No
 
 **Upcoming and Future Tasks**
 Upcoming Tasks:
-- **P1: Frontend Refactoring of **: Decompose the large component into smaller, manageable pieces (e.g., , , ).
-- **P2: Finalize and Deliver Public Website ZIP**: Once all fixes are confirmed, provide the user with the final, compiled  folder of their public website in a ZIP, ready for upload.
+- **P1: Full regression test:** Once the appointment fixes are deployed, a full end-to-end test is needed to verify all the recently added complex features (BDC role, Client Ownership, Requests, Status indicators, Performance metrics).
+- **P2: Frontend Refactoring of :** This file has become extremely large and complex and should be broken down into smaller, manageable components.
+- **P3: Backend Refactoring of :** The monolithic  file is now over 5000 lines and is very difficult to maintain. It should be broken down into a modular structure (e.g., routers, models, services).
 
 Future Tasks:
 - Add a notes/comments section for co-signer records.
 - Implement a full dashboard with report exporting (Excel/PDF).
 
 **Completed work in this session**
-- **SSN/ITIN Feature:** Successfully implemented the new SSN/ITIN field across the entire stack: added to the public website form, the CRM backend (submission & client models), and the CRM frontend with admin-only, toggleable visibility.
-- **UI/Data Display Fixes:** Updated the CRM's  to correctly format and display separated time fields (years/months), ID type, and the new SSN/ITIN data.
-- **Empty Notes Bug Fix:** Diagnosed and fixed the issue where notes appeared empty by correcting a  vs  field name mismatch in the backend.
-- **Add to Notes Bug Fix:** Corrected the logic for the Add differences to notes button by modifying the backend to provide the  and updating the frontend to use it.
-- **Public Website Updates:** Modified the *source code* of the user's public website to include the SSN/ITIN fields, update contact information (email, Instagram), and improve form submission logic.
-- **Root Cause Analysis:** Correctly identified that the user's reported data issues are because their live public website is running outdated code.
+- **Production Server Recovery:** Successfully diagnosed and resolved a series of  crashes on the user's production VPS, restoring service.
+- **Mobile UI Overhaul:** Fixed numerous responsive design issues, including cut-off modals, misaligned dashboard cards, and major layout problems with sidebar navigation, making the app usable on mobile.
+- **Deployment Troubleshooting:** Guided the user through multiple complex deployment cycles, debugging Nginx 403/500 errors, file permissions, and failed frontend builds.
+- **New BDC Role and Permissions:** Implemented a new 'BDC' user role with specific permissions to view all salesperson data.
+- **Client Ownership & Request System:** Created a full-featured system where salespeople own clients, and a request/approval workflow exists to transfer ownership of clients with duplicate phone numbers. A new Solicitudes page was created to manage this.
+- **Client Status Indicators:** Added color-coded status tags (green/orange/red) to client cards based on last interaction date, with filtering capabilities.
+- **Salesperson Performance Page:** Created a new Vendedores page for Admins/BDCs to view performance metrics.
+- **Form and UI Enhancements:** Implemented a large number of user-requested changes to the client and record forms, including adding/removing/reorganizing fields and adding conditional logic.
+- **Admin Page Data Initialization:** Added an endpoint and a UI button for admins to seed the database with default configuration lists (banks, dealers, etc.).
 
 **Earlier issues found/mentioned but not fixed**
-   - A low-priority, non-reproducible bug from a past session regarding client creation remains a monitoring task.
+   - None, all prior issues were addressed, but the fix for the Admin Page data not loading awaits user verification.
 
 **Known issue recurrence from previous fork**
   - None.
 
 **Code Architecture**
-- **CRM Backend:**  (monolithic, with an in-progress refactor to a modular structure in , , and ).
-- **CRM Frontend:**  (React app with a monolithic  and ).
-- **Public Website:** A separate React project (). The updated source code is available in the workspace from .
+- **CRM Backend:**  (monolithic FastAPI, now extremely large).
+- **CRM Frontend:**  (React). New pages added:
+    - 
+    - 
+- **Production Path:**  on the user's Hostinger VPS.
 
 **Key Technical Concepts**
 - **Stack:** FastAPI, React, MongoDB.
-- **Architecture:** A private CRM application that receives data from a separate, public-facing React website via API.
-- **Authentication:** JWT for the CRM.
-- **Data Validation:** Pydantic models in the backend.
+- **Deployment:** Manual deployment via , , and restarting the  process.
+- **Client Ownership:** Logic in the backend () filters clients based on  and the current user's role.
+- **Request Workflow:** A new set of models and endpoints () to manage client transfer requests.
+- **Dynamic Client Status:** Backend calculates an  on the fly based on .
 
 **key DB schema**
-- : Added , , .
-- : Added , .
+- **clients:** Added , , .
+- **users:** Added a new role option: .
+- **record_comments/client_comments:** Added an  field.
+- **client_requests (New Collection):** Stores requests to transfer client ownership. Fields: , , ,  ('pending', 'approved', 'rejected').
 
 **changes in tech stack**
   - None.
 
 **All files of reference**
-- **CRM Backend (Primary):** 
-- **CRM Frontend (Primary):** , 
-- **Public Website Source (for reference):** The contents of , especially  and .
+- : Heavily modified with new endpoints for client requests, performance stats, and role-based data filtering. Now extremely large.
+- : Heavily modified to add status indicators, filters, conditional rendering for forms, and logic to handle the new client ownership/request system.
+- : Modified to add a data initialization button and to fix data loading logic.
+- : Modified to add new navigation links for BDC/Admin roles and to fix major responsive layout issues.
+- : Updated with new routes for the  and .
+- : New file for managing client transfer requests.
+- : New file for displaying salesperson performance metrics.
 
 **Areas that need refactoring**:
-- ** (CRITICAL):** The monolithic structure poses a high risk to the live application.
-- ** (HIGH):** Its large size makes UI debugging and maintenance difficult.
+- ** (CRITICAL):** This monolithic file is now unmanageable and urgently needs to be broken down into a modular structure with separate routers for each domain (clients, records, admin, etc.).
+- ** (CRITICAL):** This component is handling far too much logic and state (client list, record management, multiple modals, forms). It needs to be decomposed into smaller, specialized components (e.g., , , ).
 
 **key api endpoints**
-- ****: Updated to accept , , and . The logic is now more robust to handle missing or  values for time fields.
-- ****: Updated to return the  of a matched client, facilitating the add to notes feature.
-- ****: The response model  was updated to include the new fields (, , etc.) so they appear in the UI.
+- : Heavily modified to filter by  and add .
+- : Modified to check for existing phone numbers and create a  instead of a client if owned by another user.
+- : (New) Seeds the database with default config data.
+- : (New) Full CRUD for managing client transfer requests.
+- : (New) Endpoint to provide data for the Vendedores page.
+- : Modified to create notifications for all admin users.
+-  & : Modified to fetch and use the dealer's full address.
 
 **Critical Info for New Agent**
-- **THE CORE PROBLEM IS A DEPLOYMENT MISMATCH.** The user's live public website () is running old code. It **is not sending** several critical data fields (, , correct time values) to the CRM. The CRM has been fixed to handle this data, but the errors reported by the user will persist until **the user updates their public website**.
-- **Two Separate Projects:** You are working on the CRM. The public website is a different project (). You have the updated source code for it, but the user needs to re-compile it and deploy the  output to their hosting. Your main task is to unblock the user by helping them do this.
-- **CRM Admin Login:** The username has been changed to  and the password is .
+- **Deployment is fragile:** The user's manual deployment process (, , , ) is a frequent point of failure. Be prepared to guide the user through it step-by-step and troubleshoot issues like failed builds ( missing) or Nginx permissions.
+- **Verify before moving on:** The user tends to report that changes are not working, which is often due to a failed deployment or not clicking Save to Github. Always verify that the code has been saved and deployed correctly before assuming the code itself is wrong.
+- **Complexity has increased dramatically:** The introduction of roles, ownership, and request workflows has made the application logic much more complex. Be sure to trace data flow through both the frontend and backend when debugging.
+- **Prioritize and Communicate:** The user often provides large lists of requests. It's crucial to break them down, prioritize, and communicate the plan clearly before implementing everything at once.
 
 **documents and test reports created in this job**
-  -  (updated with recent changes)
-  - 
-  -  (latest source code for the public website, provided to the user)
+- /app/memory/PRD.md
 
 **Last 10 User Messages and any pending HUMAN messages**
-- The user has repeatedly sent screenshots showing that , , and  appear as N/A in the CRM's pre-qualification details.
-- The user confirms that the  field *is* working, which indicates they have at least partially updated their website but are still using a version that is missing some fields/logic.
-- The user also reported that the add to notes button and the down payment note feature are broken.
-- The agent's last responses have tried to explain that the root cause is the outdated public website and that it needs to be updated.
+1.  **User:** Requests adding a total down payment sum to the dashboard.
+2.  **Agent:** Implements the feature on the dashboard.
+3.  **User:** Clarifies they want the sum on the individual record card, not just the dashboard.
+4.  **Agent:** Corrects the implementation to show the sum on the record card.
+5.  **User:** Provides a massive list of new features: Fix POR options, make Complete button admin-only, and implement a full client ownership/request system with a new BDC role and performance metrics.
+6.  **Agent:** Proposes breaking the work into phases (urgent, medium, complex).
+7.  **User:** Asks the agent to implement everything at once.
+8.  **Agent:** Implements all requested features across frontend and backend.
+9.  **User:** Reports new issues after deployment: appointment form is blank for salespeople, appointment link has the wrong location, and admins are not notified.
+10. **Agent:** Acknowledges the new issues and begins implementing backend fixes for the notification content and admin alerts.
 
 **Project Health Check:**
-- **Broken:** The data flow from the live public website to the CRM is broken for key fields (, , ) because the website is running outdated code.
+- **Broken:** Core functionality for the  role (creating appointments) is currently broken.
 - **Mocked:** None.
 
 **3rd Party Integrations**
-- **Twilio (SMS):** Integrated but blocked on user's A2P 10DLC campaign approval.
-- **Google Places API:** Integrated for address autocomplete.
-- **SMTP (via Gmail):** Integrated for sending email notifications.
-- **ReportLab / PyPDF2 / Pillow:** Used for merging multiple uploaded files into a single PDF.
+- **Twilio (SMS)**
+- **Google Places API**
+- **SMTP (via Gmail)**
+- **Resend**
+- **ReportLab / PyPDF2 / Pillow**
 
 **Testing status**
-  - Testing agent used after significant changes: YES. It found and fixed a bug in the direct client creation endpoint.
+  - Testing agent used after significant changes: NO
   - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: A test script was created by the testing agent at .
-  - Known regressions: The UI layout issues in modals were fixed, but the data display issues in  persist due to the external website issue.
+  - Test files created: []
+  - Known regressions: Appointment creation is broken for non-admin users.
 
 **Credentials to test flow:**
 - **Admin Email:** 
 - **Admin Password:** 
+- **Salesperson (Vendedor) credentials** will need to be created/used to test role-specific issues.
 
 **What agent forgot to execute**
-- The agent has not yet performed a final end-to-end test on the add to notes and down payment in notes features after the latest fixes. These should be tested once the primary data-sending issue from the public site is resolved.</analysis>
+- The agent has not yet verified with the user whether the fix for the Admin Page data lists not showing up was successful. This was implemented but never deployed and tested by the user due to the rapid influx of new, higher-priority requests.</analysis>
