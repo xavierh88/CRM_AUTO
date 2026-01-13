@@ -4119,6 +4119,23 @@ async def update_config_list_item(item_id: str, item: ConfigListItem, current_us
     updated = await db.config_lists.find_one({"id": item_id}, {"_id": 0})
     return updated
 
+# ==================== FORCE INITIALIZE CONFIG LISTS (Admin) ====================
+
+@api_router.post("/admin/init-config-lists")
+async def force_init_config_lists(current_user: dict = Depends(get_current_user)):
+    """Force initialize default config lists - Admin only"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    await initialize_default_config_lists()
+    
+    # Return counts
+    counts = {}
+    for category in ['bank', 'dealer', 'car', 'id_type', 'poi_type', 'por_type']:
+        counts[category] = await db.config_lists.count_documents({"category": category})
+    
+    return {"message": "Config lists initialized", "counts": counts}
+
 # ==================== CLIENT DELETE (Admin) ====================
 
 @api_router.delete("/clients/{client_id}")
