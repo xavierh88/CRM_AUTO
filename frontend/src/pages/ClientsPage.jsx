@@ -2716,12 +2716,24 @@ function RecordCard({
         )}
         {record.auto_loan && <div><span className="text-slate-400">Auto Loan:</span> {record.auto_loan}</div>}
         {record.dealer && <div><span className="text-slate-400">Dealer:</span> {record.dealer}</div>}
-        {/* Down Payment - supports multiple selections */}
+        {/* Down Payment - supports multiple selections with TOTAL */}
         {record.down_payment_type && (
           <div>
             <span className="text-slate-400">Down:</span> {record.down_payment_type}
             {record.down_payment_type.includes('Cash') && record.down_payment_cash && ` (Cash: $${record.down_payment_cash})`}
             {record.down_payment_type.includes('Tarjeta') && record.down_payment_card && ` (Tarjeta: $${record.down_payment_card})`}
+            {record.down_payment_type.includes('Trade') && record.trade_estimated_value && ` (Trade: $${record.trade_estimated_value})`}
+            {/* Show TOTAL if there are multiple values */}
+            {(() => {
+              const cash = parseFloat(String(record.down_payment_cash || '0').replace(/[$,]/g, '')) || 0;
+              const card = parseFloat(String(record.down_payment_card || '0').replace(/[$,]/g, '')) || 0;
+              const trade = parseFloat(String(record.trade_estimated_value || '0').replace(/[$,]/g, '')) || 0;
+              const total = cash + card + trade;
+              if (total > 0) {
+                return <span className="ml-2 font-semibold text-green-600">= Total: ${total.toLocaleString()}</span>;
+              }
+              return null;
+            })()}
           </div>
         )}
         {/* Direct Deposit Amount */}
