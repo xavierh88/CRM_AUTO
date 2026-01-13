@@ -1640,7 +1640,8 @@ async def send_collaborator_notification(
             email_body = f"""
 <html>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-<div style="background: #3b82f6; color: white; padding: 20px; text-align: center;">
+<div style="background: #1e3a8a; color: white; padding: 20px; text-align: center;">
+<img src="{COMPANY_LOGO_URL}" alt="{COMPANY_NAME}" style="max-width: 150px; height: auto; margin-bottom: 10px;">
 <h2>🔔 Notificación de Colaboración</h2>
 </div>
 <div style="padding: 20px;">
