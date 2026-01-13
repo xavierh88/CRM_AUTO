@@ -976,6 +976,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
       auto: record.auto || '',
       credit: record.credit || '',
       // Auto Loan fields
+      first_time_buyer: record.first_time_buyer || false,
       auto_loan_status: record.auto_loan_status || '',
       auto_loan_bank: record.auto_loan_bank || '',
       auto_loan_amount: record.auto_loan_amount || '',
