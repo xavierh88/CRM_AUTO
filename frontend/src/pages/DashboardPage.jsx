@@ -267,7 +267,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Cards - Row 2 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card className="dashboard-card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col items-center text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
@@ -312,6 +312,18 @@ export default function DashboardPage() {
                 <p className="text-2xl sm:text-3xl font-bold mt-1">{stats?.total_cosigners || 0}</p>
               </div>
               <Users2 className="w-8 h-8 text-amber-200 mt-2 sm:mt-0 flex-shrink-0" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="dashboard-card bg-gradient-to-br from-green-500 to-green-600 text-white">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col items-center text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+              <div className="min-w-0">
+                <p className="text-green-100 text-xs sm:text-sm">Down Payment</p>
+                <p className="text-xl sm:text-2xl font-bold mt-1">${(stats?.total_down_payment || 0).toLocaleString()}</p>
+              </div>
+              <DollarSign className="w-8 h-8 text-green-200 mt-2 sm:mt-0 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
