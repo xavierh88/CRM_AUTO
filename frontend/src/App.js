@@ -15,6 +15,7 @@ import ImportContactsPage from "./pages/ImportContactsPage";
 import PreQualifyPage from "./pages/PreQualifyPage";
 import SolicitudesPage from "./pages/SolicitudesPage";
 import VendedoresPage from "./pages/VendedoresPage";
+import SoldPage from "./pages/SoldPage";
 import Layout from "./components/Layout";
 
 // Public Pages (for clients)
