@@ -4716,6 +4716,7 @@ async def download_backup(current_user: dict = Depends(get_current_user)):
 @api_router.post("/admin/restore")
 async def restore_backup(
     file: UploadFile = File(...),
+    merge_mode: str = Form("replace"),
     current_user: dict = Depends(get_current_user)
 ):
     """Restore database from JSON backup file (Admin only)"""
@@ -4734,8 +4735,9 @@ async def restore_backup(
         if "collections" not in backup_data:
             raise HTTPException(status_code=400, detail="Formato de backup inválido")
         
-        # Get merge mode from query parameter (default: replace all)
-        merge_mode = data.get("merge_mode", "replace")  # "replace" or "merge"
+        # Validate merge_mode
+        if merge_mode not in ["replace", "merge"]:
+            merge_mode = "replace"
         
         # Collections to restore - ALL data collections (not users to avoid lockout)
         collections_to_restore = [
