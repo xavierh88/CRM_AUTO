@@ -429,7 +429,7 @@ export default function PublicAppointmentPage() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 uppercase">{t.location}</p>
-                  <p className="font-medium text-slate-800">{appointmentInfo?.dealer || t.toBeConfirmed}</p>
+                  <p className="font-medium text-slate-800">{appointmentInfo?.dealer_address || appointmentInfo?.dealer || t.toBeConfirmed}</p>
                 </div>
               </div>
             </div>
