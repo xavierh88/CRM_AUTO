@@ -44,6 +44,7 @@ JWT_EXPIRATION_HOURS = 24
 TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
 TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
 TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
+TWILIO_MESSAGING_SERVICE_SID = os.environ.get('TWILIO_MESSAGING_SERVICE_SID')
 
 # Resend Email Configuration (optional - can use SMTP instead)
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
