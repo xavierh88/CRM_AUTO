@@ -1242,10 +1242,14 @@ async def delete_client_comment(client_id: str, comment_id: str, current_user: d
 
 @api_router.get("/salespersons")
 async def get_salespersons(current_user: dict = Depends(get_current_user)):
-    """Get list of all approved salespersons for collaborator selection"""
+    """Get list of all active telemarketers for collaborator selection and filters"""
     users = await db.users.find(
-        {"status": "approved", "role": {"$in": ["salesperson", "admin"]}},
-        {"_id": 0, "id": 1, "name": 1, "email": 1}
+        {
+            "role": {"$in": ["salesperson", "telemarketer", "admin", "bdc_manager"]},
+            "is_active": {"$ne": False},  # Only active users
+            "is_deleted": {"$ne": True}   # Not deleted users
+        },
+        {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1}
     ).to_list(100)
     return users
 
