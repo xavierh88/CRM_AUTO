@@ -694,17 +694,21 @@ async def create_client(client: ClientCreate, current_user: dict = Depends(get_c
 import re as regex_module
 
 @api_router.get("/clients", response_model=List[dict])
-async def get_clients(include_deleted: bool = False, search: Optional[str] = None, salesperson_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+async def get_clients(include_deleted: bool = False, search: Optional[str] = None, salesperson_id: Optional[str] = None, exclude_sold: bool = False, current_user: dict = Depends(get_current_user)):
     query = {} if include_deleted and current_user["role"] == "admin" else {"is_deleted": {"$ne": True}}
     
-    # Filter by owner - salespeople can only see their own clients
-    # Admin and BDC can see all clients or filter by salesperson
-    if current_user["role"] in ["admin", "bdc"]:
+    # Filter by owner - telemarketers can only see their own clients
+    # Admin and BDC Manager can see all clients or filter by salesperson
+    if current_user["role"] in ["admin", "bdc", "bdc_manager"]:
         if salesperson_id:
             query["created_by"] = salesperson_id
     else:
-        # Salespeople only see their own clients
+        # Telemarketers (and legacy salesperson) only see their own clients
         query["created_by"] = current_user["id"]
+    
+    # Exclude sold clients if requested (for main Clients page)
+    if exclude_sold:
+        query["is_sold"] = {"$ne": True}
     
     # Add search filter for name and phone (escape special regex characters)
     if search:
