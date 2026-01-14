@@ -14,7 +14,8 @@ import {
   FileSpreadsheet,
   FileText,
   MessageSquare,
-  BarChart3
+  BarChart3,
+  Trophy
 } from 'lucide-react';
 import { Button } from './ui/button';
 import NotificationsPopover from './NotificationsPopover';
@@ -26,16 +27,30 @@ export const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isBDC = user?.role === 'bdc';
-  const isAdminOrBDC = isAdmin || isBDC;
+  const isBDCManager = user?.role === 'bdc_manager';
+  const isAdminOrBDC = isAdmin || isBDC || isBDCManager;
+
+  // Role display names
+  const getRoleDisplayName = (role) => {
+    switch(role) {
+      case 'admin': return 'Admin';
+      case 'bdc_manager': return 'BDC Manager';
+      case 'bdc': return 'BDC';
+      case 'telemarketer': return 'Telemarketer';
+      case 'salesperson': return 'Telemarketer'; // Legacy name
+      default: return role;
+    }
+  };
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { path: '/clients', icon: Users, label: t('nav.clients') },
+    { path: '/sold', icon: Trophy, label: 'Sold' },
     { path: '/agenda', icon: Calendar, label: t('nav.agenda') },
-    { path: '/solicitudes', icon: MessageSquare, label: 'Solicitudes' },
-    { path: '/import', icon: FileSpreadsheet, label: t('nav.import') || 'Importar' },
+    ...(isAdminOrBDC ? [{ path: '/solicitudes', icon: MessageSquare, label: 'Solicitudes' }] : []),
     ...(isAdminOrBDC ? [{ path: '/vendedores', icon: BarChart3, label: 'Vendedores' }] : []),
     ...(isAdmin ? [{ path: '/prequalify', icon: FileText, label: 'Pre-Qualify' }] : []),
+    ...(isAdmin ? [{ path: '/import', icon: FileSpreadsheet, label: t('nav.import') || 'Importar' }] : []),
     ...(isAdmin ? [{ path: '/admin', icon: Shield, label: t('nav.admin') }] : []),
     { path: '/settings', icon: Settings, label: t('nav.settings') },
   ];
