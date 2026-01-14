@@ -4734,6 +4734,9 @@ async def restore_backup(
         if "collections" not in backup_data:
             raise HTTPException(status_code=400, detail="Formato de backup inválido")
         
+        # Get merge mode from query parameter (default: replace all)
+        merge_mode = data.get("merge_mode", "replace")  # "replace" or "merge"
+        
         # Collections to restore - ALL data collections (not users to avoid lockout)
         collections_to_restore = [
             "clients",
@@ -4769,17 +4772,39 @@ async def restore_backup(
                 documents = backup_data["collections"][collection_name]
                 
                 if documents:
-                    # Clear existing data
-                    await db[collection_name].delete_many({})
-                    
-                    # Insert backup data
-                    await db[collection_name].insert_many(documents)
-                    restore_stats[collection_name] = len(documents)
-                    logger.info(f"Restored {collection_name}: {len(documents)} documents")
+                    if merge_mode == "merge":
+                        # Merge mode: Update existing documents by ID, insert new ones
+                        inserted = 0
+                        updated = 0
+                        for doc in documents:
+                            doc_id = doc.get("id")
+                            if doc_id:
+                                result = await db[collection_name].update_one(
+                                    {"id": doc_id},
+                                    {"$set": doc},
+                                    upsert=True
+                                )
+                                if result.upserted_id:
+                                    inserted += 1
+                                else:
+                                    updated += 1
+                            else:
+                                # Document without ID, just insert
+                                await db[collection_name].insert_one(doc)
+                                inserted += 1
+                        restore_stats[collection_name] = {"inserted": inserted, "updated": updated, "total": len(documents)}
+                        logger.info(f"Merged {collection_name}: {inserted} inserted, {updated} updated")
+                    else:
+                        # Replace mode: Clear and insert all
+                        await db[collection_name].delete_many({})
+                        await db[collection_name].insert_many(documents)
+                        restore_stats[collection_name] = {"replaced": len(documents)}
+                        logger.info(f"Restored {collection_name}: {len(documents)} documents")
                 else:
-                    # Clear collection if backup has empty array
-                    await db[collection_name].delete_many({})
-                    restore_stats[collection_name] = 0
+                    if merge_mode != "merge":
+                        # Only clear collection in replace mode
+                        await db[collection_name].delete_many({})
+                    restore_stats[collection_name] = {"replaced": 0} if merge_mode != "merge" else {"merged": 0}
         
         # Create restore log
         restore_log = {
@@ -4787,15 +4812,22 @@ async def restore_backup(
             "restored_by": current_user["email"],
             "restored_at": datetime.now(timezone.utc).isoformat(),
             "backup_date": backup_data.get("backup_date"),
+            "merge_mode": merge_mode,
             "stats": restore_stats
         }
         
         # Save restore log
         await db.restore_logs.insert_one(restore_log)
         
+        total_docs = sum(
+            s.get("total", s.get("replaced", 0)) if isinstance(s, dict) else s 
+            for s in restore_stats.values()
+        )
+        
         return {
-            "message": f"Backup restaurado exitosamente. {sum(restore_stats.values())} registros restaurados.",
-            "stats": restore_stats
+            "message": f"Backup restaurado exitosamente ({merge_mode} mode). {total_docs} registros procesados.",
+            "stats": restore_stats,
+            "merge_mode": merge_mode
         }
         
     except json_lib.JSONDecodeError:
