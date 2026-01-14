@@ -537,7 +537,7 @@ async def register(user: UserCreate):
         "email": user.email,
         "password": hash_password(user.password),
         "name": user.name,
-        "role": "salesperson",  # All new users are salesperson by default
+        "role": "telemarketer",  # All new users are telemarketer by default (previously salesperson)
         "phone": user.phone,
         "is_active": False,  # Users must be activated by admin
         "created_at": datetime.now(timezone.utc).isoformat()
