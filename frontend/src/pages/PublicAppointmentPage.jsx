@@ -342,7 +342,7 @@ export default function PublicAppointmentPage() {
               </div>
               <div className="flex items-center gap-2 text-slate-700">
                 <MapPin className="w-4 h-4 text-green-600" />
-                <span>{appointmentInfo?.dealer || t.toBeConfirmed}</span>
+                <span>{appointmentInfo?.dealer_address || appointmentInfo?.dealer || t.toBeConfirmed}</span>
               </div>
             </div>
 
