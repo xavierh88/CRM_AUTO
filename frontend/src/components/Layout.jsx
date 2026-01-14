@@ -48,7 +48,7 @@ export const Layout = ({ children }) => {
     { path: '/sold', icon: Trophy, label: 'Sold' },
     { path: '/agenda', icon: Calendar, label: t('nav.agenda') },
     ...(isAdminOrBDC ? [{ path: '/solicitudes', icon: MessageSquare, label: 'Solicitudes' }] : []),
-    ...(isAdminOrBDC ? [{ path: '/vendedores', icon: BarChart3, label: 'Vendedores' }] : []),
+    ...(isAdminOrBDC ? [{ path: '/vendedores', icon: BarChart3, label: 'TM' }] : []),
     ...(isAdmin ? [{ path: '/prequalify', icon: FileText, label: 'Pre-Qualify' }] : []),
     ...(isAdmin ? [{ path: '/import', icon: FileSpreadsheet, label: t('nav.import') || 'Importar' }] : []),
     ...(isAdmin ? [{ path: '/admin', icon: Shield, label: t('nav.admin') }] : []),
