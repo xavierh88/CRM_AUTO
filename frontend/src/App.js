@@ -110,6 +110,16 @@ function App() {
             }
           />
           <Route
+            path="/sold"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <SoldPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/agenda"
             element={
               <ProtectedRoute>
@@ -122,21 +132,21 @@ function App() {
           <Route
             path="/solicitudes"
             element={
-              <ProtectedRoute>
+              <AdminOrBDCRoute>
                 <Layout>
                   <SolicitudesPage />
                 </Layout>
-              </ProtectedRoute>
+              </AdminOrBDCRoute>
             }
           />
           <Route
             path="/import"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <Layout>
                   <ImportContactsPage />
                 </Layout>
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
           <Route
