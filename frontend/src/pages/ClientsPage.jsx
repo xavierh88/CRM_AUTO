@@ -156,7 +156,10 @@ export default function ClientsPage() {
 
   const fetchClients = async (search = '') => {
     try {
-      const url = search ? `${API}/clients?search=${encodeURIComponent(search)}` : `${API}/clients`;
+      // Exclude sold clients from the main clients page
+      const params = new URLSearchParams({ exclude_sold: 'true' });
+      if (search) params.append('search', search);
+      const url = `${API}/clients?${params.toString()}`;
       const response = await axios.get(url);
       setClients(response.data);
     } catch (error) {
