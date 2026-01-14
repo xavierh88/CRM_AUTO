@@ -179,9 +179,11 @@ export const Layout = ({ children }) => {
             <div className="flex items-center gap-2">
               <NotificationsPopover />
               <div className={`px-2 py-1 rounded text-xs font-medium ${
-                isAdmin ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                isAdmin ? 'bg-purple-100 text-purple-700' : 
+                isBDCManager ? 'bg-emerald-100 text-emerald-700' :
+                'bg-blue-100 text-blue-700'
               }`}>
-                {user?.role}
+                {getRoleDisplayName(user?.role)}
               </div>
             </div>
           </div>
