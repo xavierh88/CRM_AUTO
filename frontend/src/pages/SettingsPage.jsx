@@ -25,6 +25,7 @@ export default function SettingsPage() {
   const [isRestoring, setIsRestoring] = useState(false);
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [restoreMode, setRestoreMode] = useState('replace'); // 'replace' or 'merge'
   const fileInputRef = useRef(null);
   
   // Delete all data states
