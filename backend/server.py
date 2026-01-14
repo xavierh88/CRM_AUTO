@@ -4446,8 +4446,8 @@ async def get_client_requests(current_user: dict = Depends(get_current_user)):
         {"_id": 0}
     ).sort("created_at", -1).to_list(100)
     
-    # Get requests I received (as owner) or all if admin/bdc
-    if current_user["role"] in ["admin", "bdc"]:
+    # Get requests I received (as owner) or all if admin/bdc/bdc_manager
+    if current_user["role"] in ["admin", "bdc", "bdc_manager"]:
         received = await db.client_requests.find(
             {"status": "pending"},
             {"_id": 0}
@@ -4470,8 +4470,8 @@ async def respond_to_request(request_id: str, action: str, current_user: dict = 
     if not request:
         raise HTTPException(status_code=404, detail="Request not found")
     
-    # Only owner, admin, or bdc can respond
-    if current_user["role"] not in ["admin", "bdc"] and request.get("owner_id") != current_user["id"]:
+    # Only owner, admin, bdc, or bdc_manager can respond
+    if current_user["role"] not in ["admin", "bdc", "bdc_manager"] and request.get("owner_id") != current_user["id"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     await db.client_requests.update_one(
