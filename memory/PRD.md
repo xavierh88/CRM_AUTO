@@ -75,7 +75,34 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - ✅ Nginx reverse proxy
 - ✅ systemd service management
 
-## Session Work Completed (January 13, 2025)
+## Session Work Completed (January 14, 2025)
+
+### New Role System Implemented
+- ✅ Renamed "Salesperson" role to "Telemarketer"
+- ✅ Created new "BDC Manager" role with permissions:
+  - Can view all clients (like Admin)
+  - Can access "Vendedores" (performance metrics) page
+  - Can view and manage "Solicitudes" (client transfer requests)
+  - Can create and edit clients of any Telemarketer
+  - Cannot access Admin configuration (Banks, Dealers, etc.)
+  - Cannot create/delete users
+
+### New "Sold" Page Created
+- ✅ New menu item "Sold" showing clients with completed sales
+- ✅ Telemarketer: Only sees their own sold clients
+- ✅ BDC Manager / Admin: Sees all sold clients with filter by Telemarketer
+- ✅ Clients automatically move to "Sold" when record_status = "completed"
+- ✅ Main Clients page now excludes sold clients (exclude_sold parameter)
+
+### Menu Reorganization
+- ✅ Added "Sold" item after "Clients"
+- ✅ Moved "Import" below "Pre-Qualify"
+- ✅ "Solicitudes" now only visible to Admin and BDC Manager
+- ✅ "Vendedores" visible to Admin and BDC Manager
+
+### Appointment Location Fix
+- ✅ Public appointment page now shows full dealer address instead of just name
+- ✅ Backend endpoint `/api/public/appointment/{token}` returns `dealer_address` field
 
 ### Logo Updated Across CRM
 - ✅ Updated logo from: `/logo.png` to: `https://carplusautosalesgroup.com/img/carplus.png`
