@@ -332,25 +332,69 @@ export default function SettingsPage() {
             {showRestoreConfirm && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                 <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
-                  <div className="flex items-center gap-3 text-red-600 mb-4">
+                  <div className="flex items-center gap-3 text-amber-600 mb-4">
                     <AlertTriangle className="w-8 h-8" />
-                    <h3 className="text-lg font-bold">¡Advertencia!</h3>
+                    <h3 className="text-lg font-bold">Restaurar Backup</h3>
                   </div>
                   <p className="text-slate-600 mb-2">
-                    Estás a punto de restaurar el backup:
+                    Archivo seleccionado:
                   </p>
                   <p className="font-mono text-sm bg-slate-100 p-2 rounded mb-4">
                     {selectedFile?.name}
                   </p>
-                  <p className="text-red-600 font-medium mb-4">
-                    ⚠️ Esta acción ELIMINARÁ todos los datos actuales y los reemplazará con los del backup. Esta acción NO se puede deshacer.
-                  </p>
+                  
+                  {/* Restore Mode Selection */}
+                  <div className="mb-4">
+                    <p className="text-sm font-medium text-slate-700 mb-2">Modo de restauración:</p>
+                    <div className="space-y-2">
+                      <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                        <input
+                          type="radio"
+                          name="restoreMode"
+                          value="merge"
+                          checked={restoreMode === 'merge'}
+                          onChange={(e) => setRestoreMode(e.target.value)}
+                          className="mt-1"
+                        />
+                        <div>
+                          <span className="font-medium text-green-700">🔄 Combinar (Recomendado)</span>
+                          <p className="text-xs text-slate-500 mt-1">
+                            Actualiza registros existentes y agrega nuevos sin eliminar datos actuales.
+                          </p>
+                        </div>
+                      </label>
+                      <label className="flex items-start gap-3 p-3 border border-red-200 rounded-lg cursor-pointer hover:bg-red-50 transition-colors">
+                        <input
+                          type="radio"
+                          name="restoreMode"
+                          value="replace"
+                          checked={restoreMode === 'replace'}
+                          onChange={(e) => setRestoreMode(e.target.value)}
+                          className="mt-1"
+                        />
+                        <div>
+                          <span className="font-medium text-red-700">🗑️ Reemplazar Todo</span>
+                          <p className="text-xs text-slate-500 mt-1">
+                            ELIMINA todos los datos actuales y los reemplaza con el backup.
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  {restoreMode === 'replace' && (
+                    <p className="text-red-600 font-medium text-sm mb-4 p-2 bg-red-50 rounded">
+                      ⚠️ El modo "Reemplazar" eliminará todos los datos. Esta acción NO se puede deshacer.
+                    </p>
+                  )}
+                  
                   <div className="flex gap-3">
                     <Button 
                       variant="outline" 
                       onClick={() => {
                         setShowRestoreConfirm(false);
                         setSelectedFile(null);
+                        setRestoreMode('replace');
                       }}
                       className="flex-1"
                     >
@@ -359,7 +403,7 @@ export default function SettingsPage() {
                     <Button 
                       onClick={handleRestoreBackup}
                       disabled={isRestoring}
-                      className="flex-1 bg-red-600 hover:bg-red-700"
+                      className={`flex-1 ${restoreMode === 'merge' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
                       data-testid="confirm-restore-btn"
                     >
                       {isRestoring ? (
@@ -368,7 +412,7 @@ export default function SettingsPage() {
                           Restaurando...
                         </>
                       ) : (
-                        'Sí, Restaurar'
+                        restoreMode === 'merge' ? 'Combinar Datos' : 'Reemplazar Todo'
                       )}
                     </Button>
                   </div>
