@@ -88,6 +88,7 @@ export default function SettingsPage() {
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
+      formData.append('merge_mode', restoreMode);
       
       const response = await axios.post(`${API}/admin/restore`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -96,6 +97,7 @@ export default function SettingsPage() {
       toast.success(`Backup restaurado: ${response.data.message}`);
       setShowRestoreConfirm(false);
       setSelectedFile(null);
+      setRestoreMode('replace');
       
       // Reload page to reflect changes
       setTimeout(() => {
