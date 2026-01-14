@@ -3637,8 +3637,22 @@ async def get_public_appointment_info(token: str):
     # Get dealers list for rescheduling
     dealers = await db.config_lists.find({"category": "dealer"}, {"_id": 0}).to_list(100)
     
+    # Get full dealer address for current appointment
+    dealer_name = appointment.get("dealer", "")
+    dealer_address = dealer_name  # Default to name if no address found
+    if dealer_name:
+        dealer_doc = await db.config_lists.find_one(
+            {"category": "dealer", "name": dealer_name},
+            {"_id": 0, "address": 1}
+        )
+        if dealer_doc and dealer_doc.get("address"):
+            dealer_address = dealer_doc["address"]
+    
+    # Add dealer_address to appointment for display
+    appointment_with_address = {**appointment, "dealer_address": dealer_address}
+    
     return {
-        "appointment": appointment,
+        "appointment": appointment_with_address,
         "client": {
             "first_name": client["first_name"] if client else "Cliente",
             "last_name": client["last_name"] if client else ""
