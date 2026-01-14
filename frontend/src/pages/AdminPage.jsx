@@ -354,11 +354,12 @@ export default function AdminPage() {
                             value={user.role} 
                             onValueChange={(value) => updateUserRole(user.id, value)}
                           >
-                            <SelectTrigger className="w-32 h-8" data-testid={`role-select-${user.id}`}>
+                            <SelectTrigger className="w-36 h-8" data-testid={`role-select-${user.id}`}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="salesperson">Salesperson</SelectItem>
+                              <SelectItem value="telemarketer">Telemarketer</SelectItem>
+                              <SelectItem value="bdc_manager">BDC Manager</SelectItem>
                               <SelectItem value="admin">Admin</SelectItem>
                             </SelectContent>
                           </Select>
