@@ -77,6 +77,26 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 
 ## Session Work Completed (January 14, 2025)
 
+### Admin Email Updated
+- ✅ Main admin email changed to: `xavier.hernandez.1988@gmail.com`
+- ✅ Password remains: `Cali2020`
+- ✅ Added endpoint `PUT /api/users/{user_id}/email` for admin to update user emails
+
+### Backup System Enhanced
+- ✅ Backup includes 19 collections with all data
+- ✅ Dealers include addresses in backup
+- ✅ Added **Merge Mode** for restore:
+  - **Combinar (Merge)**: Updates existing records and adds new ones without deleting current data
+  - **Reemplazar (Replace)**: Deletes all data and replaces with backup (old behavior)
+- ✅ UI updated with radio buttons to select restore mode
+
+### Default Config Data Updated
+- ✅ Default dealers now include addresses:
+  - Downey: 7444 Florence Ave, Downey, CA 90240
+  - Fullerton: 1100 S Harbor Blvd, Fullerton, CA 92832
+  - Hollywood: 6200 Hollywood Blvd, Los Angeles, CA 90028
+  - Long Beach: 1500 E Anaheim St, Long Beach, CA 90813
+
 ### New Role System Implemented
 - ✅ Renamed "Salesperson" role to "Telemarketer"
 - ✅ Created new "BDC Manager" role with permissions:
