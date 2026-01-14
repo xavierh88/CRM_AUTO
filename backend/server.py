@@ -1098,7 +1098,14 @@ async def update_user_record(record_id: str, record_data: dict, current_user: di
         raise HTTPException(status_code=404, detail="User record not found")
     
     # Update client last_contact
-    await db.clients.update_one({"id": client_id}, {"$set": {"last_contact": datetime.now(timezone.utc).isoformat()}})
+    client_update = {"last_contact": datetime.now(timezone.utc).isoformat()}
+    
+    # If record is marked as completed (sold), mark the client as sold too
+    if cleaned_data.get("record_status") == "completed":
+        client_update["is_sold"] = True
+        client_update["sold_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.clients.update_one({"id": client_id}, {"$set": client_update})
     
     updated = await db.user_records.find_one({"id": record_id}, {"_id": 0})
     
