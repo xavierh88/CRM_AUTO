@@ -2795,11 +2795,36 @@ async def get_sms_logs(client_id: Optional[str] = None, limit: int = 50, current
 
 # ==================== SMS INBOX & CONVERSATIONS ====================
 
+def is_valid_email(email: str) -> bool:
+    """Check if email is valid format"""
+    if not email or '@' not in email:
+        return False
+    # Basic email validation - must have @ and a domain
+    parts = email.split('@')
+    if len(parts) != 2:
+        return False
+    local, domain = parts
+    if not local or not domain:
+        return False
+    if '.' not in domain:
+        return False
+    # Exclude test/fake emails
+    fake_domains = ['dealer.com', 'test.com', 'example.com', 'localhost']
+    if any(domain.lower().endswith(fake) for fake in fake_domains):
+        logger.warning(f"Skipping email to test/fake domain: {email}")
+        return False
+    return True
+
 async def send_email_notification(to_email: str, subject: str, html_content: str) -> dict:
     """
     Send email notification using SMTP (FREE) or Resend (paid).
     Supports Gmail, Outlook, Yahoo, etc.
     """
+    # Validate email before sending
+    if not is_valid_email(to_email):
+        logger.warning(f"Invalid email address, skipping: {to_email}")
+        return {"success": False, "error": f"Invalid email: {to_email}"}
+    
     # Try SMTP first (FREE)
     if SMTP_USER and SMTP_PASSWORD:
         try:
