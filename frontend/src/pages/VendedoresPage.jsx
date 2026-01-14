@@ -143,7 +143,7 @@ export default function VendedoresPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Award className="w-5 h-5 text-amber-500" />
-            Ranking de Vendedores
+            Ranking de Telemarketers
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -152,7 +152,7 @@ export default function VendedoresPage() {
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-3 px-2 text-sm font-medium text-slate-600">#</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-slate-600">Vendedor</th>
+                  <th className="text-left py-3 px-2 text-sm font-medium text-slate-600">TM</th>
                   <th className="text-center py-3 px-2 text-sm font-medium text-slate-600" colSpan="3">Clientes</th>
                   <th className="text-center py-3 px-2 text-sm font-medium text-slate-600" colSpan="3">Citas</th>
                   <th className="text-center py-3 px-2 text-sm font-medium text-slate-600" colSpan="3">Ventas</th>
