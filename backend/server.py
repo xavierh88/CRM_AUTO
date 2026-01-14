@@ -2203,7 +2203,7 @@ async def get_trash_user_records(current_user: dict = Depends(get_current_user))
 # ==================== SMS ROUTES (TWILIO) ====================
 
 async def send_sms_twilio(to_phone: str, message: str) -> dict:
-    """Send SMS using Twilio. Returns status dict."""
+    """Send SMS using Twilio with A2P 10DLC Messaging Service. Returns status dict."""
     if not twilio_client:
         logger.warning("Twilio client not configured - SMS not sent")
         return {"success": False, "error": "Twilio not configured"}
@@ -2213,12 +2213,23 @@ async def send_sms_twilio(to_phone: str, message: str) -> dict:
         if not to_phone.startswith('+'):
             to_phone = '+1' + to_phone.replace('-', '').replace(' ', '').replace('(', '').replace(')', '')
         
-        message_obj = twilio_client.messages.create(
-            body=message,
-            from_=TWILIO_PHONE_NUMBER,
-            to=to_phone
-        )
-        logger.info(f"SMS sent to {to_phone}: SID={message_obj.sid}")
+        # Use Messaging Service SID for A2P 10DLC compliance (required)
+        # Falls back to phone number if Messaging Service not configured
+        if TWILIO_MESSAGING_SERVICE_SID:
+            message_obj = twilio_client.messages.create(
+                body=message,
+                messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
+                to=to_phone
+            )
+            logger.info(f"SMS sent via Messaging Service to {to_phone}: SID={message_obj.sid}")
+        else:
+            message_obj = twilio_client.messages.create(
+                body=message,
+                from_=TWILIO_PHONE_NUMBER,
+                to=to_phone
+            )
+            logger.info(f"SMS sent via phone number to {to_phone}: SID={message_obj.sid}")
+        
         return {"success": True, "sid": message_obj.sid, "status": message_obj.status}
     except Exception as e:
         logger.error(f"Failed to send SMS to {to_phone}: {str(e)}")
