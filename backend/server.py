@@ -5832,8 +5832,13 @@ async def initialize_default_config_lists():
         "Chime", "Varo Bank", "Current", "Simple", "Aspiration"
     ]
     
-    # Default Dealers
-    default_dealers = ["Downey", "Long Beach"]
+    # Default Dealers with addresses
+    default_dealers = [
+        {"name": "Downey", "address": "7444 Florence Ave, Downey, CA 90240"},
+        {"name": "Fullerton", "address": "1100 S Harbor Blvd, Fullerton, CA 92832"},
+        {"name": "Hollywood", "address": "6200 Hollywood Blvd, Los Angeles, CA 90028"},
+        {"name": "Long Beach", "address": "1500 E Anaheim St, Long Beach, CA 90813"}
+    ]
     
     # Default Car Makes/Models
     default_cars = [
@@ -5866,17 +5871,34 @@ async def initialize_default_config_lists():
         "Agua", "Luz", "Gas", "Internet", "TV Cable", "Telefono", "Car Insurance", "Bank Statements"
     ]
     
-    # Check if lists are empty and populate
-    all_categories = [
+    # Initialize dealers with addresses (special handling)
+    dealer_count = await db.config_lists.count_documents({"category": "dealer"})
+    if dealer_count == 0:
+        dealer_docs = [
+            {
+                "id": str(uuid.uuid4()),
+                "name": dealer["name"],
+                "address": dealer["address"],
+                "category": "dealer",
+                "created_at": now,
+                "created_by": "system"
+            }
+            for dealer in default_dealers
+        ]
+        if dealer_docs:
+            await db.config_lists.insert_many(dealer_docs)
+            logger.info(f"Initialized {len(dealer_docs)} default dealers with addresses")
+    
+    # Check if other lists are empty and populate
+    simple_categories = [
         ('bank', default_banks), 
-        ('dealer', default_dealers), 
         ('car', default_cars),
         ('id_type', default_id_types),
         ('poi_type', default_poi_types),
         ('por_type', default_por_types)
     ]
     
-    for category, items in all_categories:
+    for category, items in simple_categories:
         count = await db.config_lists.count_documents({"category": category})
         if count == 0:
             docs = [
