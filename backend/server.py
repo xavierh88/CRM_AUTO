@@ -592,8 +592,10 @@ async def update_user_role(data: UserRoleUpdate, current_user: dict = Depends(ge
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    if data.role not in ["admin", "salesperson"]:
-        raise HTTPException(status_code=400, detail="Invalid role. Must be 'admin' or 'salesperson'")
+    # Valid roles: admin, bdc_manager, telemarketer (previously salesperson)
+    valid_roles = ["admin", "bdc_manager", "telemarketer", "salesperson"]  # Keep salesperson for backwards compatibility
+    if data.role not in valid_roles:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}")
     
     result = await db.users.update_one(
         {"id": data.user_id},
