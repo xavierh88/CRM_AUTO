@@ -767,6 +767,43 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
     
     return clients
 
+@api_router.get("/clients/sold/list", response_model=List[dict])
+async def get_sold_clients(search: Optional[str] = None, salesperson_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Get clients that have been marked as sold"""
+    query = {"is_deleted": {"$ne": True}, "is_sold": True}
+    
+    # Filter by owner - telemarketers can only see their own sold clients
+    # Admin and BDC Manager can see all sold clients or filter by salesperson
+    if current_user["role"] in ["admin", "bdc", "bdc_manager"]:
+        if salesperson_id:
+            query["created_by"] = salesperson_id
+    else:
+        # Telemarketers (and legacy salesperson) only see their own sold clients
+        query["created_by"] = current_user["id"]
+    
+    # Add search filter for name and phone
+    if search:
+        escaped_search = regex_module.escape(search)
+        search_regex = {"$regex": escaped_search, "$options": "i"}
+        query["$or"] = [
+            {"first_name": search_regex},
+            {"last_name": search_regex},
+            {"phone": search_regex}
+        ]
+    
+    clients = await db.clients.find(query, {"_id": 0}).sort("sold_at", -1).to_list(1000)
+    
+    # For each client, get the sold record info
+    for client in clients:
+        sold_record = await db.user_records.find_one(
+            {"client_id": client["id"], "is_deleted": {"$ne": True}, "record_status": "completed"},
+            {"_id": 0, "finance_status": 1, "bank": 1, "auto": 1, "updated_at": 1}
+        )
+        if sold_record:
+            client["sold_record"] = sold_record
+    
+    return clients
+
 @api_router.get("/clients/{client_id}", response_model=ClientResponse)
 async def get_client(client_id: str, current_user: dict = Depends(get_current_user)):
     client = await db.clients.find_one({"id": client_id}, {"_id": 0})
