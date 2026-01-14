@@ -70,7 +70,8 @@ const AdminOrBDCRoute = ({ children }) => {
   }
   
   const isBDC = user?.role === 'bdc';
-  if (!user || (!isAdmin && !isBDC)) {
+  const isBDCManager = user?.role === 'bdc_manager';
+  if (!user || (!isAdmin && !isBDC && !isBDCManager)) {
     return <Navigate to="/dashboard" replace />;
   }
   
