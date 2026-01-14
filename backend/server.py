@@ -606,6 +606,30 @@ async def update_user_role(data: UserRoleUpdate, current_user: dict = Depends(ge
     
     return {"message": f"User role updated to {data.role}"}
 
+@api_router.put("/users/{user_id}/email")
+async def update_user_email(user_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Update user email - Admin only"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    new_email = data.get("email")
+    if not new_email:
+        raise HTTPException(status_code=400, detail="Email is required")
+    
+    # Check if email already exists
+    existing = await db.users.find_one({"email": new_email, "id": {"$ne": user_id}})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already in use")
+    
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"email": new_email}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": f"Email updated to {new_email}"}
+
 # ==================== CLIENTS ROUTES ====================
 
 def normalize_phone_number(phone: str) -> str:
