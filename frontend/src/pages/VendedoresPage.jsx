@@ -71,8 +71,8 @@ export default function VendedoresPage() {
     <div className="space-y-6" data-testid="vendedores-page">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Rendimiento de Vendedores</h1>
-          <p className="text-slate-500 mt-1">Métricas y análisis del equipo de ventas</p>
+          <h1 className="text-2xl font-bold text-slate-900">Rendimiento de Telemarketers</h1>
+          <p className="text-slate-500 mt-1">Métricas y análisis del equipo de TM</p>
         </div>
         <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger className="w-48">
@@ -93,7 +93,7 @@ export default function VendedoresPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm">Vendedores</p>
+                <p className="text-blue-100 text-sm">Telemarketers</p>
                 <p className="text-3xl font-bold">{performance.length}</p>
               </div>
               <Users className="w-10 h-10 text-blue-200" />
