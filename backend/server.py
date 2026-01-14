@@ -4573,14 +4573,18 @@ async def respond_to_request(request_id: str, action: str, current_user: dict = 
 # ==================== SALESPERSON PERFORMANCE (BDC) ====================
 
 @api_router.get("/bdc/salesperson-performance")
-async def get_salesperson_performance(current_user: dict = Depends(get_current_user)):
-    """Get performance metrics for all salespeople (BDC and Admin only)"""
-    if current_user["role"] not in ["admin", "bdc"]:
-        raise HTTPException(status_code=403, detail="BDC or Admin access required")
+async def get_bdc_salesperson_performance(current_user: dict = Depends(get_current_user)):
+    """Get performance metrics for all active telemarketers (BDC Manager and Admin only)"""
+    if current_user["role"] not in ["admin", "bdc", "bdc_manager"]:
+        raise HTTPException(status_code=403, detail="BDC Manager or Admin access required")
     
-    # Get all salespeople
+    # Get all active telemarketers (exclude inactive and deleted users)
     salespeople = await db.users.find(
-        {"role": {"$in": ["salesperson", "vendedor"]}},
+        {
+            "role": {"$in": ["salesperson", "telemarketer", "vendedor"]},
+            "is_active": {"$ne": False},  # Only active users
+            "is_deleted": {"$ne": True}   # Not deleted users
+        },
         {"_id": 0, "id": 1, "name": 1, "email": 1}
     ).to_list(100)
     
