@@ -2116,8 +2116,9 @@ async def get_dashboard_stats(
 
 @api_router.get("/dashboard/salesperson-performance")
 async def get_salesperson_performance(current_user: dict = Depends(get_current_user)):
-    if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    # Admin and BDC Manager can see salesperson performance
+    if current_user["role"] not in ["admin", "bdc", "bdc_manager"]:
+        raise HTTPException(status_code=403, detail="Admin or BDC Manager access required")
     
     pipeline = [
         {"$group": {
