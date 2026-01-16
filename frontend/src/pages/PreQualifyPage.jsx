@@ -375,7 +375,13 @@ export default function PreQualifyPage() {
                   <MapPin className="w-4 h-4" /> Dirección
                 </h4>
                 <p className="text-sm">
-                  {detailData.submission.address}{detailData.submission.apartment ? `, Apt ${detailData.submission.apartment}` : ''}, {detailData.submission.city}, {detailData.submission.state} {detailData.submission.zipCode}
+                  {[
+                    detailData.submission.address,
+                    detailData.submission.apartment ? `Apt ${detailData.submission.apartment}` : null,
+                    detailData.submission.city,
+                    detailData.submission.state,
+                    detailData.submission.zipCode
+                  ].filter(Boolean).join(', ') || 'No proporcionada'}
                 </p>
                 <div className="grid grid-cols-3 gap-4 mt-2 text-sm">
                   <div>
