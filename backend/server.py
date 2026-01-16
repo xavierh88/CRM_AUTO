@@ -973,21 +973,48 @@ async def download_client_document(
         raise HTTPException(status_code=404, detail="Client not found")
     
     # Get file path based on doc type
-    file_url_field = f"{doc_type}_file_url" if doc_type != 'income' else "income_proof_file_url"
-    if doc_type == 'residence':
+    if doc_type == 'id':
+        file_url_field = "id_file_url"
+    elif doc_type == 'income':
+        file_url_field = "income_proof_file_url"
+    else:  # residence
         file_url_field = "residence_proof_file_url"
     
-    file_path = client.get(file_url_field)
-    if not file_path:
+    file_url = client.get(file_url_field)
+    if not file_url:
         raise HTTPException(status_code=404, detail="Document not found")
     
-    file_path = Path(file_path)
+    # Handle different path formats
+    # Could be: /uploads/filename.pdf, uploads/filename.pdf, or full path
+    if file_url.startswith('/uploads/'):
+        file_path = UPLOAD_DIR / file_url.replace('/uploads/', '')
+    elif file_url.startswith('uploads/'):
+        file_path = UPLOAD_DIR / file_url.replace('uploads/', '')
+    elif file_url.startswith('/api/'):
+        # Extract filename from API URL
+        filename = file_url.split('/')[-1]
+        file_path = UPLOAD_DIR / filename
+    else:
+        file_path = Path(file_url)
+    
+    logger.info(f"Attempting to download document: {file_path}")
+    
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Document file not found")
+        # Try looking in uploads directory with just the filename
+        filename = Path(file_url).name if '/' in str(file_url) else file_url
+        file_path = UPLOAD_DIR / filename
+        
+        if not file_path.exists():
+            logger.error(f"Document file not found: {file_path}")
+            raise HTTPException(status_code=404, detail=f"Document file not found: {filename}")
     
     # Read and return file
-    with open(file_path, 'rb') as f:
-        content = f.read()
+    try:
+        with open(file_path, 'rb') as f:
+            content = f.read()
+    except Exception as e:
+        logger.error(f"Error reading document file: {e}")
+        raise HTTPException(status_code=500, detail="Error reading document file")
     
     # Determine content type
     file_ext = file_path.suffix.lower()
@@ -996,12 +1023,17 @@ async def download_client_document(
         content_type = 'image/jpeg'
     elif file_ext == '.png':
         content_type = 'image/png'
+    elif file_ext == '.webp':
+        content_type = 'image/webp'
+    
+    # Sanitize filename for download
+    safe_filename = f"{client.get('first_name', 'client')}_{client.get('last_name', 'doc')}_{doc_type}{file_ext}".replace(' ', '_')
     
     return Response(
         content=content,
         media_type=content_type,
         headers={
-            "Content-Disposition": f"attachment; filename={client['first_name']}_{client['last_name']}_{doc_type}{file_ext}"
+            "Content-Disposition": f"attachment; filename={safe_filename}"
         }
     )
 
