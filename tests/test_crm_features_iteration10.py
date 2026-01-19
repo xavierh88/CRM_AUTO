@@ -33,7 +33,7 @@ class TestAuthentication:
         assert "user" in data, "No user in response"
         assert data["user"]["role"] == "admin", f"Expected admin role, got {data['user']['role']}"
         print(f"✓ Admin login successful - User: {data['user']['name']}, Role: {data['user']['role']}")
-        return data["access_token"]
+        return data["token"]
 
 
 class TestOwnerFilter:
