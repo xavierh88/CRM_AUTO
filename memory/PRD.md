@@ -236,7 +236,60 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - `/app/carplus-website-con-prequalify.zip` - Website with pre-qualify form
 - `/app/carplus-prequalify-form-updated.zip` - Standalone pre-qualify form
 
+---
+
+## Session Work Completed (January 19, 2026)
+
+### Bug Fix: White Screen After Creating Appointment - FIXED ✅
+- **Issue:** Screen turned white after creating an appointment due to SMS/Email notification errors
+- **Root Cause:** The SMS endpoint returned HTTP 404 because Twilio A2P 10DLC campaign is pending approval, causing unhandled error
+- **Fix:** Modified `handleCreateAppointment` in `ClientsPage.jsx` to:
+  - Create appointment first (separate try-catch)
+  - Attempt to send notification in nested try-catch
+  - Show success message even if notification fails
+  - Show warning toast if notification couldn't be sent
+
+### New Feature: Owner Filter for Clients Page - IMPLEMENTED ✅
+- **Purpose:** Allow Admin/BDC Manager to filter clients by ownership
+- **Options:**
+  - "Mis Clientes" (mine) - Only clients created by current user
+  - "De Otros" (others) - Clients created by other users
+  - "Todos" (all) - All clients
+- **Backend:** Added `owner_filter` parameter to `GET /api/clients` endpoint
+- **Frontend:** Added dropdown filter in `ClientsPage.jsx` (only visible for admin/bdc_manager)
+- **Note:** Telemarketers always see only their own clients (backend enforced)
+
+### New Feature: Note Reminders System - IMPLEMENTED ✅
+- **Purpose:** Allow users to set reminder dates on notes/comments for follow-up
+- **Backend Changes:**
+  - Modified `POST /api/clients/{client_id}/comments` to accept `reminder_at` (datetime)
+  - Added `reminder_sent` field to track notification status
+  - Created `check_comment_reminders_job` scheduler (runs every 5 minutes)
+  - Scheduler creates notifications for due reminders
+- **Frontend Changes:**
+  - Added datetime-local input in notes modal
+  - Shows reminder indicator (🔔) in notes list
+  - Shows "Recordatorio enviado" when reminder notification was sent
+- **Scheduler Status:** Running alongside existing marketing SMS job
+
+### UI Fix: Added Missing Notes Button - FIXED ✅
+- Testing agent discovered the notes button was defined but not rendered in client cards
+- Added amber MessageCircle button to client card actions
+
+### Test Suite Created
+- `/app/tests/test_crm_features_iteration10.py` - 13 tests for all new features
+- 100% pass rate on backend and frontend
+
+---
+
 ## Pending/Future Tasks
+
+### P1 - Verification Pending
+- [ ] Admin page data lists - User needs to confirm if Banks, Dealers, Cars load correctly
+- [ ] SMS functionality - Pending Twilio A2P 10DLC campaign approval
+
+### P2 - User Requested but Not Started
+- [ ] Delete old admin users from database (`admin_201930@dealer.com`, `xadmin`)
 
 ### P3 - Technical Debt (Continue when needed)
 - [ ] Migrate routes from server.py to /routes/ modules
@@ -248,13 +301,14 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - [ ] Advanced analytics dashboard
 
 ## Credentials
-- **Admin:** admin@carplus.com / Cali2020
+- **Admin:** xavier.hernandez.1988@gmail.com / Cali2020
 - **Live URL:** https://crm.carplusautosalesgroup.com
 
 ## Test Files
 - `/app/tests/test_prequalify_and_clients.py` - Pre-qualify and client tests
 - `/app/tests/test_appointments_and_config.py` - Appointments and config lists tests (14 tests)
 - `/app/tests/test_backup_and_prequalify_conversion.py` - Backup and pre-qualify conversion tests (14 tests)
+- `/app/tests/test_crm_features_iteration10.py` - Owner filter, note reminders, appointment fixes (13 tests)
 
 ## Last Updated
-January 13, 2025 - Expanded backup to include all collections, configured dealer addresses, verified pre-qualify to client conversion flow
+January 19, 2026 - Fixed white screen bug, added owner filter, implemented note reminders system
