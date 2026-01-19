@@ -1250,8 +1250,8 @@ async def get_client_comments(client_id: str, current_user: dict = Depends(get_c
     return comments
 
 @api_router.post("/clients/{client_id}/comments")
-async def add_client_comment(client_id: str, comment: str = Form(...), current_user: dict = Depends(get_current_user)):
-    """Add a comment/note to a client"""
+async def add_client_comment(client_id: str, comment: str = Form(...), reminder_at: Optional[str] = Form(None), current_user: dict = Depends(get_current_user)):
+    """Add a comment/note to a client, optionally with a reminder"""
     now = datetime.now(timezone.utc).isoformat()
     comment_doc = {
         "id": str(uuid.uuid4()),
@@ -1259,7 +1259,9 @@ async def add_client_comment(client_id: str, comment: str = Form(...), current_u
         "comment": comment,
         "user_id": current_user["id"],
         "user_name": current_user.get("name", current_user.get("email", "Unknown")),
-        "created_at": now
+        "created_at": now,
+        "reminder_at": reminder_at,  # ISO datetime string for when to remind
+        "reminder_sent": False  # Track if reminder notification was sent
     }
     await db.client_comments.insert_one(comment_doc)
     return {k: v for k, v in comment_doc.items() if k != "_id"}
