@@ -39,6 +39,7 @@ export default function ClientsPage() {
   const [notesClient, setNotesClient] = useState(null);
   const [clientNotes, setClientNotes] = useState([]);
   const [newClientNote, setNewClientNote] = useState('');
+  const [noteReminderAt, setNoteReminderAt] = useState('');
   const [loadingNotes, setLoadingNotes] = useState(false);
   
   // Salespersons list for collaborator selection
