@@ -591,6 +591,23 @@ export default function ClientsPage() {
             +7 días
           </Button>
         </div>
+        
+        {/* Owner filter - only show for admin/bdc_manager */}
+        {(isAdmin || isBdcManager) && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-500">Dueño:</span>
+            <Select value={ownerFilter} onValueChange={(value) => setOwnerFilter(value)}>
+              <SelectTrigger className="w-[140px] h-8" data-testid="owner-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="mine">Mis Clientes</SelectItem>
+                <SelectItem value="others">De Otros</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* Client List */}
