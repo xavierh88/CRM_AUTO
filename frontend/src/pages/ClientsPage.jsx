@@ -124,12 +124,16 @@ export default function ClientsPage() {
     try {
       const formData = new FormData();
       formData.append('comment', newClientNote);
+      if (noteReminderAt) {
+        formData.append('reminder_at', new Date(noteReminderAt).toISOString());
+      }
       await axios.post(`${API}/clients/${notesClient.id}/comments`, formData);
       setNewClientNote('');
+      setNoteReminderAt('');
       // Reload notes
       const response = await axios.get(`${API}/clients/${notesClient.id}/comments`);
       setClientNotes(response.data);
-      toast.success('Nota agregada');
+      toast.success(noteReminderAt ? 'Nota agregada con recordatorio' : 'Nota agregada');
     } catch (error) {
       toast.error('Error al agregar nota');
     }
