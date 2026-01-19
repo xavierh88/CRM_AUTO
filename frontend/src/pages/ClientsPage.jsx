@@ -974,13 +974,31 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
         language: appointmentData.language
       });
       
-      // Send notification based on method selected
-      if (sendMethod === 'email') {
-        await axios.post(`${API}/email/send-appointment-link?client_id=${clientId}&appointment_id=${response.data.id}`);
-        toast.success('Cita creada y email enviado al cliente');
+      // Appointment created successfully - now try to send notification
+      let notificationSent = false;
+      let notificationError = null;
+      
+      try {
+        if (sendMethod === 'email') {
+          await axios.post(`${API}/email/send-appointment-link?client_id=${clientId}&appointment_id=${response.data.id}`);
+          notificationSent = true;
+        } else {
+          await axios.post(`${API}/sms/send-appointment-link?client_id=${clientId}&appointment_id=${response.data.id}`);
+          notificationSent = true;
+        }
+      } catch (notifError) {
+        notificationError = notifError.response?.data?.detail || 'Error al enviar notificación';
+        console.error('Notification error:', notifError);
+      }
+      
+      // Show appropriate message based on what succeeded
+      if (notificationSent) {
+        toast.success(sendMethod === 'email' ? 'Cita creada y email enviado al cliente' : 'Cita creada y SMS enviado al cliente');
       } else {
-        await axios.post(`${API}/sms/send-appointment-link?client_id=${clientId}&appointment_id=${response.data.id}`);
-        toast.success('Cita creada y SMS enviado al cliente');
+        toast.success('Cita creada exitosamente');
+        if (notificationError) {
+          toast.warning(`Nota: ${notificationError}`);
+        }
       }
       
       setShowAppointmentForm(null);
