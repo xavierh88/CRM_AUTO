@@ -163,6 +163,13 @@ export default function ClientsPage() {
       // Exclude sold clients from the main clients page
       const params = new URLSearchParams({ exclude_sold: 'true' });
       if (search) params.append('search', search);
+      
+      // Add owner filter - only applies for non-telemarketer users
+      // Telemarketers always see only their own clients via backend filter
+      if ((isAdmin || isBdcManager) && ownerFilter !== 'all') {
+        params.append('owner_filter', ownerFilter);
+      }
+      
       const url = `${API}/clients?${params.toString()}`;
       const response = await axios.get(url);
       setClients(response.data);
