@@ -29,7 +29,7 @@ class TestAuthentication:
         })
         assert response.status_code == 200, f"Login failed: {response.text}"
         data = response.json()
-        assert "access_token" in data, "No access_token in response"
+        assert "token" in data, "No token in response"
         assert "user" in data, "No user in response"
         assert data["user"]["role"] == "admin", f"Expected admin role, got {data['user']['role']}"
         print(f"✓ Admin login successful - User: {data['user']['name']}, Role: {data['user']['role']}")
@@ -46,7 +46,7 @@ class TestOwnerFilter:
             "email": ADMIN_EMAIL,
             "password": ADMIN_PASSWORD
         })
-        return response.json()["access_token"]
+        return response.json()["token"]
     
     def test_clients_with_owner_filter_mine(self, auth_token):
         """Test GET /api/clients with owner_filter=mine"""
@@ -112,7 +112,7 @@ class TestNoteReminders:
             "email": ADMIN_EMAIL,
             "password": ADMIN_PASSWORD
         })
-        return response.json()["access_token"]
+        return response.json()["token"]
     
     @pytest.fixture
     def test_client_id(self, auth_token):
@@ -217,7 +217,7 @@ class TestAppointmentCreation:
             "email": ADMIN_EMAIL,
             "password": ADMIN_PASSWORD
         })
-        return response.json()["access_token"]
+        return response.json()["token"]
     
     @pytest.fixture
     def test_client_with_record(self, auth_token):
@@ -307,7 +307,7 @@ class TestCleanup:
             "email": ADMIN_EMAIL,
             "password": ADMIN_PASSWORD
         })
-        return response.json()["access_token"]
+        return response.json()["token"]
     
     def test_cleanup_test_notes(self, auth_token):
         """Clean up TEST_ prefixed notes"""
