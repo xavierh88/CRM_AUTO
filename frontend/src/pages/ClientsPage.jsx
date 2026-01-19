@@ -156,7 +156,7 @@ export default function ClientsPage() {
 
   useEffect(() => {
     fetchClients();
-  }, []);
+  }, [ownerFilter]);
 
   const fetchClients = async (search = '') => {
     try {
