@@ -196,6 +196,55 @@ async def send_marketing_sms_job():
     
     logger.info("Marketing SMS job completed")
 
+async def check_comment_reminders_job():
+    """
+    Scheduled job to check for comment reminders that need to be sent.
+    Runs every 5 minutes to check for comments with reminder_at in the past
+    that haven't had their notification sent yet.
+    """
+    logger.info("Running comment reminders check job...")
+    
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    
+    # Find comments with reminders that are due
+    due_reminders = await db.client_comments.find({
+        "reminder_at": {"$ne": None, "$lte": now_iso},
+        "reminder_sent": {"$ne": True}
+    }, {"_id": 0}).to_list(100)
+    
+    logger.info(f"Found {len(due_reminders)} due reminders")
+    
+    for comment in due_reminders:
+        try:
+            # Get client info for the notification
+            client = await db.clients.find_one({"id": comment["client_id"]}, {"_id": 0, "first_name": 1, "last_name": 1})
+            client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}" if client else "Cliente"
+            
+            # Create notification for the user who created the comment
+            notif_doc = {
+                "id": str(uuid.uuid4()),
+                "user_id": comment["user_id"],
+                "message": f"📝 Recordatorio: {client_name} - {comment['comment'][:50]}{'...' if len(comment['comment']) > 50 else ''}",
+                "type": "reminder",
+                "link": "/clientes",
+                "is_read": False,
+                "created_at": now_iso
+            }
+            await db.notifications.insert_one(notif_doc)
+            
+            # Mark reminder as sent
+            await db.client_comments.update_one(
+                {"id": comment["id"]},
+                {"$set": {"reminder_sent": True}}
+            )
+            
+            logger.info(f"Reminder notification sent for comment {comment['id']}")
+        except Exception as e:
+            logger.error(f"Error processing reminder {comment['id']}: {e}")
+    
+    logger.info("Comment reminders job completed")
+
 @app.on_event("startup")
 async def startup_event():
     """Start the scheduler when the app starts"""
