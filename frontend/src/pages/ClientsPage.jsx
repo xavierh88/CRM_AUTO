@@ -930,6 +930,16 @@ export default function ClientsPage() {
                   {clientNotes.map((note) => (
                     <div key={note.id} className="bg-slate-50 rounded-lg p-3 border">
                       <p className="text-slate-700 text-sm sm:text-base">{note.comment}</p>
+                      {note.reminder_at && (
+                        <p className="text-xs mt-1 flex items-center gap-1">
+                          <span className={note.reminder_sent ? "text-green-500" : "text-amber-500"}>
+                            🔔 {note.reminder_sent ? 'Recordatorio enviado' : 'Recordatorio:'}{' '}
+                            {new Date(note.reminder_at).toLocaleString('es-ES', { 
+                              day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' 
+                            })}
+                          </span>
+                        </p>
+                      )}
                       <div className="flex items-center justify-between mt-2">
                         <p className="text-xs text-slate-400">
                           <span className="font-medium text-amber-600">{note.user_name}</span>
