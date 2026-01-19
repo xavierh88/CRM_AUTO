@@ -53,11 +53,15 @@ export default function ClientsPage() {
   // Status filter for client colors
   const [statusFilter, setStatusFilter] = useState('all');
   
+  // Owner filter (mine, others, all)
+  const [ownerFilter, setOwnerFilter] = useState('mine');
+  
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const clientsPerPage = 10;
   
   const isAdmin = user?.role === 'admin';
+  const isBdcManager = user?.role === 'bdc_manager';
   
   // Fetch config lists on mount
   useEffect(() => {
