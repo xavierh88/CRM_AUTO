@@ -2350,6 +2350,17 @@ async def send_sms_twilio(to_phone: str, message: str) -> dict:
         logger.error(f"Failed to send SMS to {to_phone}: {str(e)}")
         return {"success": False, "error": str(e)}
 
+@api_router.post("/sms/test")
+async def test_sms(phone: str, message: str = "Prueba de SMS desde CARPLUS CRM", current_user: dict = Depends(get_current_user)):
+    """Test SMS endpoint - Admin only"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    result = await send_sms_twilio(phone, message)
+    if not result["success"]:
+        raise HTTPException(status_code=500, detail=f"SMS failed: {result.get('error', 'Unknown error')}")
+    return {"message": "SMS sent successfully", "sid": result.get("sid"), "status": result.get("status")}
+
 @api_router.post("/sms/send-documents-link")
 async def send_documents_sms(client_id: str, record_id: str, current_user: dict = Depends(get_current_user)):
     """Send SMS with documents upload link"""
