@@ -749,6 +749,19 @@ export default function ClientsPage() {
                       >
                         <MessageSquare className="w-4 h-4" />
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openClientNotes(client);
+                        }}
+                        data-testid={`client-notes-btn-${client.id}`}
+                        title="Notas / Reseñas"
+                        className="text-amber-500 hover:text-amber-700 hover:bg-amber-50"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </Button>
                       {isAdmin && (
                         <Button
                           variant="ghost"
