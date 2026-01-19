@@ -719,14 +719,21 @@ async def create_client(client: ClientCreate, current_user: dict = Depends(get_c
 import re as regex_module
 
 @api_router.get("/clients", response_model=List[dict])
-async def get_clients(include_deleted: bool = False, search: Optional[str] = None, salesperson_id: Optional[str] = None, exclude_sold: bool = False, current_user: dict = Depends(get_current_user)):
+async def get_clients(include_deleted: bool = False, search: Optional[str] = None, salesperson_id: Optional[str] = None, exclude_sold: bool = False, owner_filter: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     query = {} if include_deleted and current_user["role"] == "admin" else {"is_deleted": {"$ne": True}}
     
     # Filter by owner - telemarketers can only see their own clients
-    # Admin and BDC Manager can see all clients or filter by salesperson
+    # Admin and BDC Manager can see all clients or filter by salesperson/owner
     if current_user["role"] in ["admin", "bdc", "bdc_manager"]:
         if salesperson_id:
             query["created_by"] = salesperson_id
+        elif owner_filter:
+            # owner_filter: 'mine' = only my clients, 'others' = clients from others, 'all' = no filter
+            if owner_filter == 'mine':
+                query["created_by"] = current_user["id"]
+            elif owner_filter == 'others':
+                query["created_by"] = {"$ne": current_user["id"]}
+            # 'all' means no filter, show everything
     else:
         # Telemarketers (and legacy salesperson) only see their own clients
         query["created_by"] = current_user["id"]
