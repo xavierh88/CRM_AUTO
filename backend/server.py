@@ -255,8 +255,18 @@ async def startup_event():
         id='marketing_sms_job',
         replace_existing=True
     )
+    
+    # Schedule comment reminders job to run every 5 minutes
+    from apscheduler.triggers.interval import IntervalTrigger
+    scheduler.add_job(
+        check_comment_reminders_job,
+        IntervalTrigger(minutes=5),
+        id='comment_reminders_job',
+        replace_existing=True
+    )
+    
     scheduler.start()
-    logger.info("SMS Scheduler started - Marketing SMS will be sent at 11:00 AM Pacific time daily")
+    logger.info("Scheduler started - Marketing SMS at 11:00 AM Pacific, Reminders every 5 minutes")
 
 @app.on_event("shutdown")
 async def shutdown_event():
