@@ -883,17 +883,39 @@ export default function ClientsPage() {
 
             {/* Add Note */}
             <div className="p-3 sm:p-4 border-b">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Escribir una nota o reseña..."
-                  value={newClientNote}
-                  onChange={(e) => setNewClientNote(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addClientNote()}
-                  className="flex-1"
-                />
-                <Button onClick={addClientNote} disabled={!newClientNote.trim()} className="flex-shrink-0">
-                  Agregar
-                </Button>
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Escribir una nota o reseña..."
+                    value={newClientNote}
+                    onChange={(e) => setNewClientNote(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && addClientNote()}
+                    className="flex-1"
+                  />
+                  <Button onClick={addClientNote} disabled={!newClientNote.trim()} className="flex-shrink-0">
+                    Agregar
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-slate-500 whitespace-nowrap">🔔 Recordatorio:</Label>
+                  <Input
+                    type="datetime-local"
+                    value={noteReminderAt}
+                    onChange={(e) => setNoteReminderAt(e.target.value)}
+                    className="flex-1 text-sm h-8"
+                    data-testid="note-reminder-input"
+                  />
+                  {noteReminderAt && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setNoteReminderAt('')}
+                      className="h-8 px-2"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
 
