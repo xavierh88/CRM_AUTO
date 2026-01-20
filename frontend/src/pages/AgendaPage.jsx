@@ -353,7 +353,11 @@ function AppointmentSection({ title, appointments, getStatusBadge, updateStatus,
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2 flex-wrap">
                   <User className="w-4 h-4 text-slate-400" />
-                  <span className="font-semibold text-slate-900">
+                  <span 
+                    className="font-semibold text-slate-900 cursor-pointer hover:text-blue-600 hover:underline"
+                    onClick={() => navigate(`/clients?client=${appt.client_id}`)}
+                    data-testid={`agenda-client-link-${appt.id}`}
+                  >
                     {appt.client?.first_name} {appt.client?.last_name}
                   </span>
                   {getStatusBadge(appt.status)}
