@@ -164,28 +164,17 @@ export default function ClientsPage() {
     id_type: '', id_number: '', ssn_type: '', ssn: ''
   });
 
-  // Check if we need to find a specific client from URL
-  const targetClientId = searchParams.get('client');
-
   const fetchClients = async (search = '') => {
     try {
-      // Exclude sold clients from the main clients page, unless looking for specific client
-      const params = new URLSearchParams();
-      const urlClientId = searchParams.get('client');
-      if (!urlClientId) {
-        params.append('exclude_sold', 'true');
-      }
+      const params = new URLSearchParams({ exclude_sold: 'true' });
       if (search) params.append('search', search);
       
       // Add owner filter - only applies for non-telemarketer users
-      // Telemarketers always see only their own clients via backend filter
       if ((isAdmin || isBdcManager) && ownerFilter && ownerFilter !== 'all') {
-        // Check if filtering by specific user (format: "user:userId")
         if (ownerFilter.startsWith('user:')) {
           const userId = ownerFilter.replace('user:', '');
           params.append('salesperson_id', userId);
         } else {
-          // Use general owner_filter (mine, others)
           params.append('owner_filter', ownerFilter);
         }
       }
@@ -207,33 +196,7 @@ export default function ClientsPage() {
 
   useEffect(() => {
     fetchClients();
-  }, [ownerFilter, sortBy, targetClientId]);
-
-  // Handle URL parameter to open a specific client
-  useEffect(() => {
-    if (targetClientId) {
-      // When coming from a direct link, set filter to "all" to ensure we can find the client
-      if ((isAdmin || isBdcManager) && ownerFilter !== 'all') {
-        setOwnerFilter('all');
-        return; // Will re-run after filter changes
-      }
-      
-      if (clients.length > 0) {
-        const client = clients.find(c => c.id === targetClientId);
-        if (client) {
-          // Expand the client's card
-          setExpandedClients(prev => ({ ...prev, [targetClientId]: true }));
-          // Scroll to the client card
-          setTimeout(() => {
-            const element = document.querySelector(`[data-client-id="${targetClientId}"]`);
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-          }, 300);
-        }
-      }
-    }
-  }, [targetClientId, clients, ownerFilter, isAdmin, isBdcManager]);
+  }, [ownerFilter, sortBy]);
 
   const fetchClientRecords = async (clientId) => {
     try {
