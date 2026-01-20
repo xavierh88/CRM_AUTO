@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
@@ -15,6 +16,7 @@ import { es } from 'date-fns/locale';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function AgendaPage() {
+  const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
