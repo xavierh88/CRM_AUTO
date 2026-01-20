@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { 
   Users, Calendar, DollarSign, FileCheck, TrendingUp, 
-  UserPlus, CarFront, Clock, Activity, Target, Users2, Filter
+  UserPlus, CarFront, Clock, Activity, Target, Users2, Filter, CheckCircle
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, 
