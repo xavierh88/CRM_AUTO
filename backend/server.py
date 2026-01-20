@@ -3166,7 +3166,7 @@ async def get_client_inbox(client_id: str, current_user: dict = Depends(get_curr
     unread_count = await db.sms_conversations.count_documents({
         "client_id": client_id,
         "direction": "inbound",
-        "read": False
+        "is_read": False
     })
     
     return {
@@ -3221,7 +3221,7 @@ async def send_inbox_message(client_id: str, message: str = Form(...), current_u
 async def mark_messages_read(client_id: str, current_user: dict = Depends(get_current_user)):
     """Mark all inbound messages for a client as read"""
     result = await db.sms_conversations.update_many(
-        {"client_id": client_id, "direction": "inbound", "read": False},
+        {"client_id": client_id, "direction": "inbound", "is_read": False},
         {"$set": {"read": True, "read_by": current_user["id"], "read_at": datetime.now(timezone.utc).isoformat()}}
     )
     return {"message": f"Marked {result.modified_count} messages as read"}
@@ -3231,7 +3231,7 @@ async def get_unread_count(current_user: dict = Depends(get_current_user)):
     """Get total unread messages count for notification badge"""
     count = await db.sms_conversations.count_documents({
         "direction": "inbound",
-        "read": False
+        "is_read": False
     })
     return {"unread_count": count}
 
@@ -3323,7 +3323,7 @@ async def twilio_sms_webhook(request: Request):
                 "from_phone": from_number,
                 "twilio_sid": message_sid,
                 "status": "received",
-                "read": False
+                "is_read": False
             }
             await db.sms_conversations.insert_one(conversation_msg)
             
@@ -3372,7 +3372,7 @@ async def twilio_sms_webhook(request: Request):
                     "message": body[:100] + ("..." if len(body) > 100 else ""),
                     "client_id": client["id"],
                     "client_name": client_name,
-                    "read": False,
+                    "is_read": False,
                     "created_at": now.isoformat()
                 }
                 await db.notifications.insert_one(notification)
@@ -3411,7 +3411,7 @@ async def twilio_sms_webhook(request: Request):
                 "from_phone": from_number,
                 "twilio_sid": message_sid,
                 "status": "received_unknown",
-                "read": False
+                "is_read": False
             }
             await db.sms_conversations.insert_one(unknown_msg)
             logger.warning(f"Received SMS from unknown number: {from_number}")
@@ -3469,7 +3469,7 @@ async def request_collaboration(client_id: str, current_user: dict = Depends(get
         "client_id": client_id,
         "client_name": client_name,
         "request_id": collab_request["id"],
-        "read": False,
+        "is_read": False,
         "created_at": now
     }
     await db.notifications.insert_one(notification)
@@ -3537,7 +3537,7 @@ async def respond_to_collaboration(request_id: str, accept: bool, current_user: 
             "title": "Colaboración aceptada",
             "message": f"{current_user.get('name', 'El vendedor')} aceptó trabajar juntos el cliente {collab_request['client_name']}",
             "client_id": collab_request["client_id"],
-            "read": False,
+            "is_read": False,
             "created_at": now
         }
         await db.notifications.insert_one(notification)
@@ -3558,7 +3558,7 @@ async def respond_to_collaboration(request_id: str, accept: bool, current_user: 
             "title": "Colaboración rechazada",
             "message": f"{current_user.get('name', 'El vendedor')} rechazó la solicitud de colaboración para {collab_request['client_name']}",
             "client_id": collab_request["client_id"],
-            "read": False,
+            "is_read": False,
             "created_at": now
         }
         await db.notifications.insert_one(notification)
@@ -5571,7 +5571,7 @@ async def submit_prequalify(submission: PreQualifySubmission):
                     "email": submission.email,
                     "matched": existing_client is not None
                 },
-                "read": False,
+                "is_read": False,
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             await db.notifications.insert_one(notification_doc)
@@ -5907,7 +5907,7 @@ async def submit_prequalify_with_file(
                     "email": email,
                     "matched": existing_client is not None
                 },
-                "read": False,
+                "is_read": False,
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             await db.notifications.insert_one(notification_doc)
