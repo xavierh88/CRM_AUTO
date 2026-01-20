@@ -1037,7 +1037,8 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 
   const [newRecord, setNewRecord] = useState({ ...emptyRecord });
 
-  const handleCreateAppointment = async (sendMethod = 'sms') => {
+  const handleCreateAppointment = async (sendMethod = null) => {
+    // sendMethod: 'sms', 'email', or null (just save without sending)
     if (!appointmentData.date || !appointmentData.time) {
       toast.error('Por favor complete fecha y hora');
       return;
@@ -1051,6 +1052,15 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
         dealer: appointmentData.dealer,
         language: appointmentData.language
       });
+      
+      // If sendMethod is null, just save without sending notification
+      if (!sendMethod) {
+        toast.success('Cita guardada exitosamente');
+        setShowAppointmentForm(null);
+        setAppointmentData({ date: '', time: '', dealer: '', language: 'en' });
+        onRefresh();
+        return;
+      }
       
       // Appointment created successfully - now try to send notification
       let notificationSent = false;
