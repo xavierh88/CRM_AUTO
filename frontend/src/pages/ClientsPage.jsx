@@ -164,7 +164,7 @@ export default function ClientsPage() {
 
   useEffect(() => {
     fetchClients();
-  }, [ownerFilter]);
+  }, [ownerFilter, sortBy]);
 
   const fetchClients = async (search = '') => {
     try {
