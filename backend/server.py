@@ -2220,23 +2220,21 @@ async def get_dashboard_stats(
     docs_complete = await db.clients.count_documents({"id_uploaded": True, "income_proof_uploaded": True, "is_deleted": {"$ne": True}})
     docs_pending = await db.clients.count_documents({"$or": [{"id_uploaded": False}, {"income_proof_uploaded": False}], "is_deleted": {"$ne": True}})
     
-    # Sales count with date filter
-    sales_query = {"finance_status": {"$in": ["financiado", "lease"]}, "is_deleted": {"$ne": True}}
-    if base_query:
-        sales_query.update(base_query)
-    if date_filter:
-        sales_query["created_at"] = date_filter
-    sales_count = await db.user_records.count_documents(sales_query)
+    # Sales count - now based on is_sold in clients collection (consistent with Sold page)
+    sales_client_query = {"is_sold": True, "is_deleted": {"$ne": True}}
+    if base_query and base_query.get("salesperson_id"):
+        sales_client_query["created_by"] = base_query["salesperson_id"]
+    sales_count = await db.clients.count_documents(sales_client_query)
     
-    # Sales this month
-    sales_month_query = {
-        "finance_status": {"$in": ["financiado", "lease"]}, 
+    # Sales this month - clients marked as sold this month
+    # We need to check when the record was marked as completed
+    first_of_month_str = first_of_month.isoformat()
+    sales_month_records = await db.user_records.count_documents({
+        "record_status": "completed",
         "is_deleted": {"$ne": True},
-        "created_at": {"$gte": first_of_month.isoformat()}
-    }
-    if base_query:
-        sales_month_query.update(base_query)
-    sales_month = await db.user_records.count_documents(sales_month_query)
+        "updated_at": {"$gte": first_of_month_str}
+    })
+    sales_month = sales_month_records
     
     # Today's appointments
     today = now.strftime("%Y-%m-%d")
