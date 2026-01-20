@@ -2019,9 +2019,25 @@ async def get_appointments(
 
 @api_router.get("/appointments/agenda", response_model=List[dict])
 async def get_agenda(current_user: dict = Depends(get_current_user)):
-    """Get appointments for the current salesperson with client info"""
+    """Get appointments for the agenda view with client info.
+    Admins see ALL appointments, others see only their own."""
+    
+    # Build match query based on role
+    if current_user["role"] == "admin":
+        # Admins see all appointments
+        match_query = {}
+    elif current_user["role"] == "bdc_manager":
+        # BDC Managers see all non-admin appointments
+        # First get all admin user IDs to exclude
+        admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
+        admin_ids = [u["id"] for u in admin_users]
+        match_query = {"salesperson_id": {"$nin": admin_ids}}
+    else:
+        # Telemarketers see only their own appointments
+        match_query = {"salesperson_id": current_user["id"]}
+    
     pipeline = [
-        {"$match": {"salesperson_id": current_user["id"]}},
+        {"$match": match_query},
         {"$lookup": {
             "from": "clients",
             "localField": "client_id",
@@ -2029,7 +2045,19 @@ async def get_agenda(current_user: dict = Depends(get_current_user)):
             "as": "client"
         }},
         {"$unwind": {"path": "$client", "preserveNullAndEmptyArrays": True}},
-        {"$project": {"_id": 0, "client._id": 0}},
+        {"$lookup": {
+            "from": "users",
+            "localField": "salesperson_id",
+            "foreignField": "id",
+            "as": "salesperson"
+        }},
+        {"$unwind": {"path": "$salesperson", "preserveNullAndEmptyArrays": True}},
+        {"$project": {
+            "_id": 0, 
+            "client._id": 0,
+            "salesperson._id": 0,
+            "salesperson.password": 0
+        }},
         {"$sort": {"date": 1, "time": 1}}
     ]
     appointments = await db.appointments.aggregate(pipeline).to_list(1000)
