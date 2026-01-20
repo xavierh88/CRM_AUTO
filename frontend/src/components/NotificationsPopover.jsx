@@ -58,7 +58,7 @@ export default function NotificationsPopover() {
   const markAllAsRead = async () => {
     try {
       await axios.post(`${API}/notifications/mark-read`);
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
     } catch (error) {
       console.error('Failed to mark as read:', error);
