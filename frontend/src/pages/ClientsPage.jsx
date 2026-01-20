@@ -25,6 +25,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 export default function ClientsPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
