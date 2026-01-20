@@ -197,8 +197,14 @@ export default function ClientsPage() {
 
   const fetchClients = async (search = '') => {
     try {
-      // Exclude sold clients from the main clients page
-      const params = new URLSearchParams({ exclude_sold: 'true' });
+      // Check if we're looking for a specific client from URL
+      const clientIdFromUrl = searchParams.get('client');
+      
+      // Exclude sold clients from the main clients page, unless looking for specific client
+      const params = new URLSearchParams();
+      if (!clientIdFromUrl) {
+        params.append('exclude_sold', 'true');
+      }
       if (search) params.append('search', search);
       
       // Add owner filter - only applies for non-telemarketer users
