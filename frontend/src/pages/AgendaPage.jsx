@@ -354,7 +354,7 @@ function AppointmentSection({ title, appointments, getStatusBadge, updateStatus,
                 <div className="flex items-center gap-3 mb-2 flex-wrap">
                   <User className="w-4 h-4 text-slate-400" />
                   <Link 
-                    to={`/clients?client=${appt.client_id}`}
+                    to={`/clients?search=${encodeURIComponent((appt.client?.first_name || '') + ' ' + (appt.client?.last_name || ''))}`}
                     className="font-semibold text-blue-600 hover:text-blue-800 underline"
                     onClick={(e) => e.stopPropagation()}
                     data-testid={`agenda-client-link-${appt.id}`}
