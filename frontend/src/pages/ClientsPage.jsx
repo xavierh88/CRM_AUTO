@@ -57,6 +57,9 @@ export default function ClientsPage() {
   // Owner filter (mine, others, all)
   const [ownerFilter, setOwnerFilter] = useState('mine');
   
+  // Sort by (created, activity, name)
+  const [sortBy, setSortBy] = useState('created');
+  
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const clientsPerPage = 10;
