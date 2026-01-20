@@ -2226,15 +2226,24 @@ async def get_dashboard_stats(
         sales_client_query["created_by"] = base_query["salesperson_id"]
     sales_count = await db.clients.count_documents(sales_client_query)
     
-    # Sales this month - clients marked as sold this month
-    # We need to check when the record was marked as completed
-    first_of_month_str = first_of_month.isoformat()
-    sales_month_records = await db.user_records.count_documents({
-        "record_status": "completed",
+    # Sales this month - check sold_at field if exists, otherwise count all sold
+    # First try to count clients with sold_at in this month
+    sales_month_query = {
+        "is_sold": True, 
         "is_deleted": {"$ne": True},
-        "updated_at": {"$gte": first_of_month_str}
-    })
-    sales_month = sales_month_records
+        "sold_at": {"$gte": first_of_month.isoformat()}
+    }
+    if base_query and base_query.get("salesperson_id"):
+        sales_month_query["created_by"] = base_query["salesperson_id"]
+    sales_month = await db.clients.count_documents(sales_month_query)
+    
+    # If no sold_at dates exist, use sales_count as fallback (for backwards compatibility)
+    if sales_month == 0 and sales_count > 0:
+        # Check if any client has sold_at field
+        has_sold_at = await db.clients.count_documents({"is_sold": True, "sold_at": {"$exists": True}})
+        if has_sold_at == 0:
+            # No sold_at dates tracked yet, show all sales as this month's
+            sales_month = sales_count
     
     # Today's appointments
     today = now.strftime("%Y-%m-%d")
