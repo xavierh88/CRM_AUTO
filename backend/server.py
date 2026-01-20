@@ -1420,9 +1420,20 @@ async def delete_client_comment(client_id: str, comment_id: str, current_user: d
 @api_router.get("/salespersons")
 async def get_salespersons(current_user: dict = Depends(get_current_user)):
     """Get list of all active telemarketers for collaborator selection and filters"""
+    # Define which roles to include based on current user's role
+    if current_user["role"] == "admin":
+        # Admin can see all users
+        roles_to_include = ["salesperson", "telemarketer", "admin", "bdc_manager"]
+    elif current_user["role"] == "bdc_manager":
+        # BDC Manager can see telemarketers and other BDC managers, but NOT admins
+        roles_to_include = ["salesperson", "telemarketer", "bdc_manager"]
+    else:
+        # Telemarketers only see other telemarketers (for collaboration)
+        roles_to_include = ["salesperson", "telemarketer"]
+    
     users = await db.users.find(
         {
-            "role": {"$in": ["salesperson", "telemarketer", "admin", "bdc_manager"]},
+            "role": {"$in": roles_to_include},
             "is_active": {"$ne": False},  # Only active users
             "is_deleted": {"$ne": True}   # Not deleted users
         },
