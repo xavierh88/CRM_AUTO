@@ -362,9 +362,9 @@ function AppointmentSection({ title, appointments, getStatusBadge, updateStatus,
                     </Badge>
                   )}
                   {/* Show salesperson name for admins viewing all appointments */}
-                  {appt.salesperson && (
+                  {appt.salesperson?.name && (
                     <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50 text-xs">
-                      👤 {appt.salesperson.name || appt.salesperson.email}
+                      👤 {appt.salesperson.name}
                     </Badge>
                   )}
                 </div>
