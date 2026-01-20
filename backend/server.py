@@ -2142,6 +2142,9 @@ async def get_dashboard_stats(
     # Co-signers count
     total_cosigners = await db.cosigner_relations.count_documents({})
     
+    # Sold clients count (clients with is_sold = true)
+    sold_clients = await db.clients.count_documents({"is_sold": True, "is_deleted": {"$ne": True}})
+    
     # Recent activity - clients contacted in last 7 days
     week_ago = (now - timedelta(days=7)).isoformat()
     active_clients = await db.clients.count_documents({
