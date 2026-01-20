@@ -621,6 +621,21 @@ export default function ClientsPage() {
             </Select>
           </div>
         )}
+        
+        {/* Sort by filter */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-500">Ordenar:</span>
+          <Select value={sortBy} onValueChange={(value) => setSortBy(value)}>
+            <SelectTrigger className="w-[140px] h-8" data-testid="sort-filter">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="created">Más Recientes</SelectItem>
+              <SelectItem value="activity">Por Actividad</SelectItem>
+              <SelectItem value="name">Por Nombre</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Client List */}
