@@ -174,8 +174,15 @@ export default function ClientsPage() {
       
       // Add owner filter - only applies for non-telemarketer users
       // Telemarketers always see only their own clients via backend filter
-      if ((isAdmin || isBdcManager) && ownerFilter !== 'all') {
-        params.append('owner_filter', ownerFilter);
+      if ((isAdmin || isBdcManager) && ownerFilter && ownerFilter !== 'all') {
+        // Check if filtering by specific user (format: "user:userId")
+        if (ownerFilter.startsWith('user:')) {
+          const userId = ownerFilter.replace('user:', '');
+          params.append('salesperson_id', userId);
+        } else {
+          // Use general owner_filter (mine, others)
+          params.append('owner_filter', ownerFilter);
+        }
       }
       
       // Add sort parameter
