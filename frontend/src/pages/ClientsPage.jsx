@@ -166,7 +166,7 @@ export default function ClientsPage() {
 
   useEffect(() => {
     fetchClients();
-  }, [ownerFilter, sortBy]);
+  }, [ownerFilter, sortBy, searchParams]);
 
   // Handle URL parameter to open a specific client
   useEffect(() => {
