@@ -173,7 +173,7 @@ export default function ClientsPage() {
     const clientId = searchParams.get('client');
     if (clientId) {
       // When coming from a direct link, set filter to "all" to ensure we can find the client
-      if (ownerFilter !== 'all') {
+      if ((isAdmin || isBdcManager) && ownerFilter !== 'all') {
         setOwnerFilter('all');
         return; // Will re-run after filter changes
       }
@@ -181,20 +181,19 @@ export default function ClientsPage() {
       if (clients.length > 0) {
         const client = clients.find(c => c.id === clientId);
         if (client) {
-          // Expand the client's card and load their data
+          // Expand the client's card
           setExpandedClients(prev => ({ ...prev, [clientId]: true }));
-          loadClientData(clientId);
           // Scroll to the client card
           setTimeout(() => {
             const element = document.querySelector(`[data-client-id="${clientId}"]`);
             if (element) {
               element.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-          }, 100);
+          }, 300);
         }
       }
     }
-  }, [searchParams, clients, ownerFilter]);
+  }, [searchParams, clients, ownerFilter, isAdmin, isBdcManager]);
 
   const fetchClients = async (search = '') => {
     try {
