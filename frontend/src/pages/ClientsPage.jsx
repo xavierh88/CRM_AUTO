@@ -168,6 +168,26 @@ export default function ClientsPage() {
     fetchClients();
   }, [ownerFilter, sortBy]);
 
+  // Handle URL parameter to open a specific client
+  useEffect(() => {
+    const clientId = searchParams.get('client');
+    if (clientId && clients.length > 0) {
+      const client = clients.find(c => c.id === clientId);
+      if (client) {
+        // Expand the client's card and load their data
+        setExpandedClients(prev => ({ ...prev, [clientId]: true }));
+        loadClientData(clientId);
+        // Scroll to the client card
+        setTimeout(() => {
+          const element = document.querySelector(`[data-client-id="${clientId}"]`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      }
+    }
+  }, [searchParams, clients]);
+
   const fetchClients = async (search = '') => {
     try {
       // Exclude sold clients from the main clients page
