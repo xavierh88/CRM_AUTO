@@ -2025,11 +2025,14 @@ async def get_agenda(current_user: dict = Depends(get_current_user)):
     return appointments
 
 @api_router.put("/appointments/{appt_id}", response_model=AppointmentResponse)
-async def update_appointment(appt_id: str, appt: AppointmentCreate, current_user: dict = Depends(get_current_user)):
-    update_data = appt.model_dump(exclude_unset=True)
+async def update_appointment(appt_id: str, appt: AppointmentUpdate, current_user: dict = Depends(get_current_user)):
+    update_data = appt.model_dump(exclude_unset=True, exclude_none=True)
     
     # Determine status
     existing = await db.appointments.find_one({"id": appt_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
     if appt.change_time and appt.change_time != existing.get("change_time"):
         update_data["status"] = "cambio_hora"
     elif appt.date and appt.time:
