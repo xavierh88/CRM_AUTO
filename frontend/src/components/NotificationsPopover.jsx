@@ -66,12 +66,22 @@ export default function NotificationsPopover() {
   };
 
   const handleNotificationClick = (notification) => {
-    // Navigate based on notification type
-    if (notification.type === 'prequalify') {
+    // Navigate based on notification link or type
+    if (notification.link) {
+      // Use the link field directly
+      navigate(notification.link);
+      setOpen(false);
+    } else if (notification.type === 'prequalify') {
       navigate('/prequalify');
+      setOpen(false);
+    } else if (notification.type === 'reminder' || notification.type === 'appointment_reminder') {
+      navigate('/clients');
       setOpen(false);
     } else if (notification.client_id) {
       navigate(`/clients?client=${notification.client_id}`);
+      setOpen(false);
+    } else {
+      // Default: just close the popover
       setOpen(false);
     }
   };
