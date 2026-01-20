@@ -317,8 +317,16 @@ async def startup_event():
         replace_existing=True
     )
     
+    # Schedule appointment reminders job to run daily at 9:00 AM Pacific
+    scheduler.add_job(
+        check_appointment_reminders_job,
+        CronTrigger(hour=9, minute=0, timezone='America/Los_Angeles'),
+        id='appointment_reminders_job',
+        replace_existing=True
+    )
+    
     scheduler.start()
-    logger.info("Scheduler started - Marketing SMS at 11:00 AM Pacific, Reminders every 5 minutes")
+    logger.info("Scheduler started - Marketing SMS at 11:00 AM, Comment reminders every 5 min, Appointment reminders at 9:00 AM Pacific")
 
 @app.on_event("shutdown")
 async def shutdown_event():
