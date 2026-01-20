@@ -169,18 +169,18 @@ export default function NotificationsPopover() {
                 <div
                   key={notification.id}
                   className={`px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors ${
-                    !notification.read ? 'bg-blue-50/50' : ''
+                    !notification.is_read ? 'bg-blue-50/50' : ''
                   }`}
                   onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`mt-0.5 p-1.5 rounded-full ${
-                      !notification.read ? 'bg-blue-100' : 'bg-slate-100'
+                      !notification.is_read ? 'bg-blue-100' : 'bg-slate-100'
                     }`}>
                       {getNotificationIcon(notification.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm ${!notification.read ? 'font-medium' : ''} text-slate-900`}>
+                      <p className={`text-sm ${!notification.is_read ? 'font-medium' : ''} text-slate-900`}>
                         {notification.title}
                       </p>
                       <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
@@ -190,7 +190,7 @@ export default function NotificationsPopover() {
                         {formatTime(notification.created_at)}
                       </p>
                     </div>
-                    {!notification.read && (
+                    {!notification.is_read && (
                       <div className="w-2 h-2 rounded-full bg-blue-600 mt-2" />
                     )}
                   </div>
