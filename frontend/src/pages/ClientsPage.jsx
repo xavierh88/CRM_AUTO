@@ -194,8 +194,23 @@ export default function ClientsPage() {
     }
   };
 
+  // Read search parameter from URL (when coming from Agenda)
   useEffect(() => {
-    fetchClients();
+    const urlSearch = searchParams.get('search');
+    if (urlSearch) {
+      setSearchTerm(urlSearch);
+      // Set filter to "all" to find the client regardless of owner
+      if (isAdmin || isBdcManager) {
+        setOwnerFilter('all');
+      }
+      fetchClients(urlSearch);
+    } else {
+      fetchClients();
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    fetchClients(searchTerm);
   }, [ownerFilter, sortBy]);
 
   const fetchClientRecords = async (clientId) => {
