@@ -838,7 +838,7 @@ async def create_client(client: ClientCreate, current_user: dict = Depends(get_c
 import re as regex_module
 
 @api_router.get("/clients", response_model=List[dict])
-async def get_clients(include_deleted: bool = False, search: Optional[str] = None, salesperson_id: Optional[str] = None, exclude_sold: bool = False, owner_filter: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+async def get_clients(include_deleted: bool = False, search: Optional[str] = None, salesperson_id: Optional[str] = None, exclude_sold: bool = False, owner_filter: Optional[str] = None, sort_by: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     query = {} if include_deleted and current_user["role"] == "admin" else {"is_deleted": {"$ne": True}}
     
     # Filter by owner - telemarketers can only see their own clients
@@ -871,7 +871,17 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
             {"phone": search_regex}
         ]
     
-    clients = await db.clients.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    # Determine sort field
+    if sort_by == "activity":
+        # Sort by last_contact (most recent activity first)
+        sort_field = [("last_contact", -1), ("created_at", -1)]
+    elif sort_by == "name":
+        sort_field = [("first_name", 1), ("last_name", 1)]
+    else:
+        # Default: most recently created first
+        sort_field = [("created_at", -1)]
+    
+    clients = await db.clients.find(query, {"_id": 0}).sort(sort_field).to_list(1000)
     
     now = datetime.now(timezone.utc)
     
