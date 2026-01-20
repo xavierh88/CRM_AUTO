@@ -1532,18 +1532,25 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setShowAppointmentForm(null)} className="flex-1">
-                    Cancelar
-                  </Button>
-                  <Button onClick={() => handleCreateAppointment('sms')} variant="outline" className="flex-1">
-                    <Send className="w-4 h-4 mr-1" />
-                    <span className="hidden sm:inline">Crear + </span>SMS
-                  </Button>
-                  <Button onClick={() => handleCreateAppointment('email')} className="flex-1 bg-green-600 hover:bg-green-700">
-                    <Mail className="w-4 h-4 mr-1" />
-                    <span className="hidden sm:inline">Crear + </span>Email
-                  </Button>
+                <div className="space-y-2 pt-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button variant="outline" onClick={() => setShowAppointmentForm(null)} className="flex-1">
+                      Cancelar
+                    </Button>
+                    <Button onClick={() => handleCreateAppointment(null)} className="flex-1 bg-slate-600 hover:bg-slate-700">
+                      💾 Solo Guardar
+                    </Button>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 border-t pt-2">
+                    <Button onClick={() => handleCreateAppointment('sms')} variant="outline" className="flex-1" size="sm">
+                      <Send className="w-4 h-4 mr-1" />
+                      Guardar + SMS
+                    </Button>
+                    <Button onClick={() => handleCreateAppointment('email')} className="flex-1 bg-green-600 hover:bg-green-700" size="sm">
+                      <Mail className="w-4 h-4 mr-1" />
+                      Guardar + Email
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
