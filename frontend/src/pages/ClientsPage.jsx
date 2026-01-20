@@ -610,13 +610,34 @@ export default function ClientsPage() {
           <div className="flex items-center gap-2">
             <span className="text-sm text-slate-500">Dueño:</span>
             <Select value={ownerFilter} onValueChange={(value) => setOwnerFilter(value)}>
-              <SelectTrigger className="w-[140px] h-8" data-testid="owner-filter">
-                <SelectValue />
+              <SelectTrigger className="w-[180px] h-8" data-testid="owner-filter">
+                <SelectValue placeholder="Seleccionar..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="mine">Mis Clientes</SelectItem>
-                <SelectItem value="others">De Otros</SelectItem>
-                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="mine">📍 Mis Clientes</SelectItem>
+                <SelectItem value="all">👥 Todos</SelectItem>
+                <SelectItem value="others">🔄 De Otros (todos)</SelectItem>
+                {/* Separator */}
+                <div className="border-t my-1"></div>
+                {/* Individual users - filter based on role */}
+                {salespersons
+                  .filter(sp => {
+                    // BDC Manager: show telemarketers and other BDC managers, NOT admins
+                    if (isBdcManager && !isAdmin) {
+                      return sp.role === 'telemarketer' || sp.role === 'salesperson' || sp.role === 'bdc_manager';
+                    }
+                    // Admin: show all users
+                    return true;
+                  })
+                  .map((sp) => (
+                    <SelectItem key={sp.id} value={`user:${sp.id}`}>
+                      {sp.name || sp.email} 
+                      <span className="text-xs text-slate-400 ml-1">
+                        ({sp.role === 'admin' ? 'Admin' : sp.role === 'bdc_manager' ? 'BDC' : 'TM'})
+                      </span>
+                    </SelectItem>
+                  ))
+                }
               </SelectContent>
             </Select>
           </div>
