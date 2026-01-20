@@ -5563,6 +5563,7 @@ async def submit_prequalify(submission: PreQualifySubmission):
                 "type": "prequalify",
                 "title": "Nueva Pre-Calificación",
                 "message": f"Nueva solicitud de {submission.firstName} {submission.lastName} - Tel: {submission.phone}",
+                "link": "/prequalify",
                 "data": {
                     "submission_id": doc["id"],
                     "name": f"{submission.firstName} {submission.lastName}",
