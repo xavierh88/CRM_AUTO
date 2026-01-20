@@ -2249,6 +2249,7 @@ async def get_dashboard_stats(
         "week_appointments": week_appointments,
         "total_records": total_records,
         "total_cosigners": total_cosigners,
+        "sold_clients": sold_clients,
         "active_clients": active_clients,
         "finance_breakdown": finance_breakdown,
         "monthly_sales": [{"month": s["_id"], "sales": s["count"]} for s in monthly_sales],
