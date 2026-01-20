@@ -3259,7 +3259,7 @@ async def mark_notifications_read(notification_ids: List[str] = None, current_us
     
     result = await db.notifications.update_many(
         query,
-        {"$set": {"read": True, "read_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {"is_read": True, "read_at": datetime.now(timezone.utc).isoformat()}}
     )
     return {"message": f"Marked {result.modified_count} notifications as read"}
 
