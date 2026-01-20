@@ -245,6 +245,58 @@ async def check_comment_reminders_job():
     
     logger.info("Comment reminders job completed")
 
+async def check_appointment_reminders_job():
+    """
+    Scheduled job to check for appointments that are due tomorrow and send notifications.
+    Runs once daily at 9:00 AM to notify users about appointments the next day.
+    """
+    logger.info("Running appointment reminders check job...")
+    
+    now = datetime.now(timezone.utc)
+    tomorrow = (now + timedelta(days=1)).strftime("%Y-%m-%d")
+    
+    # Find appointments scheduled for tomorrow that haven't been reminded
+    tomorrow_appointments = await db.appointments.find({
+        "date": tomorrow,
+        "status": "agendado",
+        "reminder_sent_day_before": {"$ne": True}
+    }, {"_id": 0}).to_list(100)
+    
+    logger.info(f"Found {len(tomorrow_appointments)} appointments for tomorrow ({tomorrow})")
+    
+    for appt in tomorrow_appointments:
+        try:
+            # Get client info
+            client = await db.clients.find_one({"id": appt["client_id"]}, {"_id": 0, "first_name": 1, "last_name": 1})
+            client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}" if client else "Cliente"
+            
+            # Get dealer info
+            dealer_name = appt.get("dealer", "")
+            
+            # Create notification for the salesperson who created the appointment
+            notif_doc = {
+                "id": str(uuid.uuid4()),
+                "user_id": appt["salesperson_id"],
+                "message": f"📅 Recordatorio: Cita mañana con {client_name} a las {appt.get('time', '')} en {dealer_name}",
+                "type": "appointment_reminder",
+                "link": "/agenda",
+                "is_read": False,
+                "created_at": now.isoformat()
+            }
+            await db.notifications.insert_one(notif_doc)
+            
+            # Mark appointment as reminded
+            await db.appointments.update_one(
+                {"id": appt["id"]},
+                {"$set": {"reminder_sent_day_before": True}}
+            )
+            
+            logger.info(f"Appointment reminder sent for {appt['id']} - {client_name}")
+        except Exception as e:
+            logger.error(f"Error processing appointment reminder {appt['id']}: {e}")
+    
+    logger.info("Appointment reminders job completed")
+
 @app.on_event("startup")
 async def startup_event():
     """Start the scheduler when the app starts"""
