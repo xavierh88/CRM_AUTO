@@ -164,14 +164,16 @@ export default function ClientsPage() {
     id_type: '', id_number: '', ssn_type: '', ssn: ''
   });
 
+  // Check if we need to find a specific client from URL
+  const targetClientId = searchParams.get('client');
+
   useEffect(() => {
     fetchClients();
-  }, [ownerFilter, sortBy, searchParams]);
+  }, [ownerFilter, sortBy]);
 
   // Handle URL parameter to open a specific client
   useEffect(() => {
-    const clientId = searchParams.get('client');
-    if (clientId) {
+    if (targetClientId) {
       // When coming from a direct link, set filter to "all" to ensure we can find the client
       if ((isAdmin || isBdcManager) && ownerFilter !== 'all') {
         setOwnerFilter('all');
@@ -179,13 +181,13 @@ export default function ClientsPage() {
       }
       
       if (clients.length > 0) {
-        const client = clients.find(c => c.id === clientId);
+        const client = clients.find(c => c.id === targetClientId);
         if (client) {
           // Expand the client's card
-          setExpandedClients(prev => ({ ...prev, [clientId]: true }));
+          setExpandedClients(prev => ({ ...prev, [targetClientId]: true }));
           // Scroll to the client card
           setTimeout(() => {
-            const element = document.querySelector(`[data-client-id="${clientId}"]`);
+            const element = document.querySelector(`[data-client-id="${targetClientId}"]`);
             if (element) {
               element.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
@@ -193,16 +195,13 @@ export default function ClientsPage() {
         }
       }
     }
-  }, [searchParams, clients, ownerFilter, isAdmin, isBdcManager]);
+  }, [targetClientId, clients, ownerFilter, isAdmin, isBdcManager]);
 
   const fetchClients = async (search = '') => {
     try {
-      // Check if we're looking for a specific client from URL
-      const clientIdFromUrl = searchParams.get('client');
-      
       // Exclude sold clients from the main clients page, unless looking for specific client
       const params = new URLSearchParams();
-      if (!clientIdFromUrl) {
+      if (!targetClientId) {
         params.append('exclude_sold', 'true');
       }
       if (search) params.append('search', search);
