@@ -353,17 +353,14 @@ function AppointmentSection({ title, appointments, getStatusBadge, updateStatus,
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2 flex-wrap">
                   <User className="w-4 h-4 text-slate-400" />
-                  <span 
-                    className="font-semibold text-blue-600 cursor-pointer hover:text-blue-800 underline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      navigate(`/clients?client=${appt.client_id}`);
-                    }}
+                  <Link 
+                    to={`/clients?client=${appt.client_id}`}
+                    className="font-semibold text-blue-600 hover:text-blue-800 underline"
+                    onClick={(e) => e.stopPropagation()}
                     data-testid={`agenda-client-link-${appt.id}`}
                   >
                     {appt.client?.first_name} {appt.client?.last_name}
-                  </span>
+                  </Link>
                   {getStatusBadge(appt.status)}
                   {appt.running_late && (
                     <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50">
