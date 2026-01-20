@@ -5196,6 +5196,48 @@ async def reset_id_types(current_user: dict = Depends(get_current_user)):
         logger.error(f"Reset ID types error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+@api_router.post("/admin/sync-sold-clients")
+async def sync_sold_clients(current_user: dict = Depends(get_current_user)):
+    """Synchronize sold clients - mark clients as sold based on completed records (Admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores pueden sincronizar clientes vendidos")
+    
+    try:
+        # Find all clients with completed records that aren't marked as sold
+        completed_records = await db.user_records.find(
+            {"record_status": "completed", "is_deleted": {"$ne": True}},
+            {"_id": 0, "client_id": 1, "created_at": 1}
+        ).to_list(1000)
+        
+        synced_count = 0
+        for record in completed_records:
+            client_id = record["client_id"]
+            
+            # Check if client is already marked as sold
+            client = await db.clients.find_one({"id": client_id}, {"_id": 0, "is_sold": 1})
+            if client and not client.get("is_sold", False):
+                # Mark client as sold
+                await db.clients.update_one(
+                    {"id": client_id},
+                    {"$set": {
+                        "is_sold": True,
+                        "sold_at": record["created_at"]
+                    }}
+                )
+                synced_count += 1
+        
+        logger.info(f"Sold clients synchronized by {current_user['email']}: {synced_count} clients updated")
+        
+        return {
+            "message": f"Sincronización completada: {synced_count} clientes marcados como vendidos",
+            "synced_count": synced_count,
+            "total_completed_records": len(completed_records)
+        }
+        
+    except Exception as e:
+        logger.error(f"Sync sold clients error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al sincronizar: {str(e)}")
+
 # ==================== SCHEDULER ENDPOINTS ====================
 
 @api_router.get("/scheduler/status")
