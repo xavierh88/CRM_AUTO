@@ -732,7 +732,7 @@ export default function ClientsPage() {
             };
             
             return (
-            <Card key={client.id} className="dashboard-card overflow-hidden" data-testid={`client-card-${client.id}`}>
+            <Card key={client.id} className="dashboard-card overflow-hidden" data-testid={`client-card-${client.id}`} data-client-id={client.id}>
               <Collapsible open={expandedClients[client.id]} onOpenChange={() => toggleClientExpand(client.id)}>
                 <CollapsibleTrigger asChild>
                   <div className="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer w-full" role="button" tabIndex={0}>
