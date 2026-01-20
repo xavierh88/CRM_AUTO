@@ -240,6 +240,20 @@ export default function DashboardPage() {
         <Card className="dashboard-card">
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col items-center text-center sm:flex-row sm:text-left gap-2 sm:gap-3">
+              <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold text-slate-900">{stats?.sold_clients || 0}</p>
+                <p className="text-xs text-slate-500">Clientes Vendidos</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="dashboard-card">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col items-center text-center sm:flex-row sm:text-left gap-2 sm:gap-3">
               <div className="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center flex-shrink-0">
                 <Calendar className="w-5 h-5 text-rose-600" />
               </div>
