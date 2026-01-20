@@ -582,6 +582,13 @@ class AppointmentCreate(BaseModel):
     language: str = "en"  # en or es
     change_time: Optional[str] = None
 
+class AppointmentUpdate(BaseModel):
+    date: Optional[str] = None
+    time: Optional[str] = None
+    dealer: Optional[str] = None
+    language: Optional[str] = None
+    change_time: Optional[str] = None
+
 class AppointmentResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
