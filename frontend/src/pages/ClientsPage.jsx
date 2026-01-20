@@ -167,41 +167,12 @@ export default function ClientsPage() {
   // Check if we need to find a specific client from URL
   const targetClientId = searchParams.get('client');
 
-  useEffect(() => {
-    fetchClients();
-  }, [ownerFilter, sortBy, targetClientId]);
-
-  // Handle URL parameter to open a specific client
-  useEffect(() => {
-    if (targetClientId) {
-      // When coming from a direct link, set filter to "all" to ensure we can find the client
-      if ((isAdmin || isBdcManager) && ownerFilter !== 'all') {
-        setOwnerFilter('all');
-        return; // Will re-run after filter changes
-      }
-      
-      if (clients.length > 0) {
-        const client = clients.find(c => c.id === targetClientId);
-        if (client) {
-          // Expand the client's card
-          setExpandedClients(prev => ({ ...prev, [targetClientId]: true }));
-          // Scroll to the client card
-          setTimeout(() => {
-            const element = document.querySelector(`[data-client-id="${targetClientId}"]`);
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-          }, 300);
-        }
-      }
-    }
-  }, [targetClientId, clients, ownerFilter, isAdmin, isBdcManager]);
-
   const fetchClients = async (search = '') => {
     try {
       // Exclude sold clients from the main clients page, unless looking for specific client
       const params = new URLSearchParams();
-      if (!targetClientId) {
+      const urlClientId = searchParams.get('client');
+      if (!urlClientId) {
         params.append('exclude_sold', 'true');
       }
       if (search) params.append('search', search);
@@ -233,6 +204,36 @@ export default function ClientsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchClients();
+  }, [ownerFilter, sortBy, targetClientId]);
+
+  // Handle URL parameter to open a specific client
+  useEffect(() => {
+    if (targetClientId) {
+      // When coming from a direct link, set filter to "all" to ensure we can find the client
+      if ((isAdmin || isBdcManager) && ownerFilter !== 'all') {
+        setOwnerFilter('all');
+        return; // Will re-run after filter changes
+      }
+      
+      if (clients.length > 0) {
+        const client = clients.find(c => c.id === targetClientId);
+        if (client) {
+          // Expand the client's card
+          setExpandedClients(prev => ({ ...prev, [targetClientId]: true }));
+          // Scroll to the client card
+          setTimeout(() => {
+            const element = document.querySelector(`[data-client-id="${targetClientId}"]`);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }, 300);
+        }
+      }
+    }
+  }, [targetClientId, clients, ownerFilter, isAdmin, isBdcManager]);
 
   const fetchClientRecords = async (clientId) => {
     try {
