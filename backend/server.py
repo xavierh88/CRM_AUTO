@@ -5899,6 +5899,7 @@ async def submit_prequalify_with_file(
                 "type": "prequalify",
                 "title": "Nueva Pre-Calificación",
                 "message": f"Nueva solicitud de {firstName} {lastName} - Tel: {phone}",
+                "link": "/prequalify",
                 "data": {
                     "submission_id": submission_id,
                     "name": f"{firstName} {lastName}",
