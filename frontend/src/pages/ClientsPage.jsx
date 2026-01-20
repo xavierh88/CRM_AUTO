@@ -178,6 +178,11 @@ export default function ClientsPage() {
         params.append('owner_filter', ownerFilter);
       }
       
+      // Add sort parameter
+      if (sortBy && sortBy !== 'created') {
+        params.append('sort_by', sortBy);
+      }
+      
       const url = `${API}/clients?${params.toString()}`;
       const response = await axios.get(url);
       setClients(response.data);
