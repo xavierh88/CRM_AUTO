@@ -3245,7 +3245,7 @@ async def get_notifications(current_user: dict = Depends(get_current_user), limi
     
     unread_count = await db.notifications.count_documents({
         "user_id": current_user["id"],
-        "read": False
+        "is_read": False
     })
     
     return {"notifications": notifications, "unread_count": unread_count}
