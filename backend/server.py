@@ -848,20 +848,37 @@ import re as regex_module
 async def get_clients(include_deleted: bool = False, search: Optional[str] = None, salesperson_id: Optional[str] = None, exclude_sold: bool = False, owner_filter: Optional[str] = None, sort_by: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     query = {} if include_deleted and current_user["role"] == "admin" else {"is_deleted": {"$ne": True}}
     
-    # Filter by owner - telemarketers can only see their own clients
-    # Admin and BDC Manager can see all clients or filter by salesperson/owner
-    if current_user["role"] in ["admin", "bdc", "bdc_manager"]:
+    # Get list of admin user IDs (to exclude their clients from non-admins)
+    admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
+    admin_ids = [u["id"] for u in admin_users]
+    
+    # Filter by owner based on role
+    if current_user["role"] == "admin":
+        # Admin can see ALL clients or filter
         if salesperson_id:
             query["created_by"] = salesperson_id
         elif owner_filter:
-            # owner_filter: 'mine' = only my clients, 'others' = clients from others, 'all' = no filter
             if owner_filter == 'mine':
                 query["created_by"] = current_user["id"]
             elif owner_filter == 'others':
                 query["created_by"] = {"$ne": current_user["id"]}
             # 'all' means no filter, show everything
+    elif current_user["role"] == "bdc_manager":
+        # BDC Manager can see all clients EXCEPT those created by admins
+        if salesperson_id:
+            query["created_by"] = salesperson_id
+        elif owner_filter:
+            if owner_filter == 'mine':
+                query["created_by"] = current_user["id"]
+            elif owner_filter == 'others':
+                query["created_by"] = {"$ne": current_user["id"], "$nin": admin_ids}
+            else:  # 'all' - show all except admin's clients
+                query["created_by"] = {"$nin": admin_ids}
+        else:
+            # Default: exclude admin's clients
+            query["created_by"] = {"$nin": admin_ids}
     else:
-        # Telemarketers (and legacy salesperson) only see their own clients
+        # Telemarketers only see their OWN clients (never admin's or others')
         query["created_by"] = current_user["id"]
     
     # Exclude sold clients if requested (for main Clients page)
