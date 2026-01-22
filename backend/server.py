@@ -5268,6 +5268,58 @@ async def sync_sold_clients(current_user: dict = Depends(get_current_user)):
             # Check if client is already marked as sold
             client = await db.clients.find_one({"id": client_id}, {"_id": 0, "is_sold": 1})
             if client and not client.get("is_sold", False):
+
+@api_router.get("/admin/debug-clients")
+async def debug_clients(current_user: dict = Depends(get_current_user)):
+    """Debug endpoint to check client ownership (Admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores")
+    
+    # Get current user info
+    user_info = {
+        "id": current_user["id"],
+        "email": current_user["email"],
+        "role": current_user["role"]
+    }
+    
+    # Count clients by created_by
+    all_clients = await db.clients.find({"is_deleted": {"$ne": True}}, {"_id": 0, "created_by": 1, "first_name": 1, "last_name": 1}).to_list(1000)
+    
+    my_clients = [c for c in all_clients if c.get("created_by") == current_user["id"]]
+    other_clients = [c for c in all_clients if c.get("created_by") != current_user["id"]]
+    
+    # Get unique created_by values
+    created_by_ids = list(set([c.get("created_by") for c in all_clients if c.get("created_by")]))
+    
+    # Get user info for each creator
+    creators = []
+    for creator_id in created_by_ids:
+        user = await db.users.find_one({"id": creator_id}, {"_id": 0, "id": 1, "email": 1, "name": 1, "role": 1})
+        count = len([c for c in all_clients if c.get("created_by") == creator_id])
+        if user:
+            creators.append({
+                "id": creator_id,
+                "email": user.get("email"),
+                "name": user.get("name"),
+                "role": user.get("role"),
+                "client_count": count
+            })
+        else:
+            creators.append({
+                "id": creator_id,
+                "email": "USUARIO ELIMINADO",
+                "name": "USUARIO ELIMINADO",
+                "role": "unknown",
+                "client_count": count
+            })
+    
+    return {
+        "current_user": user_info,
+        "total_clients": len(all_clients),
+        "my_clients_count": len(my_clients),
+        "other_clients_count": len(other_clients),
+        "creators": creators
+    }
                 # Mark client as sold
                 await db.clients.update_one(
                     {"id": client_id},
