@@ -5268,6 +5268,27 @@ async def sync_sold_clients(current_user: dict = Depends(get_current_user)):
             # Check if client is already marked as sold
             client = await db.clients.find_one({"id": client_id}, {"_id": 0, "is_sold": 1})
             if client and not client.get("is_sold", False):
+                # Mark client as sold
+                await db.clients.update_one(
+                    {"id": client_id},
+                    {"$set": {
+                        "is_sold": True,
+                        "sold_at": record["created_at"]
+                    }}
+                )
+                synced_count += 1
+        
+        logger.info(f"Sold clients synchronized by {current_user['email']}: {synced_count} clients updated")
+        
+        return {
+            "message": f"Sincronización completada: {synced_count} clientes marcados como vendidos",
+            "synced_count": synced_count,
+            "total_completed_records": len(completed_records)
+        }
+        
+    except Exception as e:
+        logger.error(f"Sync sold clients error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al sincronizar: {str(e)}")
 
 @api_router.get("/admin/debug-clients")
 async def debug_clients(current_user: dict = Depends(get_current_user)):
@@ -5308,7 +5329,7 @@ async def debug_clients(current_user: dict = Depends(get_current_user)):
             creators.append({
                 "id": creator_id,
                 "email": "USUARIO ELIMINADO",
-                "name": "USUARIO ELIMINADO",
+                "name": "USUARIO ELIMINADO", 
                 "role": "unknown",
                 "client_count": count
             })
@@ -5320,27 +5341,6 @@ async def debug_clients(current_user: dict = Depends(get_current_user)):
         "other_clients_count": len(other_clients),
         "creators": creators
     }
-                # Mark client as sold
-                await db.clients.update_one(
-                    {"id": client_id},
-                    {"$set": {
-                        "is_sold": True,
-                        "sold_at": record["created_at"]
-                    }}
-                )
-                synced_count += 1
-        
-        logger.info(f"Sold clients synchronized by {current_user['email']}: {synced_count} clients updated")
-        
-        return {
-            "message": f"Sincronización completada: {synced_count} clientes marcados como vendidos",
-            "synced_count": synced_count,
-            "total_completed_records": len(completed_records)
-        }
-        
-    except Exception as e:
-        logger.error(f"Sync sold clients error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error al sincronizar: {str(e)}")
 
 # ==================== SCHEDULER ENDPOINTS ====================
 
