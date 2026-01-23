@@ -2320,12 +2320,15 @@ async def get_dashboard_stats(
         sold_clients_query.update(clients_owner_filter)
     sold_clients = await db.clients.count_documents(sold_clients_query)
     
-    # Recent activity - clients contacted in last 7 days
+    # Recent activity - clients contacted in last 7 days - filtered by owner
     week_ago = (now - timedelta(days=7)).isoformat()
-    active_clients = await db.clients.count_documents({
+    active_clients_query = {
         "is_deleted": {"$ne": True},
         "last_contact": {"$gte": week_ago}
-    })
+    }
+    if clients_owner_filter:
+        active_clients_query.update(clients_owner_filter)
+    active_clients = await db.clients.count_documents(active_clients_query)
     
     # Finance type breakdown with date filter
     finance_match = {"finance_status": {"$in": ["financiado", "lease"]}, "is_deleted": {"$ne": True}}
