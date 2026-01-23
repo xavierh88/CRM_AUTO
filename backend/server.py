@@ -2438,7 +2438,11 @@ async def get_dashboard_stats(
     }
 
 @api_router.get("/dashboard/salesperson-performance")
-async def get_salesperson_performance(current_user: dict = Depends(get_current_user)):
+async def get_salesperson_performance(
+    current_user: dict = Depends(get_current_user),
+    period: str = "all",  # "all", "6months", "month"
+    month: str = None  # Optional specific month in format "YYYY-MM"
+):
     # Admin and BDC Manager can see salesperson performance
     if current_user["role"] not in ["admin", "bdc", "bdc_manager"]:
         raise HTTPException(status_code=403, detail="Admin or BDC Manager access required")
@@ -2447,11 +2451,38 @@ async def get_salesperson_performance(current_user: dict = Depends(get_current_u
     admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
     admin_ids = [u["id"] for u in admin_users]
     
-    # Build match filter based on role
+    # Calculate date filters based on period
+    now = datetime.now(timezone.utc)
+    date_filter = {}
+    
+    if month:  # Specific month selected (e.g., "2026-01")
+        year, mon = month.split("-")
+        start_date = datetime(int(year), int(mon), 1, tzinfo=timezone.utc)
+        if int(mon) == 12:
+            end_date = datetime(int(year) + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            end_date = datetime(int(year), int(mon) + 1, 1, tzinfo=timezone.utc)
+        date_filter = {"$gte": start_date.isoformat(), "$lt": end_date.isoformat()}
+    elif period == "month":  # Current month
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        date_filter = {"$gte": start_date.isoformat()}
+    elif period == "6months":  # Last 6 months
+        start_date = now - timedelta(days=180)
+        date_filter = {"$gte": start_date.isoformat()}
+    # else "all" - no date filter
+    
+    # Build match filter based on role and date
     match_filter = {"is_deleted": {"$ne": True}}
     if current_user["role"] == "bdc_manager":
         # BDC Manager should NOT see admin performance
         match_filter["salesperson_id"] = {"$nin": admin_ids}
+    if date_filter:
+        match_filter["created_at"] = date_filter
+    
+    # Build appointment match filter for the lookup
+    appt_match_filter = {}
+    if date_filter:
+        appt_match_filter["created_at"] = date_filter
     
     pipeline = [
         {"$match": match_filter},
@@ -2459,12 +2490,17 @@ async def get_salesperson_performance(current_user: dict = Depends(get_current_u
             "_id": "$salesperson_id",
             "salesperson_name": {"$first": "$salesperson_name"},
             "total_records": {"$sum": 1},
-            "sales": {"$sum": {"$cond": ["$sold", 1, 0]}}
+            "sales": {"$sum": {"$cond": [{"$eq": ["$record_status", "completed"]}, 1, 0]}}
         }},
         {"$lookup": {
             "from": "appointments",
-            "localField": "_id",
-            "foreignField": "salesperson_id",
+            "let": {"sp_id": "$_id"},
+            "pipeline": [
+                {"$match": {
+                    "$expr": {"$eq": ["$salesperson_id", "$$sp_id"]},
+                    **({"created_at": date_filter} if date_filter else {})
+                }}
+            ],
             "as": "appointments"
         }},
         {"$addFields": {
@@ -2487,7 +2523,8 @@ async def get_salesperson_performance(current_user: dict = Depends(get_current_u
             "sales": 1,
             "total_appointments": 1,
             "completed_appointments": 1
-        }}
+        }},
+        {"$sort": {"total_records": -1}}  # Sort by total records descending
     ]
     
     performance = await db.user_records.aggregate(pipeline).to_list(100)
