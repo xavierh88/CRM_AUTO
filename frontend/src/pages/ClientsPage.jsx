@@ -132,13 +132,21 @@ export default function ClientsPage() {
       if (noteReminderAt) {
         formData.append('reminder_at', new Date(noteReminderAt).toISOString());
       }
-      await axios.post(`${API}/clients/${notesClient.id}/comments`, formData);
+      const response = await axios.post(`${API}/clients/${notesClient.id}/comments`, formData);
       setNewClientNote('');
       setNoteReminderAt('');
       // Reload notes
-      const response = await axios.get(`${API}/clients/${notesClient.id}/comments`);
-      setClientNotes(response.data);
-      toast.success(noteReminderAt ? 'Nota agregada con recordatorio' : 'Nota agregada');
+      const notesResponse = await axios.get(`${API}/clients/${notesClient.id}/comments`);
+      setClientNotes(notesResponse.data);
+      
+      // Show appropriate message
+      if (response.data.notification_created) {
+        toast.success('Nota agregada - Notificación creada (recordatorio próximo)');
+      } else if (noteReminderAt) {
+        toast.success('Nota agregada - Recibirás una notificación 1 día antes');
+      } else {
+        toast.success('Nota agregada');
+      }
     } catch (error) {
       toast.error('Error al agregar nota');
     }
