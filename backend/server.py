@@ -2256,14 +2256,20 @@ async def get_dashboard_stats(
     
     appointment_counts = {stat["_id"]: stat["count"] for stat in appt_stats}
     
-    # Documents status (not filtered by date - shows current state)
-    docs_complete = await db.clients.count_documents({"id_uploaded": True, "income_proof_uploaded": True, "is_deleted": {"$ne": True}})
-    docs_pending = await db.clients.count_documents({"$or": [{"id_uploaded": False}, {"income_proof_uploaded": False}], "is_deleted": {"$ne": True}})
+    # Documents status (not filtered by date - shows current state) - filtered by owner
+    docs_query_complete = {"id_uploaded": True, "income_proof_uploaded": True, "is_deleted": {"$ne": True}}
+    docs_query_pending = {"$or": [{"id_uploaded": False}, {"income_proof_uploaded": False}], "is_deleted": {"$ne": True}}
+    if clients_owner_filter:
+        docs_query_complete.update(clients_owner_filter)
+        docs_query_pending.update(clients_owner_filter)
+    docs_complete = await db.clients.count_documents(docs_query_complete)
+    docs_pending = await db.clients.count_documents(docs_query_pending)
     
     # Sales count - now based on is_sold in clients collection (consistent with Sold page)
+    # Filtered by owner
     sales_client_query = {"is_sold": True, "is_deleted": {"$ne": True}}
-    if base_query and base_query.get("salesperson_id"):
-        sales_client_query["created_by"] = base_query["salesperson_id"]
+    if clients_owner_filter:
+        sales_client_query.update(clients_owner_filter)
     sales_count = await db.clients.count_documents(sales_client_query)
     
     # Sales this month - check sold_at field if exists, otherwise count all sold
