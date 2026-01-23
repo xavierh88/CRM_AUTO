@@ -2442,7 +2442,18 @@ async def get_salesperson_performance(current_user: dict = Depends(get_current_u
     if current_user["role"] not in ["admin", "bdc", "bdc_manager"]:
         raise HTTPException(status_code=403, detail="Admin or BDC Manager access required")
     
+    # Get admin IDs to filter them out for BDC Managers
+    admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
+    admin_ids = [u["id"] for u in admin_users]
+    
+    # Build match filter based on role
+    match_filter = {"is_deleted": {"$ne": True}}
+    if current_user["role"] == "bdc_manager":
+        # BDC Manager should NOT see admin performance
+        match_filter["salesperson_id"] = {"$nin": admin_ids}
+    
     pipeline = [
+        {"$match": match_filter},
         {"$group": {
             "_id": "$salesperson_id",
             "salesperson_name": {"$first": "$salesperson_name"},
