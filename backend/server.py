@@ -2273,14 +2273,14 @@ async def get_dashboard_stats(
     sales_count = await db.clients.count_documents(sales_client_query)
     
     # Sales this month - check sold_at field if exists, otherwise count all sold
-    # First try to count clients with sold_at in this month
+    # First try to count clients with sold_at in this month - filtered by owner
     sales_month_query = {
         "is_sold": True, 
         "is_deleted": {"$ne": True},
         "sold_at": {"$gte": first_of_month.isoformat()}
     }
-    if base_query and base_query.get("salesperson_id"):
-        sales_month_query["created_by"] = base_query["salesperson_id"]
+    if clients_owner_filter:
+        sales_month_query.update(clients_owner_filter)
     sales_month = await db.clients.count_documents(sales_month_query)
     
     # If no sold_at dates exist, use sales_count as fallback (for backwards compatibility)
