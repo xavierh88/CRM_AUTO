@@ -463,6 +463,9 @@ export default function DashboardPage() {
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-blue-600" />
                 {t('dashboard.performance')} por Vendedor
+                <span className="text-sm font-normal text-blue-600 ml-2">
+                  ({getPeriodLabel()})
+                </span>
               </CardTitle>
             </CardHeader>
             <CardContent>
