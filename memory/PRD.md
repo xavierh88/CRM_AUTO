@@ -346,6 +346,7 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - `/app/tests/test_appointments_and_config.py` - Appointments and config lists tests (14 tests)
 - `/app/tests/test_backup_and_prequalify_conversion.py` - Backup and pre-qualify conversion tests (14 tests)
 - `/app/tests/test_crm_features_iteration10.py` - Owner filter, note reminders, appointment fixes (13 tests)
+- `/app/backend/tests/test_dashboard_role_filtering.py` - Dashboard role-based filtering (12 tests)
 
 ## Last Updated
-January 19, 2026 - Fixed white screen bug, added owner filter, implemented note reminders system
+January 23, 2026 - Dashboard role-based filtering for Telemarketer, BDC Manager, and Admin
