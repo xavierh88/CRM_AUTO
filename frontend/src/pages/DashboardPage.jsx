@@ -38,7 +38,7 @@ export default function DashboardPage() {
       
       const [statsRes, perfRes] = await Promise.all([
         axios.get(`${API}/dashboard/stats?${params.toString()}`),
-        isAdmin ? axios.get(`${API}/dashboard/salesperson-performance`) : Promise.resolve({ data: [] })
+        canViewPerformance ? axios.get(`${API}/dashboard/salesperson-performance`) : Promise.resolve({ data: [] })
       ]);
       setStats(statsRes.data);
       setPerformance(perfRes.data);
@@ -50,7 +50,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [period, selectedMonth, isAdmin]);
+  }, [period, selectedMonth, canViewPerformance]);
 
   useEffect(() => {
     fetchData();
