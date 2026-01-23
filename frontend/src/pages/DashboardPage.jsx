@@ -17,7 +17,8 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function DashboardPage() {
   const { t } = useTranslation();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isBDCManager } = useAuth();
+  const canViewPerformance = isAdmin || isBDCManager; // Admin and BDC Manager can see performance
   const [stats, setStats] = useState(null);
   const [performance, setPerformance] = useState([]);
   const [loading, setLoading] = useState(true);
