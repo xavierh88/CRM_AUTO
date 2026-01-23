@@ -273,8 +273,9 @@ async def check_appointment_reminders_job():
     for appt in tomorrow_appointments:
         try:
             # Get client info
-            client = await db.clients.find_one({"id": appt["client_id"]}, {"_id": 0, "first_name": 1, "last_name": 1})
+            client = await db.clients.find_one({"id": appt["client_id"]}, {"_id": 0, "first_name": 1, "last_name": 1, "phone": 1})
             client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}" if client else "Cliente"
+            client_phone = client.get("phone", "") if client else ""
             
             # Get dealer info
             dealer_name = appt.get("dealer", "")
@@ -283,9 +284,11 @@ async def check_appointment_reminders_job():
             notif_doc = {
                 "id": str(uuid.uuid4()),
                 "user_id": appt["salesperson_id"],
-                "message": f"📅 Recordatorio: Cita mañana con {client_name} a las {appt.get('time', '')} en {dealer_name}",
+                "title": f"📅 Cita mañana: {client_name}",
+                "message": f"A las {appt.get('time', '')} en {dealer_name}",
                 "type": "appointment_reminder",
                 "link": "/agenda",
+                "client_id": appt["client_id"],
                 "is_read": False,
                 "created_at": now.isoformat()
             }
