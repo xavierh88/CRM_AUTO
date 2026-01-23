@@ -2233,12 +2233,15 @@ async def get_dashboard_stats(
         clients_all_query.update(clients_owner_filter)
     total_clients_all = await db.clients.count_documents(clients_all_query)
     
-    # New clients this month (always current month for comparison)
+    # New clients this month (always current month for comparison) - also filtered by owner
     first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    new_clients_month = await db.clients.count_documents({
+    new_clients_query = {
         "is_deleted": {"$ne": True},
         "created_at": {"$gte": first_of_month.isoformat()}
-    })
+    }
+    if clients_owner_filter:
+        new_clients_query.update(clients_owner_filter)
+    new_clients_month = await db.clients.count_documents(new_clients_query)
     
     # Appointments query with date filter
     appt_query = {**base_query}
