@@ -20,8 +20,8 @@ export default function NotificationsPopover() {
 
   useEffect(() => {
     fetchNotifications();
-    // Poll for new notifications every 30 seconds
-    const interval = setInterval(fetchUnreadCount, 30000);
+    // Poll for new notifications every 15 seconds (more responsive)
+    const interval = setInterval(fetchUnreadCount, 15000);
     return () => clearInterval(interval);
   }, []);
 
