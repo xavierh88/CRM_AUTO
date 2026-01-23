@@ -2179,8 +2179,23 @@ async def get_dashboard_stats(
     period: str = "all",  # "all", "6months", "month", or specific "YYYY-MM"
     month: str = None  # Optional specific month in format "YYYY-MM"
 ):
-    # Base query - admin sees all, salesperson sees their own
-    base_query = {} if current_user["role"] == "admin" else {"salesperson_id": current_user["id"]}
+    # Get list of admin user IDs (to exclude their data from non-admins)
+    admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
+    admin_ids = [u["id"] for u in admin_users]
+    
+    # Base query for records/appointments - depends on role
+    if current_user["role"] == "admin":
+        # Admin sees all data
+        base_query = {}
+        clients_owner_filter = {}
+    elif current_user["role"] == "bdc_manager":
+        # BDC Manager sees all data EXCEPT admin data
+        base_query = {"salesperson_id": {"$nin": admin_ids}}
+        clients_owner_filter = {"created_by": {"$nin": admin_ids}}
+    else:
+        # Telemarketer only sees their own data
+        base_query = {"salesperson_id": current_user["id"]}
+        clients_owner_filter = {"created_by": current_user["id"]}
     
     # Calculate date filters based on period
     now = datetime.now(timezone.utc)
