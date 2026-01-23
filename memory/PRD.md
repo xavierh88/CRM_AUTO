@@ -264,6 +264,17 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
     - Performance chart now visible to both Admin and BDC Manager
     - Status legend only shown to Telemarketers
 
+### Performance Chart Date Filter - IMPLEMENTED ✅
+- **Feature:** Added date filter to the "Salesperson Performance por Vendedor" chart
+- **Options:**
+  - "Todo el Tiempo" (all) - Shows all historical data
+  - "Últimos 6 Meses" (6months) - Shows data from last 180 days
+  - "Este Mes" (month) - Shows only current month data
+  - Specific month (YYYY-MM) - Shows data for a specific month
+- **Backend:** Modified `GET /api/dashboard/salesperson-performance` to accept `period` and `month` parameters
+- **Frontend:** Performance chart now uses same date filter as other dashboard stats
+- **UI:** Chart title shows selected period in blue text, e.g., "(Este Mes)"
+
 ### Minor Bug Fix - FIXED ✅
 - **Issue:** `create_client` endpoint threw `AttributeError` when owner user not found in DB
 - **Fix:** Added null check for owner before accessing `.get('name')`
