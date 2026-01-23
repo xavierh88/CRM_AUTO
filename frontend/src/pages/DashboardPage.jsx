@@ -456,8 +456,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Performance Chart (Admin only) */}
-        {isAdmin && (
+        {/* Performance Chart (Admin and BDC Manager) */}
+        {canViewPerformance && (
           <Card className="dashboard-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
@@ -487,8 +487,8 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {/* Status Legend for non-admin */}
-        {!isAdmin && (
+        {/* Status Legend for Telemarketers (not Admin or BDC Manager) */}
+        {!canViewPerformance && (
           <Card className="dashboard-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-semibold">Leyenda de Estados</CardTitle>
