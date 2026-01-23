@@ -240,6 +240,28 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 
 ## Session Work Completed (January 23, 2026)
 
+### Notifications Bug Fix - FIXED ✅
+- **Issue:** Clicking on notifications led to a blank/white page
+- **Root Cause:** Notification links used `/clientes` instead of `/clients`
+- **Fix:** 
+  - Updated all notification links to use correct route `/clients`
+  - Added `title` field to notifications for better display
+  - Added `client_id` to notifications for better tracking
+  - Notification now includes client phone in search parameter for auto-search
+
+### Note Reminders Enhancement - IMPLEMENTED ✅
+- **Feature:** Smarter reminder notification timing
+- **Logic:**
+  - If reminder is **more than 24 hours away**: Notification sent 1 day before (via scheduler)
+  - If reminder is **less than 24 hours away**: Notification created **immediately** when note is saved
+- **Backend Changes:**
+  - Modified `POST /api/clients/{client_id}/comments` to check reminder time and create immediate notification
+  - Modified `check_comment_reminders_job` scheduler to check for reminders due within 24 hours
+  - Response now includes `notification_created: true/false` to indicate if immediate notification was sent
+- **Frontend Changes:**
+  - Updated toast messages to inform user about notification timing
+  - Reduced notification polling from 30s to 15s for more responsive updates
+
 ### Dashboard Role-Based Filtering - IMPLEMENTED ✅
 - **Issue:** Telemarketer and BDC Manager dashboard showed all data including Admin data
 - **Requirement:** Dashboard should filter data based on user role:
