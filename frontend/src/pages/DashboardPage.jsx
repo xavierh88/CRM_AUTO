@@ -38,7 +38,7 @@ export default function DashboardPage() {
       
       const [statsRes, perfRes] = await Promise.all([
         axios.get(`${API}/dashboard/stats?${params.toString()}`),
-        canViewPerformance ? axios.get(`${API}/dashboard/salesperson-performance`) : Promise.resolve({ data: [] })
+        canViewPerformance ? axios.get(`${API}/dashboard/salesperson-performance?${params.toString()}`) : Promise.resolve({ data: [] })
       ]);
       setStats(statsRes.data);
       setPerformance(perfRes.data);
