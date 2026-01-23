@@ -2217,16 +2217,21 @@ async def get_dashboard_stats(
         date_filter = {"$gte": start_date.isoformat()}
     # else "all" - no date filter
     
-    # Build queries with date filter
+    # Build queries with date filter AND owner filter
     clients_query = {"is_deleted": {"$ne": True}}
+    if clients_owner_filter:
+        clients_query.update(clients_owner_filter)
     if date_filter:
         clients_query["created_at"] = date_filter
     
-    # Total clients (filtered by period)
+    # Total clients (filtered by period and owner)
     total_clients = await db.clients.count_documents(clients_query)
     
-    # Total clients overall (for reference)
-    total_clients_all = await db.clients.count_documents({"is_deleted": {"$ne": True}})
+    # Total clients overall (for reference) - also filtered by owner
+    clients_all_query = {"is_deleted": {"$ne": True}}
+    if clients_owner_filter:
+        clients_all_query.update(clients_owner_filter)
+    total_clients_all = await db.clients.count_documents(clients_all_query)
     
     # New clients this month (always current month for comparison)
     first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
