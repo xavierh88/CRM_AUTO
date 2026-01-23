@@ -199,35 +199,41 @@ async def send_marketing_sms_job():
 async def check_comment_reminders_job():
     """
     Scheduled job to check for comment reminders that need to be sent.
-    Runs every 5 minutes to check for comments with reminder_at in the past
-    that haven't had their notification sent yet.
+    Runs every 5 minutes to check for comments with reminder_at:
+    - If reminder is 1 day away or less: send notification now
+    - Notifications are sent 1 day before the reminder date
     """
     logger.info("Running comment reminders check job...")
     
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
+    one_day_from_now = (now + timedelta(days=1)).isoformat()
     
-    # Find comments with reminders that are due
+    # Find comments with reminders that are due within the next 24 hours
+    # This sends notification 1 day before, or immediately if less than 1 day
     due_reminders = await db.client_comments.find({
-        "reminder_at": {"$ne": None, "$lte": now_iso},
+        "reminder_at": {"$ne": None, "$lte": one_day_from_now},
         "reminder_sent": {"$ne": True}
     }, {"_id": 0}).to_list(100)
     
-    logger.info(f"Found {len(due_reminders)} due reminders")
+    logger.info(f"Found {len(due_reminders)} due reminders (within 24 hours)")
     
     for comment in due_reminders:
         try:
             # Get client info for the notification
-            client = await db.clients.find_one({"id": comment["client_id"]}, {"_id": 0, "first_name": 1, "last_name": 1})
+            client = await db.clients.find_one({"id": comment["client_id"]}, {"_id": 0, "first_name": 1, "last_name": 1, "phone": 1})
             client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}" if client else "Cliente"
+            client_phone = client.get("phone", "") if client else ""
             
             # Create notification for the user who created the comment
             notif_doc = {
                 "id": str(uuid.uuid4()),
                 "user_id": comment["user_id"],
-                "message": f"📝 Recordatorio: {client_name} - {comment['comment'][:50]}{'...' if len(comment['comment']) > 50 else ''}",
+                "title": f"📝 Recordatorio: {client_name}",
+                "message": comment['comment'][:100] + ('...' if len(comment['comment']) > 100 else ''),
                 "type": "reminder",
-                "link": "/clientes",
+                "link": f"/clients?search={client_phone}" if client_phone else "/clients",
+                "client_id": comment["client_id"],
                 "is_read": False,
                 "created_at": now_iso
             }
@@ -239,7 +245,7 @@ async def check_comment_reminders_job():
                 {"$set": {"reminder_sent": True}}
             )
             
-            logger.info(f"Reminder notification sent for comment {comment['id']}")
+            logger.info(f"Reminder notification sent for comment {comment['id']} - client: {client_name}")
         except Exception as e:
             logger.error(f"Error processing reminder {comment['id']}: {e}")
     
