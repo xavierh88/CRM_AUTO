@@ -806,12 +806,13 @@ async def create_client(client: ClientCreate, current_user: dict = Depends(get_c
         # If client exists and belongs to someone else, return info to create a request
         if existing.get("created_by") != current_user["id"]:
             owner = await db.users.find_one({"id": existing.get("created_by")}, {"_id": 0, "name": 1})
+            owner_name = owner.get("name", "otro usuario") if owner else "otro usuario"
             return {
                 "error": "client_exists_other_user",
-                "message": f"Este cliente ya existe y pertenece a {owner.get('name', 'otro usuario')}",
+                "message": f"Este cliente ya existe y pertenece a {owner_name}",
                 "client_id": existing.get("id"),
                 "owner_id": existing.get("created_by"),
-                "owner_name": owner.get("name", "Unknown") if owner else "Unknown",
+                "owner_name": owner_name,
                 "can_request": True
             }
         else:
