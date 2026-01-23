@@ -238,6 +238,43 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 
 ---
 
+## Session Work Completed (January 23, 2026)
+
+### Dashboard Role-Based Filtering - IMPLEMENTED ✅
+- **Issue:** Telemarketer and BDC Manager dashboard showed all data including Admin data
+- **Requirement:** Dashboard should filter data based on user role:
+  - **Telemarketer:** Only sees their own data (clients, records, appointments, sales created by them)
+  - **BDC Manager:** Sees all Telemarketer data but NOT Admin data
+  - **Admin:** Sees all data from all users
+  
+- **Backend Changes (`/app/backend/server.py`):**
+  - Modified `GET /api/dashboard/stats` endpoint (line 2176):
+    - Added `admin_ids` exclusion logic
+    - Created `clients_owner_filter` based on role
+    - Filters: total_clients, new_clients_month, docs_complete, docs_pending, sales_count, sales_month, sold_clients, active_clients
+  - Modified `GET /api/dashboard/salesperson-performance` endpoint (line 2404):
+    - Added `match_filter` to exclude admin salesperson_id for BDC Manager
+    - Admin sees all 6 salespersons, BDC Manager sees 5 (excludes admin)
+
+- **Frontend Changes:**
+  - Modified `/app/frontend/src/context/AuthContext.js`:
+    - Added `isBDCManager` computed property: `user?.role === 'bdc_manager' || user?.role === 'bdc'`
+  - Modified `/app/frontend/src/pages/DashboardPage.jsx`:
+    - Added `canViewPerformance = isAdmin || isBDCManager`
+    - Performance chart now visible to both Admin and BDC Manager
+    - Status legend only shown to Telemarketers
+
+### Minor Bug Fix - FIXED ✅
+- **Issue:** `create_client` endpoint threw `AttributeError` when owner user not found in DB
+- **Fix:** Added null check for owner before accessing `.get('name')`
+
+### Test Results
+- Created `/app/backend/tests/test_dashboard_role_filtering.py` - 12 tests
+- 100% pass rate (12/12 tests passed)
+- Verified: Admin sees 53 clients/6 salespersons, BDC Manager sees 53 clients/5 salespersons (excludes admin)
+
+---
+
 ## Session Work Completed (January 19, 2026)
 
 ### Bug Fix: White Screen After Creating Appointment - FIXED ✅
