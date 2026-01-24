@@ -172,17 +172,25 @@ export default function ClientsPage() {
     id_type: '', id_number: '', ssn_type: '', ssn: ''
   });
 
-  const fetchClients = async (search = '') => {
+  const fetchClients = async (search = '', fromNotification = false) => {
     try {
       const params = new URLSearchParams({ exclude_sold: 'true' });
       if (search) params.append('search', search);
       
-      // Add owner filter - only applies for non-telemarketer users
-      if ((isAdmin || isBdcManager) && ownerFilter && ownerFilter !== 'all') {
-        if (ownerFilter.startsWith('user:')) {
-          const userId = ownerFilter.replace('user:', '');
-          params.append('salesperson_id', userId);
-        } else {
+      // If coming from notification, use special flag to bypass ownership filters
+      if (fromNotification) {
+        params.append('from_notification', 'true');
+        params.append('owner_filter', 'all');
+      } else {
+        // Add owner filter - only applies for non-telemarketer users
+        if ((isAdmin || isBdcManager) && ownerFilter && ownerFilter !== 'all') {
+          if (ownerFilter.startsWith('user:')) {
+            const userId = ownerFilter.replace('user:', '');
+            params.append('salesperson_id', userId);
+          } else {
+            params.append('owner_filter', ownerFilter);
+          }
+        } else if (ownerFilter) {
           params.append('owner_filter', ownerFilter);
         }
       }
@@ -206,19 +214,21 @@ export default function ClientsPage() {
   useEffect(() => {
     const urlSearch = searchParams.get('search');
     const urlOwnerFilter = searchParams.get('owner_filter');
+    const isFromNotification = urlOwnerFilter === 'all' && urlSearch;
     
-    // If owner_filter is specified in URL, use it (for all roles when coming from notification)
+    // If owner_filter is specified in URL, use it
     if (urlOwnerFilter) {
       setOwnerFilter(urlOwnerFilter);
     }
     
     if (urlSearch) {
       setSearchTerm(urlSearch);
-      // Set filter to "all" to find the client regardless of owner (if not already set by URL param)
+      // Set filter to "all" to find the client regardless of owner
       if (!urlOwnerFilter) {
         setOwnerFilter('all');
       }
-      fetchClients(urlSearch);
+      // Pass fromNotification=true to bypass ownership filters
+      fetchClients(urlSearch, isFromNotification);
     } else {
       fetchClients();
     }
