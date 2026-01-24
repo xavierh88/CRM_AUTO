@@ -202,6 +202,7 @@ async def check_comment_reminders_job():
     Runs every 5 minutes to check for comments with reminder_at:
     - If reminder is 1 day away or less: send notification now
     - Notifications are sent 1 day before the reminder date
+    Checks both client_comments and record_comments collections.
     """
     logger.info("Running comment reminders check job...")
     
@@ -209,23 +210,27 @@ async def check_comment_reminders_job():
     now_iso = now.isoformat()
     one_day_from_now = (now + timedelta(days=1)).isoformat()
     
-    # Find comments with reminders that are due within the next 24 hours
-    # This sends notification 1 day before, or immediately if less than 1 day
-    due_reminders = await db.client_comments.find({
+    # Find client comments with reminders that are due within the next 24 hours
+    due_client_reminders = await db.client_comments.find({
         "reminder_at": {"$ne": None, "$lte": one_day_from_now},
         "reminder_sent": {"$ne": True}
     }, {"_id": 0}).to_list(100)
     
-    logger.info(f"Found {len(due_reminders)} due reminders (within 24 hours)")
+    # Find record comments with reminders that are due within the next 24 hours
+    due_record_reminders = await db.record_comments.find({
+        "reminder_at": {"$ne": None, "$lte": one_day_from_now},
+        "reminder_sent": {"$ne": True}
+    }, {"_id": 0}).to_list(100)
     
-    for comment in due_reminders:
+    logger.info(f"Found {len(due_client_reminders)} client reminders, {len(due_record_reminders)} record reminders (within 24 hours)")
+    
+    # Process client comments
+    for comment in due_client_reminders:
         try:
-            # Get client info for the notification
             client = await db.clients.find_one({"id": comment["client_id"]}, {"_id": 0, "first_name": 1, "last_name": 1, "phone": 1})
             client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}" if client else "Cliente"
             client_phone = client.get("phone", "") if client else ""
             
-            # Create notification for the user who created the comment
             notif_doc = {
                 "id": str(uuid.uuid4()),
                 "user_id": comment["user_id"],
@@ -239,15 +244,44 @@ async def check_comment_reminders_job():
             }
             await db.notifications.insert_one(notif_doc)
             
-            # Mark reminder as sent
             await db.client_comments.update_one(
                 {"id": comment["id"]},
                 {"$set": {"reminder_sent": True}}
             )
             
-            logger.info(f"Reminder notification sent for comment {comment['id']} - client: {client_name}")
+            logger.info(f"Client reminder notification sent for comment {comment['id']} - {client_name}")
         except Exception as e:
-            logger.error(f"Error processing reminder {comment['id']}: {e}")
+            logger.error(f"Error processing client reminder {comment['id']}: {e}")
+    
+    # Process record comments
+    for comment in due_record_reminders:
+        try:
+            client_id = comment.get("client_id")
+            client = await db.clients.find_one({"id": client_id}, {"_id": 0, "first_name": 1, "last_name": 1, "phone": 1}) if client_id else None
+            client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}" if client else "Cliente"
+            client_phone = client.get("phone", "") if client else ""
+            
+            notif_doc = {
+                "id": str(uuid.uuid4()),
+                "user_id": comment["user_id"],
+                "title": f"📝 Recordatorio: {client_name}",
+                "message": comment['comment'][:100] + ('...' if len(comment['comment']) > 100 else ''),
+                "type": "reminder",
+                "link": f"/clients?search={client_phone}" if client_phone else "/clients",
+                "client_id": client_id,
+                "is_read": False,
+                "created_at": now_iso
+            }
+            await db.notifications.insert_one(notif_doc)
+            
+            await db.record_comments.update_one(
+                {"id": comment["id"]},
+                {"$set": {"reminder_sent": True}}
+            )
+            
+            logger.info(f"Record reminder notification sent for comment {comment['id']} - {client_name}")
+        except Exception as e:
+            logger.error(f"Error processing record reminder {comment['id']}: {e}")
     
     logger.info("Comment reminders job completed")
 
