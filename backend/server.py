@@ -905,15 +905,19 @@ async def create_client(client: ClientCreate, current_user: dict = Depends(get_c
 import re as regex_module
 
 @api_router.get("/clients", response_model=List[dict])
-async def get_clients(include_deleted: bool = False, search: Optional[str] = None, salesperson_id: Optional[str] = None, exclude_sold: bool = False, owner_filter: Optional[str] = None, sort_by: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+async def get_clients(include_deleted: bool = False, search: Optional[str] = None, salesperson_id: Optional[str] = None, exclude_sold: bool = False, owner_filter: Optional[str] = None, sort_by: Optional[str] = None, from_notification: bool = False, current_user: dict = Depends(get_current_user)):
     query = {} if include_deleted and current_user["role"] == "admin" else {"is_deleted": {"$ne": True}}
     
     # Get list of admin user IDs (to exclude their clients from non-admins)
     admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
     admin_ids = [u["id"] for u in admin_users]
     
-    # Filter by owner based on role
-    if current_user["role"] == "admin":
+    # SPECIAL CASE: If coming from notification with search, bypass ownership filters
+    # This allows users to see clients they have reminders for
+    if from_notification and search:
+        # No ownership filter - just search by phone/name
+        pass  # Don't add any created_by filter
+    elif current_user["role"] == "admin":
         # Admin can see ALL clients or filter
         if salesperson_id:
             query["created_by"] = salesperson_id
@@ -940,10 +944,9 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
     else:
         # Telemarketers default to their own clients
         # BUT: if there's a specific search AND owner_filter=all, allow searching all
-        # This enables notification links to work when clicking on reminders
         if search and owner_filter == 'all':
-            # Allow searching in all non-admin clients for notification purposes
-            query["created_by"] = {"$nin": admin_ids}
+            # Allow searching ALL clients for notification purposes
+            pass  # No ownership filter
         else:
             # Normal behavior: only own clients
             query["created_by"] = current_user["id"]
