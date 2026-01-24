@@ -832,7 +832,7 @@ export default function ClientsPage() {
                         title="Notas / Reseñas"
                         className="text-amber-500 hover:text-amber-700 hover:bg-amber-50"
                       >
-                        <MessageCircle className="w-4 h-4" />
+                        <Bell className="w-4 h-4" />
                       </Button>
                       {isAdmin && (
                         <Button
