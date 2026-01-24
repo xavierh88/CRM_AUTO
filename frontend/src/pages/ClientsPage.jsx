@@ -214,21 +214,14 @@ export default function ClientsPage() {
   useEffect(() => {
     const urlSearch = searchParams.get('search');
     const urlOwnerFilter = searchParams.get('owner_filter');
-    const isFromNotification = urlOwnerFilter === 'all' && urlSearch;
     
-    // If owner_filter is specified in URL, use it
-    if (urlOwnerFilter) {
-      setOwnerFilter(urlOwnerFilter);
-    }
-    
+    // If there's a search in the URL, it's coming from a notification or agenda link
+    // Always use from_notification=true to bypass ownership filters
     if (urlSearch) {
       setSearchTerm(urlSearch);
-      // Set filter to "all" to find the client regardless of owner
-      if (!urlOwnerFilter) {
-        setOwnerFilter('all');
-      }
-      // Pass fromNotification=true to bypass ownership filters
-      fetchClients(urlSearch, isFromNotification);
+      setOwnerFilter('all');
+      // Always pass fromNotification=true when search comes from URL
+      fetchClients(urlSearch, true);
     } else {
       fetchClients();
     }
