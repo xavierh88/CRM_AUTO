@@ -938,8 +938,15 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
             # Default: exclude admin's clients
             query["created_by"] = {"$nin": admin_ids}
     else:
-        # Telemarketers only see their OWN clients (never admin's or others')
-        query["created_by"] = current_user["id"]
+        # Telemarketers default to their own clients
+        # BUT: if there's a specific search AND owner_filter=all, allow searching all
+        # This enables notification links to work when clicking on reminders
+        if search and owner_filter == 'all':
+            # Allow searching in all non-admin clients for notification purposes
+            query["created_by"] = {"$nin": admin_ids}
+        else:
+            # Normal behavior: only own clients
+            query["created_by"] = current_user["id"]
     
     # Exclude sold clients if requested (for main Clients page)
     if exclude_sold:
