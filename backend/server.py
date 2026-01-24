@@ -1374,19 +1374,74 @@ async def get_record_comments(record_id: str, current_user: dict = Depends(get_c
     return comments
 
 @api_router.post("/user-records/{record_id}/comments")
-async def add_record_comment(record_id: str, comment: str = Form(...), current_user: dict = Depends(get_current_user)):
-    """Add a comment to a user record"""
-    now = datetime.now(timezone.utc).isoformat()
+async def add_record_comment(record_id: str, comment: str = Form(...), reminder_at: Optional[str] = Form(None), current_user: dict = Depends(get_current_user)):
+    """Add a comment to a user record, optionally with a reminder.
+    If reminder is less than 24 hours away, create notification immediately.
+    """
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    
+    # Get the record to find the client
+    record = await db.user_records.find_one({"id": record_id}, {"_id": 0, "client_id": 1})
+    client_id = record.get("client_id") if record else None
+    
+    # Check if reminder should trigger immediate notification
+    send_notification_now = False
+    if reminder_at:
+        try:
+            reminder_datetime = datetime.fromisoformat(reminder_at.replace("Z", "+00:00"))
+            if reminder_datetime.tzinfo is None:
+                reminder_datetime = reminder_datetime.replace(tzinfo=timezone.utc)
+            
+            time_until_reminder = reminder_datetime - now
+            # If reminder is within 24 hours (or in the past), send notification immediately
+            if time_until_reminder.total_seconds() <= 86400:
+                send_notification_now = True
+        except Exception as e:
+            logger.error(f"Error parsing reminder_at: {e}")
+    
     comment_doc = {
         "id": str(uuid.uuid4()),
         "record_id": record_id,
+        "client_id": client_id,
         "comment": comment,
         "user_id": current_user["id"],
         "user_name": current_user.get("name", current_user.get("email", "Unknown")),
-        "created_at": now
+        "created_at": now_iso,
+        "reminder_at": reminder_at,
+        "reminder_sent": send_notification_now
     }
     await db.record_comments.insert_one(comment_doc)
-    return {k: v for k, v in comment_doc.items() if k != "_id"}
+    
+    # If reminder is within 24 hours, create notification immediately
+    notification_created = False
+    if send_notification_now:
+        try:
+            # Get client info for the notification
+            client = await db.clients.find_one({"id": client_id}, {"_id": 0, "first_name": 1, "last_name": 1, "phone": 1}) if client_id else None
+            client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}" if client else "Cliente"
+            client_phone = client.get("phone", "") if client else ""
+            
+            notif_doc = {
+                "id": str(uuid.uuid4()),
+                "user_id": current_user["id"],
+                "title": f"📝 Recordatorio: {client_name}",
+                "message": comment[:100] + ('...' if len(comment) > 100 else ''),
+                "type": "reminder",
+                "link": f"/clients?search={client_phone}" if client_phone else "/clients",
+                "client_id": client_id,
+                "is_read": False,
+                "created_at": now_iso
+            }
+            await db.notifications.insert_one(notif_doc)
+            notification_created = True
+            logger.info(f"Immediate reminder notification created for record {record_id}")
+        except Exception as e:
+            logger.error(f"Error creating immediate notification: {e}")
+    
+    result = {k: v for k, v in comment_doc.items() if k != "_id"}
+    result["notification_created"] = notification_created
+    return result
 
 @api_router.delete("/user-records/{record_id}/comments/{comment_id}")
 async def delete_record_comment(record_id: str, comment_id: str, current_user: dict = Depends(get_current_user)):
