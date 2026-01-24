@@ -2205,22 +2205,10 @@ function RecordCard({
     try {
       const formData = new FormData();
       formData.append('comment', newComment);
-      if (commentReminderAt) {
-        formData.append('reminder_at', new Date(commentReminderAt).toISOString());
-      }
-      const response = await axios.post(`${API}/user-records/${record.id}/comments`, formData);
+      await axios.post(`${API}/user-records/${record.id}/comments`, formData);
       setNewComment('');
-      setCommentReminderAt('');
       loadComments();
-      
-      // Show appropriate message
-      if (response.data.notification_created) {
-        toast.success('Comentario agregado - Notificación creada (recordatorio próximo)');
-      } else if (commentReminderAt) {
-        toast.success('Comentario agregado - Recibirás notificación 1 día antes');
-      } else {
-        toast.success('Comentario agregado');
-      }
+      toast.success('Comentario agregado');
     } catch (error) {
       toast.error('Error al agregar comentario');
     }
