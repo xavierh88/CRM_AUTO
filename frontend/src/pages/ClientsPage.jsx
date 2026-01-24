@@ -207,15 +207,15 @@ export default function ClientsPage() {
     const urlSearch = searchParams.get('search');
     const urlOwnerFilter = searchParams.get('owner_filter');
     
-    // If owner_filter is specified in URL, use it
-    if (urlOwnerFilter && (isAdmin || isBdcManager)) {
+    // If owner_filter is specified in URL, use it (for all roles when coming from notification)
+    if (urlOwnerFilter) {
       setOwnerFilter(urlOwnerFilter);
     }
     
     if (urlSearch) {
       setSearchTerm(urlSearch);
       // Set filter to "all" to find the client regardless of owner (if not already set by URL param)
-      if (!urlOwnerFilter && (isAdmin || isBdcManager)) {
+      if (!urlOwnerFilter) {
         setOwnerFilter('all');
       }
       fetchClients(urlSearch);
