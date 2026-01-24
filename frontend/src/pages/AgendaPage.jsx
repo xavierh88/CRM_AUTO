@@ -356,113 +356,182 @@ function AppointmentSection({ title, appointments, getStatusBadge, updateStatus,
       </CardHeader>
       <CardContent className="space-y-3">
         {appointments.map((appt) => (
-          <div
-            key={appt.id}
-            className={`agenda-item status-${appt.status} bg-white rounded-lg border p-4 ${appt.running_late ? 'border-l-4 border-l-orange-500' : ''}`}
-            data-testid={`appointment-${appt.id}`}
-          >
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2 flex-wrap">
-                  <User className="w-4 h-4 text-slate-400" />
-                  <Link 
-                    to={`/clients?search=${encodeURIComponent(appt.client?.phone || '')}`}
-                    className="font-semibold text-blue-600 hover:text-blue-800 underline"
-                    onClick={(e) => e.stopPropagation()}
-                    data-testid={`agenda-client-link-${appt.id}`}
-                  >
-                    {appt.client?.first_name} {appt.client?.last_name}
-                  </Link>
-                  {getStatusBadge(appt.status)}
-                  {appt.running_late && (
-                    <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50">
-                      <AlertTriangle className="w-3 h-3 mr-1" />
-                      Llegando tarde
+          appt.type === 'reminder' ? (
+            // REMINDER ITEM
+            <div
+              key={appt.id}
+              className="bg-purple-50 rounded-lg border border-purple-200 p-4"
+              data-testid={`reminder-${appt.id}`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
+                    <Bell className="w-4 h-4 text-purple-500" />
+                    <Link 
+                      to={`/clients?search=${encodeURIComponent(appt.client?.phone || '')}`}
+                      className="font-semibold text-purple-600 hover:text-purple-800 underline"
+                      onClick={(e) => e.stopPropagation()}
+                      data-testid={`reminder-client-link-${appt.id}`}
+                    >
+                      {appt.client?.first_name} {appt.client?.last_name}
+                    </Link>
+                    <Badge variant="outline" className="text-purple-600 border-purple-300 bg-purple-100">
+                      <Bell className="w-3 h-3 mr-1" />
+                      Recordatorio
                     </Badge>
-                  )}
-                  {/* Show salesperson name for admins viewing all appointments */}
-                  {appt.salesperson?.name && (
-                    <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50 text-xs">
-                      👤 {appt.salesperson.name}
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-4 text-sm text-slate-500">
-                  {appt.date && (
-                    <div className="flex items-center gap-1">
-                      <CalendarIcon className="w-4 h-4" />
-                      {format(parseISO(appt.date), 'd MMM', { locale: dateLocale })}
-                    </div>
-                  )}
-                  {appt.time && (
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      <span className={appt.change_time ? 'line-through text-slate-400' : ''}>
+                    {appt.reminder_sent && (
+                      <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50">
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        Notificado
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-sm text-slate-500">
+                    {appt.date && (
+                      <div className="flex items-center gap-1">
+                        <CalendarIcon className="w-4 h-4" />
+                        {format(parseISO(appt.date), 'd MMM', { locale: dateLocale })}
+                      </div>
+                    )}
+                    {appt.time && (
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
                         {appt.time}
-                      </span>
-                      {appt.change_time && (
-                        <span className="text-blue-600 font-medium">→ {appt.change_time}</span>
-                      )}
-                    </div>
-                  )}
-                  {appt.dealer && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
-                      {appt.dealer}
-                    </div>
-                  )}
-                  {appt.client?.phone && (
-                    <div className="flex items-center gap-1">
-                      <Phone className="w-4 h-4" />
-                      <a href={`tel:${appt.client.phone}`} className="hover:text-blue-600">
-                        {appt.client.phone}
-                      </a>
-                    </div>
+                      </div>
+                    )}
+                    {appt.client?.phone && (
+                      <div className="flex items-center gap-1">
+                        <Phone className="w-4 h-4" />
+                        <a href={`tel:${appt.client.phone}`} className="hover:text-purple-600">
+                          {appt.client.phone}
+                        </a>
+                      </div>
+                    )}
+                    {appt.salesperson_name && (
+                      <Badge variant="outline" className="text-slate-600 border-slate-200 text-xs">
+                        👤 {appt.salesperson_name}
+                      </Badge>
+                    )}
+                  </div>
+                  {appt.comment && (
+                    <p className="mt-2 text-sm text-purple-700 bg-purple-100 p-2 rounded flex items-start gap-2">
+                      <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      {appt.comment}
+                    </p>
                   )}
                 </div>
-                {appt.notes && (
-                  <p className="mt-2 text-sm text-slate-600 bg-slate-50 p-2 rounded">
-                    {appt.notes}
-                  </p>
-                )}
-              </div>
-              <div className="flex gap-2 flex-shrink-0">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => sendReminderSMS(appt)}
-                  title="Enviar recordatorio SMS"
-                  data-testid={`send-reminder-${appt.id}`}
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-                {appt.status !== 'cumplido' && appt.status !== 'no_show' && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-emerald-600 hover:bg-emerald-50"
-                      onClick={() => updateStatus(appt.id, 'cumplido')}
-                      title="Marcar como cumplida"
-                      data-testid={`mark-complete-${appt.id}`}
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-slate-600 hover:bg-slate-50"
-                      onClick={() => updateStatus(appt.id, 'no_show')}
-                      title="Marcar como No Show"
-                      data-testid={`mark-noshow-${appt.id}`}
-                    >
-                      <XCircle className="w-4 h-4" />
-                    </Button>
-                  </>
-                )}
               </div>
             </div>
-          </div>
+          ) : (
+            // APPOINTMENT ITEM (original)
+            <div
+              key={appt.id}
+              className={`agenda-item status-${appt.status} bg-white rounded-lg border p-4 ${appt.running_late ? 'border-l-4 border-l-orange-500' : ''}`}
+              data-testid={`appointment-${appt.id}`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
+                    <User className="w-4 h-4 text-slate-400" />
+                    <Link 
+                      to={`/clients?search=${encodeURIComponent(appt.client?.phone || '')}`}
+                      className="font-semibold text-blue-600 hover:text-blue-800 underline"
+                      onClick={(e) => e.stopPropagation()}
+                      data-testid={`agenda-client-link-${appt.id}`}
+                    >
+                      {appt.client?.first_name} {appt.client?.last_name}
+                    </Link>
+                    {getStatusBadge(appt.status)}
+                    {appt.running_late && (
+                      <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50">
+                        <AlertTriangle className="w-3 h-3 mr-1" />
+                        Llegando tarde
+                      </Badge>
+                    )}
+                    {/* Show salesperson name for admins viewing all appointments */}
+                    {appt.salesperson?.name && (
+                      <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50 text-xs">
+                        👤 {appt.salesperson.name}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-sm text-slate-500">
+                    {appt.date && (
+                      <div className="flex items-center gap-1">
+                        <CalendarIcon className="w-4 h-4" />
+                        {format(parseISO(appt.date), 'd MMM', { locale: dateLocale })}
+                      </div>
+                    )}
+                    {appt.time && (
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        <span className={appt.change_time ? 'line-through text-slate-400' : ''}>
+                          {appt.time}
+                        </span>
+                        {appt.change_time && (
+                          <span className="text-blue-600 font-medium">→ {appt.change_time}</span>
+                        )}
+                      </div>
+                    )}
+                    {appt.dealer && (
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-4 h-4" />
+                        {appt.dealer}
+                      </div>
+                    )}
+                    {appt.client?.phone && (
+                      <div className="flex items-center gap-1">
+                        <Phone className="w-4 h-4" />
+                        <a href={`tel:${appt.client.phone}`} className="hover:text-blue-600">
+                          {appt.client.phone}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                  {appt.notes && (
+                    <p className="mt-2 text-sm text-slate-600 bg-slate-50 p-2 rounded">
+                      {appt.notes}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => sendReminderSMS(appt)}
+                    title="Enviar recordatorio SMS"
+                    data-testid={`send-reminder-${appt.id}`}
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                  {appt.status !== 'cumplido' && appt.status !== 'no_show' && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-emerald-600 hover:bg-emerald-50"
+                        onClick={() => updateStatus(appt.id, 'cumplido')}
+                        title="Marcar como cumplida"
+                        data-testid={`mark-complete-${appt.id}`}
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-slate-600 hover:bg-slate-50"
+                        onClick={() => updateStatus(appt.id, 'no_show')}
+                        title="Marcar como No Show"
+                        data-testid={`mark-noshow-${appt.id}`}
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
         ))}
       </CardContent>
     </Card>
