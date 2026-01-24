@@ -2871,6 +2871,16 @@ function RecordCard({
                           hour: '2-digit', minute: '2-digit' 
                         })}
                       </p>
+                      {comment.reminder_at && (
+                        <p className="text-xs mt-1 flex items-center gap-1">
+                          <Bell className="w-3 h-3 text-amber-500" />
+                          <span className={comment.reminder_sent ? 'text-green-600' : 'text-amber-600'}>
+                            {comment.reminder_sent ? '✓ Notificado' : 'Recordatorio:'} {new Date(comment.reminder_at).toLocaleString('es-ES', {
+                              day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                            })}
+                          </span>
+                        </p>
+                      )}
                     </div>
                     {(comment.user_id === currentUserId) && (
                       <Button 
