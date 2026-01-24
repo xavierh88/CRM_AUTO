@@ -9,7 +9,7 @@ import { Calendar } from '../components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
-import { Calendar as CalendarIcon, Clock, MapPin, User, Send, CheckCircle2, XCircle, Phone, AlertTriangle } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, User, Send, CheckCircle2, XCircle, Phone, AlertTriangle, Bell, MessageSquare } from 'lucide-react';
 import { format, isToday, isTomorrow, addDays, parseISO, isWithinInterval, startOfDay, endOfDay, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 
