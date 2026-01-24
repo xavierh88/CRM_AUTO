@@ -172,13 +172,15 @@ export default function ClientsPage() {
     id_type: '', id_number: '', ssn_type: '', ssn: ''
   });
 
+  const [isFromNotification, setIsFromNotification] = useState(false);
+
   const fetchClients = async (search = '', fromNotification = false) => {
     try {
       const params = new URLSearchParams({ exclude_sold: 'true' });
       if (search) params.append('search', search);
       
       // If coming from notification, use special flag to bypass ownership filters
-      if (fromNotification) {
+      if (fromNotification || isFromNotification) {
         params.append('from_notification', 'true');
         params.append('owner_filter', 'all');
       } else {
@@ -213,22 +215,25 @@ export default function ClientsPage() {
   // Read search parameter from URL (when coming from Agenda or Notifications)
   useEffect(() => {
     const urlSearch = searchParams.get('search');
-    const urlOwnerFilter = searchParams.get('owner_filter');
     
     // If there's a search in the URL, it's coming from a notification or agenda link
     // Always use from_notification=true to bypass ownership filters
     if (urlSearch) {
       setSearchTerm(urlSearch);
       setOwnerFilter('all');
-      // Always pass fromNotification=true when search comes from URL
+      setIsFromNotification(true);  // Mark as coming from notification
       fetchClients(urlSearch, true);
     } else {
+      setIsFromNotification(false);
       fetchClients();
     }
   }, [searchParams]);
 
+  // Only re-fetch on filter/sort change if NOT from notification
   useEffect(() => {
-    fetchClients(searchTerm);
+    if (!isFromNotification) {
+      fetchClients(searchTerm);
+    }
   }, [ownerFilter, sortBy]);
 
   const fetchClientRecords = async (clientId) => {
