@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { 
   Plus, Search, Info, Calendar, ChevronDown, ChevronRight, 
   Send, Trash2, CheckCircle2, XCircle, UserPlus, Phone, RefreshCw, MessageSquare,
-  X, FileText, MessageCircle, Upload, Download, Home, Mail, Users
+  X, FileText, MessageCircle, Upload, Download, Home, Mail, Users, Bell
 } from 'lucide-react';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import SmsInboxDialog from '../components/SmsInboxDialog';
