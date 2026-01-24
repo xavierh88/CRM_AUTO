@@ -202,13 +202,20 @@ export default function ClientsPage() {
     }
   };
 
-  // Read search parameter from URL (when coming from Agenda)
+  // Read search parameter from URL (when coming from Agenda or Notifications)
   useEffect(() => {
     const urlSearch = searchParams.get('search');
+    const urlOwnerFilter = searchParams.get('owner_filter');
+    
+    // If owner_filter is specified in URL, use it
+    if (urlOwnerFilter && (isAdmin || isBdcManager)) {
+      setOwnerFilter(urlOwnerFilter);
+    }
+    
     if (urlSearch) {
       setSearchTerm(urlSearch);
-      // Set filter to "all" to find the client regardless of owner
-      if (isAdmin || isBdcManager) {
+      // Set filter to "all" to find the client regardless of owner (if not already set by URL param)
+      if (!urlOwnerFilter && (isAdmin || isBdcManager)) {
         setOwnerFilter('all');
       }
       fetchClients(urlSearch);
