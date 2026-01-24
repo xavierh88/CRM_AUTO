@@ -2110,6 +2110,7 @@ function RecordCard({
   const [comments, setComments] = useState([]);
   const [commentsCount, setCommentsCount] = useState(record.comments_count || 0);
   const [newComment, setNewComment] = useState('');
+  const [commentReminderAt, setCommentReminderAt] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
 
   // Load comment count on mount
