@@ -2816,17 +2816,39 @@ function RecordCard({
           </div>
 
           {/* Add Comment */}
-          <div className="flex gap-2 mb-3">
-            <Input
-              placeholder="Escribir comentario..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addComment()}
-              className="flex-1 h-8 text-sm"
-            />
-            <Button size="sm" onClick={addComment} disabled={!newComment.trim()}>
-              Agregar
-            </Button>
+          <div className="space-y-2 mb-3">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Escribir comentario..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && addComment()}
+                className="flex-1 h-8 text-sm"
+              />
+              <Button size="sm" onClick={addComment} disabled={!newComment.trim()}>
+                Agregar
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Bell className="w-3 h-3 text-slate-400" />
+              <Input
+                type="datetime-local"
+                value={commentReminderAt}
+                onChange={(e) => setCommentReminderAt(e.target.value)}
+                className="flex-1 h-7 text-xs"
+                placeholder="Recordatorio (opcional)"
+              />
+              {commentReminderAt && (
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={() => setCommentReminderAt('')}
+                  className="h-6 w-6 p-0 text-slate-400 hover:text-red-500"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Comments List */}
