@@ -231,13 +231,16 @@ async def check_comment_reminders_job():
             client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}" if client else "Cliente"
             client_phone = client.get("phone", "") if client else ""
             
+            # Build link with owner_filter=all to ensure client is found
+            link = f"/clients?search={client_phone}&owner_filter=all" if client_phone else "/clients?owner_filter=all"
+            
             notif_doc = {
                 "id": str(uuid.uuid4()),
                 "user_id": comment["user_id"],
                 "title": f"📝 Recordatorio: {client_name}",
                 "message": comment['comment'][:100] + ('...' if len(comment['comment']) > 100 else ''),
                 "type": "reminder",
-                "link": f"/clients?search={client_phone}" if client_phone else "/clients",
+                "link": link,
                 "client_id": comment["client_id"],
                 "is_read": False,
                 "created_at": now_iso
@@ -257,9 +260,22 @@ async def check_comment_reminders_job():
     for comment in due_record_reminders:
         try:
             client_id = comment.get("client_id")
+            record_id = comment.get("record_id")
+            
+            # Try to get client info, fallback to record data
             client = await db.clients.find_one({"id": client_id}, {"_id": 0, "first_name": 1, "last_name": 1, "phone": 1}) if client_id else None
-            client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}" if client else "Cliente"
-            client_phone = client.get("phone", "") if client else ""
+            
+            if client:
+                client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}"
+                client_phone = client.get("phone", "")
+            else:
+                # Fallback: get phone from the record
+                record = await db.user_records.find_one({"id": record_id}, {"_id": 0, "phone": 1, "client_name": 1}) if record_id else None
+                client_name = record.get("client_name", "Cliente") if record else "Cliente"
+                client_phone = record.get("phone", "") if record else ""
+            
+            # Build link with owner_filter=all to ensure client is found
+            link = f"/clients?search={client_phone}&owner_filter=all" if client_phone else "/clients?owner_filter=all"
             
             notif_doc = {
                 "id": str(uuid.uuid4()),
@@ -267,7 +283,7 @@ async def check_comment_reminders_job():
                 "title": f"📝 Recordatorio: {client_name}",
                 "message": comment['comment'][:100] + ('...' if len(comment['comment']) > 100 else ''),
                 "type": "reminder",
-                "link": f"/clients?search={client_phone}" if client_phone else "/clients",
+                "link": link,
                 "client_id": client_id,
                 "is_read": False,
                 "created_at": now_iso
