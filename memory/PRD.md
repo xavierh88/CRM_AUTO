@@ -240,6 +240,19 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 
 ## Session Work Completed (January 23, 2026)
 
+### Record Comments Reminders - IMPLEMENTED ✅
+- **Feature:** Added reminder functionality to Record Comments (same as Client Notes)
+- **Backend Changes (`/app/backend/server.py`):**
+  - Modified `POST /api/user-records/{record_id}/comments` to accept `reminder_at` parameter
+  - If reminder < 24 hours: notification created immediately
+  - If reminder > 24 hours: notification will be sent 1 day before via scheduler
+  - Scheduler job now checks both `client_comments` and `record_comments` collections
+- **Frontend Changes (`/app/frontend/src/pages/ClientsPage.jsx`):**
+  - Added `commentReminderAt` state for record comments
+  - Added datetime-local input with Bell icon for setting reminders
+  - Displays reminder status on existing comments (🔔 Recordatorio or ✓ Notificado)
+  - Toast messages inform user about notification timing
+
 ### Notifications Bug Fix - FIXED ✅
 - **Issue:** Clicking on notifications led to a blank/white page
 - **Root Cause:** Notification links used `/clientes` instead of `/clients`
