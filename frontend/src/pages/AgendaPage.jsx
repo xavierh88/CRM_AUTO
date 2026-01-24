@@ -113,7 +113,8 @@ export default function AgendaPage() {
     pending: appointments.filter(a => a.status === 'agendado' || a.status === 'sin_configurar').length,
     completed: appointments.filter(a => a.status === 'cumplido').length,
     noShow: appointments.filter(a => a.status === 'no_show').length,
-    runningLate: appointments.filter(a => a.running_late).length
+    runningLate: appointments.filter(a => a.running_late).length,
+    reminders: appointments.filter(a => a.type === 'reminder').length
   };
 
   const grouped = getFilteredAppointments();
