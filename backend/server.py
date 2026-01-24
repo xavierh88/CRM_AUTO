@@ -1415,9 +1415,11 @@ async def add_record_comment(record_id: str, comment: str = Form(...), reminder_
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
     
-    # Get the record to find the client
-    record = await db.user_records.find_one({"id": record_id}, {"_id": 0, "client_id": 1})
+    # Get the record to find the client and phone
+    record = await db.user_records.find_one({"id": record_id}, {"_id": 0, "client_id": 1, "phone": 1, "client_name": 1})
     client_id = record.get("client_id") if record else None
+    record_phone = record.get("phone", "") if record else ""
+    record_client_name = record.get("client_name", "") if record else ""
     
     # Check if reminder should trigger immediate notification
     send_notification_now = False
