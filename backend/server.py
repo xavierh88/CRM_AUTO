@@ -2266,6 +2266,56 @@ async def get_agenda(current_user: dict = Depends(get_current_user)):
         {"$sort": {"date": 1, "time": 1}}
     ]
     appointments = await db.appointments.aggregate(pipeline).to_list(1000)
+    
+    # Also get reminders (from client_comments and record_comments)
+    reminder_match = {"reminder_at": {"$ne": None}}
+    if current_user["role"] == "admin":
+        pass  # Admin sees all reminders
+    elif current_user["role"] == "bdc_manager":
+        admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
+        admin_ids = [u["id"] for u in admin_users]
+        reminder_match["user_id"] = {"$nin": admin_ids}
+    else:
+        reminder_match["user_id"] = current_user["id"]
+    
+    # Get client comment reminders
+    client_reminders = await db.client_comments.find(reminder_match, {"_id": 0}).to_list(500)
+    
+    # Get record comment reminders
+    record_reminders = await db.record_comments.find(reminder_match, {"_id": 0}).to_list(500)
+    
+    # Transform reminders to agenda format
+    for reminder in client_reminders + record_reminders:
+        client_id = reminder.get("client_id")
+        client = await db.clients.find_one({"id": client_id}, {"_id": 0, "first_name": 1, "last_name": 1, "phone": 1}) if client_id else None
+        
+        # Parse reminder date
+        reminder_at = reminder.get("reminder_at", "")
+        reminder_date = reminder_at[:10] if reminder_at else ""  # YYYY-MM-DD
+        reminder_time = reminder_at[11:16] if len(reminder_at) > 11 else ""  # HH:MM
+        
+        agenda_item = {
+            "id": reminder.get("id"),
+            "type": "reminder",  # Mark as reminder, not appointment
+            "date": reminder_date,
+            "time": reminder_time,
+            "client_id": client_id,
+            "client": {
+                "first_name": client.get("first_name", "") if client else "",
+                "last_name": client.get("last_name", "") if client else "",
+                "phone": client.get("phone", "") if client else ""
+            } if client else None,
+            "comment": reminder.get("comment", ""),
+            "reminder_sent": reminder.get("reminder_sent", False),
+            "salesperson_id": reminder.get("user_id"),
+            "salesperson_name": reminder.get("user_name", ""),
+            "created_at": reminder.get("created_at")
+        }
+        appointments.append(agenda_item)
+    
+    # Sort all items by date and time
+    appointments.sort(key=lambda x: (x.get("date", ""), x.get("time", "")))
+    
     return appointments
 
 @api_router.put("/appointments/{appt_id}", response_model=AppointmentResponse)
