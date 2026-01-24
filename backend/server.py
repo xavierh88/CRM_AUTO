@@ -1557,13 +1557,16 @@ async def add_client_comment(client_id: str, comment: str = Form(...), reminder_
             client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}" if client else "Cliente"
             client_phone = client.get("phone", "") if client else ""
             
+            # Build link with owner_filter=all to ensure client is found regardless of filter
+            link = f"/clients?search={client_phone}&owner_filter=all" if client_phone else "/clients?owner_filter=all"
+            
             notif_doc = {
                 "id": str(uuid.uuid4()),
                 "user_id": current_user["id"],
                 "title": f"📝 Recordatorio: {client_name}",
                 "message": comment[:100] + ('...' if len(comment) > 100 else ''),
                 "type": "reminder",
-                "link": f"/clients?search={client_phone}" if client_phone else "/clients",
+                "link": link,
                 "client_id": client_id,
                 "is_read": False,
                 "created_at": now_iso
