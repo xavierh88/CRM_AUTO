@@ -207,6 +207,17 @@ export default function AgendaPage() {
             </CardContent>
           </Card>
         )}
+        {stats.reminders > 0 && (
+          <Card className="dashboard-card border-l-4 border-l-purple-500 bg-purple-50">
+            <CardContent className="p-4">
+              <p className="text-xs text-purple-600 uppercase tracking-wide flex items-center gap-1">
+                <Bell className="w-3 h-3" />
+                Recordatorios
+              </p>
+              <p className="text-2xl font-bold text-purple-600">{stats.reminders}</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
