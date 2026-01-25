@@ -1303,7 +1303,13 @@ async def download_client_document(
     doc_id: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Download a client document"""
+    """Download a client document - single file or combined PDF of all documents"""
+    from PIL import Image as PILImage
+    from pypdf import PdfReader, PdfWriter
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas as pdf_canvas
+    import io
+    
     if doc_type not in ['id', 'income', 'residence']:
         raise HTTPException(status_code=400, detail="Invalid document type")
     
@@ -1311,12 +1317,88 @@ async def download_client_document(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    # Get file path based on doc type
+    # Check new multi-document structure first
+    doc_field = f"{doc_type}_documents"
+    documents = client.get(doc_field, [])
+    
+    # If requesting specific document
+    if doc_id and documents:
+        doc = next((d for d in documents if d.get("id") == doc_id), None)
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        file_path = Path(doc.get("path", ""))
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Document file not found")
+        
+        with open(file_path, 'rb') as f:
+            content = f.read()
+        
+        file_ext = file_path.suffix.lower()
+        content_type = 'application/pdf' if file_ext == '.pdf' else f'image/{file_ext[1:]}'
+        
+        return Response(
+            content=content,
+            media_type=content_type,
+            headers={"Content-Disposition": f"attachment; filename={doc.get('filename', 'document')}"}
+        )
+    
+    # If multiple documents exist, combine them into one PDF
+    if documents and len(documents) > 0:
+        pdf_writer = PdfWriter()
+        
+        for doc in documents:
+            file_path = Path(doc.get("path", ""))
+            if not file_path.exists():
+                continue
+            
+            file_ext = file_path.suffix.lower()
+            
+            try:
+                if file_ext == '.pdf':
+                    # Add PDF pages directly
+                    pdf_reader = PdfReader(str(file_path))
+                    for page in pdf_reader.pages:
+                        pdf_writer.add_page(page)
+                else:
+                    # Convert image to PDF page
+                    img = PILImage.open(file_path)
+                    if img.mode in ('RGBA', 'LA', 'P'):
+                        img = img.convert('RGB')
+                    
+                    # Create PDF page with image
+                    img_buffer = io.BytesIO()
+                    img.save(img_buffer, format='PDF')
+                    img_buffer.seek(0)
+                    
+                    img_pdf = PdfReader(img_buffer)
+                    pdf_writer.add_page(img_pdf.pages[0])
+            except Exception as e:
+                logger.error(f"Error processing document {doc.get('id')}: {e}")
+                continue
+        
+        if len(pdf_writer.pages) == 0:
+            raise HTTPException(status_code=404, detail="No valid documents found")
+        
+        # Write combined PDF
+        output = io.BytesIO()
+        pdf_writer.write(output)
+        output.seek(0)
+        
+        safe_filename = f"{client.get('first_name', 'client')}_{client.get('last_name', 'doc')}_{doc_type}_combined.pdf".replace(' ', '_')
+        
+        return Response(
+            content=output.read(),
+            media_type='application/pdf',
+            headers={"Content-Disposition": f"attachment; filename={safe_filename}"}
+        )
+    
+    # Fallback to legacy single file
     if doc_type == 'id':
         file_url_field = "id_file_url"
     elif doc_type == 'income':
         file_url_field = "income_proof_file_url"
-    else:  # residence
+    else:
         file_url_field = "residence_proof_file_url"
     
     file_url = client.get(file_url_field)
@@ -1324,38 +1406,26 @@ async def download_client_document(
         raise HTTPException(status_code=404, detail="Document not found")
     
     # Handle different path formats
-    # Could be: /uploads/filename.pdf, uploads/filename.pdf, or full path
     if file_url.startswith('/uploads/'):
         file_path = UPLOAD_DIR / file_url.replace('/uploads/', '')
     elif file_url.startswith('uploads/'):
         file_path = UPLOAD_DIR / file_url.replace('uploads/', '')
     elif file_url.startswith('/api/'):
-        # Extract filename from API URL
         filename = file_url.split('/')[-1]
         file_path = UPLOAD_DIR / filename
     else:
         file_path = Path(file_url)
     
-    logger.info(f"Attempting to download document: {file_path}")
-    
     if not file_path.exists():
-        # Try looking in uploads directory with just the filename
         filename = Path(file_url).name if '/' in str(file_url) else file_url
         file_path = UPLOAD_DIR / filename
         
         if not file_path.exists():
-            logger.error(f"Document file not found: {file_path}")
-            raise HTTPException(status_code=404, detail=f"Document file not found: {filename}")
+            raise HTTPException(status_code=404, detail=f"Document file not found")
     
-    # Read and return file
-    try:
-        with open(file_path, 'rb') as f:
-            content = f.read()
-    except Exception as e:
-        logger.error(f"Error reading document file: {e}")
-        raise HTTPException(status_code=500, detail="Error reading document file")
+    with open(file_path, 'rb') as f:
+        content = f.read()
     
-    # Determine content type
     file_ext = file_path.suffix.lower()
     content_type = 'application/pdf'
     if file_ext in ['.jpg', '.jpeg']:
@@ -1365,15 +1435,12 @@ async def download_client_document(
     elif file_ext == '.webp':
         content_type = 'image/webp'
     
-    # Sanitize filename for download
     safe_filename = f"{client.get('first_name', 'client')}_{client.get('last_name', 'doc')}_{doc_type}{file_ext}".replace(' ', '_')
     
     return Response(
         content=content,
         media_type=content_type,
-        headers={
-            "Content-Disposition": f"attachment; filename={safe_filename}"
-        }
+        headers={"Content-Disposition": f"attachment; filename={safe_filename}"}
     )
 
 # ==================== USER RECORDS (CARTILLAS) ROUTES ====================
