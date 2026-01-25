@@ -4432,180 +4432,123 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
             </div>
           )}
 
-          {/* Document Status with Upload/Download/Delete */}
+          {/* Document Status with Upload/Download/Delete - Multiple Files Support */}
           <div>
             <Label className="form-label">{t('clients.documents')}</Label>
-            <div className="space-y-2 mt-2">
-              {/* ID Document */}
-              <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  {clientDocs.id_uploaded ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  ) : (
-                    <XCircle className="w-5 h-5 text-slate-300" />
-                  )}
-                  <span className="text-sm">{t('clients.idUploaded')}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  {clientDocs.id_uploaded ? (
-                    showDeleteConfirm === 'id' ? (
+            <div className="space-y-3 mt-2">
+              {/* Document Type Component */}
+              {[
+                { type: 'id', label: t('clients.idUploaded'), field: 'id_uploaded', docsField: 'id_documents' },
+                { type: 'income', label: t('clients.incomeProof'), field: 'income_proof_uploaded', docsField: 'income_documents' },
+                { type: 'residence', label: 'Comprobante de Residencia', field: 'residence_proof_uploaded', docsField: 'residence_documents', icon: Home }
+              ].map(({ type, label, field, docsField, icon: Icon }) => {
+                const docs = clientDocs[docsField] || [];
+                const isExpanded = expandedDocType === type;
+                
+                return (
+                  <div key={type} className="bg-slate-50 rounded-lg p-3">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-red-600">¿Eliminar?</span>
-                        <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument('id')}>
-                          Sí
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
-                          No
-                        </Button>
+                        {clientDocs[field] ? (
+                          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                        ) : (
+                          <XCircle className="w-5 h-5 text-slate-300" />
+                        )}
+                        {Icon && <Icon className="w-4 h-4 text-slate-400" />}
+                        <span className="text-sm">{label}</span>
+                        {docs.length > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {docs.length} archivo{docs.length > 1 ? 's' : ''}
+                          </Badge>
+                        )}
                       </div>
-                    ) : (
-                      <>
-                        {isAdmin && (
-                          <Button size="sm" variant="ghost" onClick={() => handleDownloadDocument('id')} title="Descargar">
+                      <div className="flex items-center gap-1">
+                        {/* Upload button - always available */}
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.jpg,.jpeg,.png,.webp"
+                            multiple
+                            onChange={(e) => handleUploadDocument(type, e.target.files)}
+                            disabled={uploading === type}
+                          />
+                          <Button size="sm" variant="outline" asChild disabled={uploading === type}>
+                            <span>
+                              <Upload className="w-4 h-4 mr-1" />
+                              {uploading === type ? 'Subiendo...' : 'Subir'}
+                            </span>
+                          </Button>
+                        </label>
+                        
+                        {/* Download combined PDF */}
+                        {docs.length > 0 && (
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => handleDownloadDocument(type)} 
+                            title="Descargar PDF combinado"
+                          >
                             <Download className="w-4 h-4 text-blue-500" />
                           </Button>
                         )}
-                        {isAdmin && (
-                          <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm('id')} title="Eliminar">
-                            <Trash2 className="w-4 h-4 text-red-400" />
+                        
+                        {/* Expand/collapse to see individual files */}
+                        {docs.length > 0 && (
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => setExpandedDocType(isExpanded ? null : type)}
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="w-4 h-4" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4" />
+                            )}
                           </Button>
                         )}
-                      </>
-                    )
-                  ) : (
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => handleUploadDocument('id', e.target.files[0])}
-                        disabled={uploading === 'id'}
-                      />
-                      <Button size="sm" variant="outline" asChild disabled={uploading === 'id'}>
-                        <span>
-                          <Upload className="w-4 h-4 mr-1" />
-                          {uploading === 'id' ? 'Subiendo...' : 'Subir'}
-                        </span>
-                      </Button>
-                    </label>
-                  )}
-                </div>
-              </div>
-              
-              {/* Income Proof */}
-              <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  {clientDocs.income_proof_uploaded ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  ) : (
-                    <XCircle className="w-5 h-5 text-slate-300" />
-                  )}
-                  <span className="text-sm">{t('clients.incomeProof')}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  {clientDocs.income_proof_uploaded ? (
-                    showDeleteConfirm === 'income' ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-red-600">¿Eliminar?</span>
-                        <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument('income')}>
-                          Sí
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
-                          No
-                        </Button>
                       </div>
-                    ) : (
-                      <>
-                        {isAdmin && (
-                          <Button size="sm" variant="ghost" onClick={() => handleDownloadDocument('income')} title="Descargar">
-                            <Download className="w-4 h-4 text-blue-500" />
-                          </Button>
-                        )}
-                        {isAdmin && (
-                          <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm('income')} title="Eliminar">
-                            <Trash2 className="w-4 h-4 text-red-400" />
-                          </Button>
-                        )}
-                      </>
-                    )
-                  ) : (
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => handleUploadDocument('income', e.target.files[0])}
-                        disabled={uploading === 'income'}
-                      />
-                      <Button size="sm" variant="outline" asChild disabled={uploading === 'income'}>
-                        <span>
-                          <Upload className="w-4 h-4 mr-1" />
-                          {uploading === 'income' ? 'Subiendo...' : 'Subir'}
-                        </span>
-                      </Button>
-                    </label>
-                  )}
-                </div>
-              </div>
-
-              {/* Residence Proof */}
-              <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  {clientDocs.residence_proof_uploaded ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  ) : (
-                    <XCircle className="w-5 h-5 text-slate-300" />
-                  )}
-                  <div className="flex items-center gap-1">
-                    <Home className="w-4 h-4 text-slate-400" />
-                    <span className="text-sm">Comprobante de Residencia</span>
+                    </div>
+                    
+                    {/* Expanded file list */}
+                    {isExpanded && docs.length > 0 && (
+                      <div className="mt-3 space-y-2 border-t pt-3">
+                        {docs.map((doc, idx) => (
+                          <div key={doc.id || idx} className="flex items-center justify-between bg-white p-2 rounded border">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                              <span className="text-xs truncate">{doc.filename || `Documento ${idx + 1}`}</span>
+                              <span className="text-xs text-slate-400">
+                                {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString('es-ES') : ''}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleDownloadDocument(type, doc.id)}
+                                title="Descargar"
+                              >
+                                <Download className="w-3 h-3 text-blue-500" />
+                              </Button>
+                              {isAdmin && (
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => handleDeleteDocument(type, doc.id)}
+                                  title="Eliminar"
+                                >
+                                  <Trash2 className="w-3 h-3 text-red-400" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  {clientDocs.residence_proof_uploaded ? (
-                    showDeleteConfirm === 'residence' ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-red-600">¿Eliminar?</span>
-                        <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument('residence')}>
-                          Sí
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
-                          No
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        {isAdmin && (
-                          <Button size="sm" variant="ghost" onClick={() => handleDownloadDocument('residence')} title="Descargar">
-                            <Download className="w-4 h-4 text-blue-500" />
-                          </Button>
-                        )}
-                        {isAdmin && (
-                          <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm('residence')} title="Eliminar">
-                            <Trash2 className="w-4 h-4 text-red-400" />
-                          </Button>
-                        )}
-                      </>
-                    )
-                  ) : (
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => handleUploadDocument('residence', e.target.files[0])}
-                        disabled={uploading === 'residence'}
-                      />
-                      <Button size="sm" variant="outline" asChild disabled={uploading === 'residence'}>
-                        <span>
-                          <Upload className="w-4 h-4 mr-1" />
-                          {uploading === 'residence' ? 'Subiendo...' : 'Subir'}
-                        </span>
-                      </Button>
-                    </label>
-                  )}
-                </div>
-              </div>
+                );
+              })}
             </div>
           </div>
 
