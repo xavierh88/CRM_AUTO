@@ -1149,10 +1149,17 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 async def upload_client_document(
     client_id: str, 
     doc_type: str = Form(...),
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Upload a document for a client (ID, income proof, or residence proof)"""
+    """Upload multiple documents for a client (ID, income proof, or residence proof)"""
+    from PIL import Image as PILImage
+    from pypdf import PdfReader, PdfWriter
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.utils import ImageReader
+    import io
+    
     if doc_type not in ['id', 'income', 'residence']:
         raise HTTPException(status_code=400, detail="Invalid document type. Must be 'id', 'income', or 'residence'")
     
@@ -1161,37 +1168,139 @@ async def upload_client_document(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    # Read file content
-    content = await file.read()
-    file_ext = file.filename.split('.')[-1] if '.' in file.filename else 'pdf'
+    # Create client upload directory
+    client_upload_dir = UPLOAD_DIR / "clients" / client_id
+    client_upload_dir.mkdir(parents=True, exist_ok=True)
     
-    # Create unique filename
-    filename = f"{client_id}_{doc_type}_{uuid.uuid4().hex[:8]}.{file_ext}"
-    file_path = UPLOAD_DIR / filename
+    # Get existing documents list
+    doc_field = f"{doc_type}_documents"
+    existing_docs = client.get(doc_field, [])
     
-    # Save file
-    with open(file_path, 'wb') as f:
-        f.write(content)
+    uploaded_files = []
     
-    # Update client document status
-    update_data = {}
-    file_url = f"/api/clients/{client_id}/documents/download/{doc_type}"
+    for file in files:
+        content = await file.read()
+        file_ext = file.filename.split('.')[-1].lower() if '.' in file.filename else 'pdf'
+        
+        # Create unique filename
+        file_id = uuid.uuid4().hex[:8]
+        filename = f"{doc_type}_{file_id}.{file_ext}"
+        file_path = client_upload_dir / filename
+        
+        # Save original file
+        with open(file_path, 'wb') as f:
+            f.write(content)
+        
+        # Add to documents list
+        doc_info = {
+            "id": file_id,
+            "filename": file.filename,
+            "path": str(file_path),
+            "type": file.content_type,
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+            "uploaded_by": current_user["id"]
+        }
+        uploaded_files.append(doc_info)
     
-    if doc_type == 'id':
-        update_data = {"id_uploaded": True, "id_file_url": str(file_path)}
-    elif doc_type == 'income':
-        update_data = {"income_proof_uploaded": True, "income_proof_file_url": str(file_path)}
-    else:
-        update_data = {"residence_proof_uploaded": True, "residence_proof_file_url": str(file_path)}
+    # Update client with new documents
+    all_docs = existing_docs + uploaded_files
+    
+    update_data = {
+        doc_field: all_docs,
+        f"{doc_type}_uploaded" if doc_type == 'id' else f"{doc_type}_proof_uploaded": True
+    }
     
     await db.clients.update_one({"id": client_id}, {"$set": update_data})
     
-    return {"message": "Document uploaded successfully", "file_url": file_url, "doc_type": doc_type}
+    return {
+        "message": f"{len(uploaded_files)} documento(s) subido(s) correctamente",
+        "files": uploaded_files,
+        "total_documents": len(all_docs)
+    }
+
+@api_router.get("/clients/{client_id}/documents/list/{doc_type}")
+async def list_client_documents(
+    client_id: str,
+    doc_type: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """List all documents of a specific type for a client"""
+    if doc_type not in ['id', 'income', 'residence']:
+        raise HTTPException(status_code=400, detail="Invalid document type")
+    
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    doc_field = f"{doc_type}_documents"
+    documents = client.get(doc_field, [])
+    
+    # Also check legacy single file
+    legacy_field = f"{doc_type}_file_url" if doc_type == 'id' else f"{doc_type}_proof_file_url"
+    legacy_file = client.get(legacy_field)
+    
+    if legacy_file and not documents:
+        # Convert legacy single file to new format
+        documents = [{
+            "id": "legacy",
+            "filename": f"{doc_type}_document",
+            "path": legacy_file,
+            "type": "application/pdf",
+            "uploaded_at": client.get("created_at", ""),
+            "uploaded_by": client.get("created_by", "")
+        }]
+    
+    return {"documents": documents, "count": len(documents)}
+
+@api_router.delete("/clients/{client_id}/documents/{doc_type}/{doc_id}")
+async def delete_single_document(
+    client_id: str,
+    doc_type: str,
+    doc_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a single document from a client"""
+    if doc_type not in ['id', 'income', 'residence']:
+        raise HTTPException(status_code=400, detail="Invalid document type")
+    
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    doc_field = f"{doc_type}_documents"
+    documents = client.get(doc_field, [])
+    
+    # Find and remove the document
+    new_docs = [d for d in documents if d.get("id") != doc_id]
+    
+    if len(new_docs) == len(documents):
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    # Delete the file from disk
+    for doc in documents:
+        if doc.get("id") == doc_id:
+            try:
+                file_path = Path(doc.get("path", ""))
+                if file_path.exists():
+                    file_path.unlink()
+            except Exception as e:
+                logger.error(f"Error deleting file: {e}")
+    
+    # Update client
+    update_data = {doc_field: new_docs}
+    if len(new_docs) == 0:
+        uploaded_field = f"{doc_type}_uploaded" if doc_type == 'id' else f"{doc_type}_proof_uploaded"
+        update_data[uploaded_field] = False
+    
+    await db.clients.update_one({"id": client_id}, {"$set": update_data})
+    
+    return {"message": "Documento eliminado", "remaining": len(new_docs)}
 
 @api_router.get("/clients/{client_id}/documents/download/{doc_type}")
 async def download_client_document(
     client_id: str,
     doc_type: str,
+    doc_id: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     """Download a client document"""
