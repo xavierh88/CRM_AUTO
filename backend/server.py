@@ -1153,12 +1153,6 @@ async def upload_client_document(
     current_user: dict = Depends(get_current_user)
 ):
     """Upload multiple documents for a client (ID, income proof, or residence proof)"""
-    from PIL import Image as PILImage
-    from pypdf import PdfReader, PdfWriter
-    from reportlab.lib.pagesizes import letter
-    from reportlab.pdfgen import canvas
-    from reportlab.lib.utils import ImageReader
-    import io
     
     if doc_type not in ['id', 'income', 'residence']:
         raise HTTPException(status_code=400, detail="Invalid document type. Must be 'id', 'income', or 'residence'")
@@ -1179,36 +1173,45 @@ async def upload_client_document(
     uploaded_files = []
     
     for file in files:
-        content = await file.read()
-        file_ext = file.filename.split('.')[-1].lower() if '.' in file.filename else 'pdf'
-        
-        # Create unique filename
-        file_id = uuid.uuid4().hex[:8]
-        filename = f"{doc_type}_{file_id}.{file_ext}"
-        file_path = client_upload_dir / filename
-        
-        # Save original file
-        with open(file_path, 'wb') as f:
-            f.write(content)
-        
-        # Add to documents list
-        doc_info = {
-            "id": file_id,
-            "filename": file.filename,
-            "path": str(file_path),
-            "type": file.content_type,
-            "uploaded_at": datetime.now(timezone.utc).isoformat(),
-            "uploaded_by": current_user["id"]
-        }
-        uploaded_files.append(doc_info)
+        try:
+            content = await file.read()
+            file_ext = file.filename.split('.')[-1].lower() if '.' in file.filename else 'pdf'
+            
+            # Create unique filename
+            file_id = uuid.uuid4().hex[:8]
+            filename = f"{doc_type}_{file_id}.{file_ext}"
+            file_path = client_upload_dir / filename
+            
+            # Save original file
+            with open(file_path, 'wb') as f:
+                f.write(content)
+            
+            # Add to documents list
+            doc_info = {
+                "id": file_id,
+                "filename": file.filename,
+                "path": str(file_path),
+                "type": file.content_type or f"application/{file_ext}",
+                "uploaded_at": datetime.now(timezone.utc).isoformat(),
+                "uploaded_by": current_user["id"]
+            }
+            uploaded_files.append(doc_info)
+        except Exception as e:
+            logger.error(f"Error uploading file {file.filename}: {e}")
+            continue
+    
+    if not uploaded_files:
+        raise HTTPException(status_code=400, detail="No se pudo subir ningún archivo")
     
     # Update client with new documents
     all_docs = existing_docs + uploaded_files
     
-    update_data = {
-        doc_field: all_docs,
-        f"{doc_type}_uploaded" if doc_type == 'id' else f"{doc_type}_proof_uploaded": True
-    }
+    # Build update data
+    update_data = {doc_field: all_docs}
+    if doc_type == 'id':
+        update_data["id_uploaded"] = True
+    else:
+        update_data[f"{doc_type}_proof_uploaded"] = True
     
     await db.clients.update_one({"id": client_id}, {"$set": update_data})
     
