@@ -4024,29 +4024,34 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
     }
   };
 
-  const handleUploadDocument = async (docType, file) => {
-    if (!file) return;
+  const handleUploadDocument = async (docType, files) => {
+    if (!files || files.length === 0) return;
     
     setUploading(docType);
     try {
       const formData = new FormData();
-      formData.append('file', file);
       formData.append('doc_type', docType);
+      
+      // Append all files
+      for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i]);
+      }
       
       const response = await axios.post(`${API}/clients/${client.id}/documents/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
       // Update local state
-      if (docType === 'id') {
-        setClientDocs(prev => ({ ...prev, id_uploaded: true, id_file_url: response.data.file_url }));
-      } else if (docType === 'income') {
-        setClientDocs(prev => ({ ...prev, income_proof_uploaded: true, income_proof_file_url: response.data.file_url }));
-      } else if (docType === 'residence') {
-        setClientDocs(prev => ({ ...prev, residence_proof_uploaded: true, residence_proof_file_url: response.data.file_url }));
-      }
+      const uploadedField = docType === 'id' ? 'id_uploaded' : `${docType}_proof_uploaded`;
+      const docsField = `${docType}_documents`;
       
-      toast.success('Documento subido correctamente');
+      setClientDocs(prev => ({
+        ...prev,
+        [uploadedField]: true,
+        [docsField]: [...(prev[docsField] || []), ...response.data.files]
+      }));
+      
+      toast.success(`${response.data.files.length} documento(s) subido(s)`);
       onRefresh();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al subir documento');
@@ -4055,48 +4060,74 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
     }
   };
 
-  const handleDownloadDocument = async (docType) => {
+  const handleDownloadDocument = async (docType, docId = null) => {
     try {
-      const response = await axios.get(`${API}/clients/${client.id}/documents/download/${docType}`, {
-        responseType: 'blob'
-      });
+      const url = docId 
+        ? `${API}/clients/${client.id}/documents/download/${docType}?doc_id=${docId}`
+        : `${API}/clients/${client.id}/documents/download/${docType}`;
+      
+      const response = await axios.get(url, { responseType: 'blob' });
       
       // Create download link
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${client.first_name}_${client.last_name}_${docType}.pdf`);
+      link.href = blobUrl;
+      
+      const filename = docId 
+        ? `${client.first_name}_${client.last_name}_${docType}_${docId}.pdf`
+        : `${client.first_name}_${client.last_name}_${docType}_combined.pdf`;
+      
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
       toast.error('Error al descargar documento');
     }
   };
 
-  const handleDeleteDocument = async (docType) => {
+  const handleDeleteDocument = async (docType, docId = null) => {
     try {
-      const updateData = docType === 'id' 
-        ? { id_uploaded: false }
-        : docType === 'income' 
-        ? { income_proof_uploaded: false }
-        : { residence_proof_uploaded: false };
-      
-      await axios.put(`${API}/clients/${client.id}/documents`, null, {
-        params: updateData
-      });
-      
-      // Update local state
-      if (docType === 'id') {
-        setClientDocs(prev => ({ ...prev, id_uploaded: false, id_file_url: null }));
-      } else if (docType === 'income') {
-        setClientDocs(prev => ({ ...prev, income_proof_uploaded: false, income_proof_file_url: null }));
+      if (docId) {
+        // Delete single document
+        await axios.delete(`${API}/clients/${client.id}/documents/${docType}/${docId}`);
+        
+        const docsField = `${docType}_documents`;
+        const newDocs = clientDocs[docsField].filter(d => d.id !== docId);
+        const uploadedField = docType === 'id' ? 'id_uploaded' : `${docType}_proof_uploaded`;
+        
+        setClientDocs(prev => ({
+          ...prev,
+          [docsField]: newDocs,
+          [uploadedField]: newDocs.length > 0
+        }));
+        
+        toast.success('Documento eliminado');
       } else {
-        setClientDocs(prev => ({ ...prev, residence_proof_uploaded: false, residence_proof_file_url: null }));
+        // Delete all documents of this type (legacy behavior)
+        const updateData = docType === 'id' 
+          ? { id_uploaded: false }
+          : docType === 'income' 
+          ? { income_proof_uploaded: false }
+          : { residence_proof_uploaded: false };
+        
+        await axios.put(`${API}/clients/${client.id}/documents`, null, {
+          params: updateData
+        });
+        
+        const uploadedField = docType === 'id' ? 'id_uploaded' : `${docType}_proof_uploaded`;
+        const docsField = `${docType}_documents`;
+        
+        setClientDocs(prev => ({ 
+          ...prev, 
+          [uploadedField]: false,
+          [docsField]: []
+        }));
+        
+        toast.success('Documentos eliminados');
       }
       
-      toast.success(`Documento ${docType === 'id' ? 'ID' : docType === 'income' ? 'Comprobante de Ingresos' : 'Comprobante de Residencia'} eliminado`);
       setShowDeleteConfirm(null);
       onRefresh();
     } catch (error) {
