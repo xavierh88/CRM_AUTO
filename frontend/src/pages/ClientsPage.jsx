@@ -4024,8 +4024,11 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
     }
   };
 
-  const handleUploadDocument = async (docType, files) => {
-    if (!files || files.length === 0) return;
+  const handleUploadDocument = async (docType, fileList) => {
+    if (!fileList || fileList.length === 0) return;
+    
+    // Convert FileList to Array
+    const files = Array.from(fileList);
     
     setUploading(docType);
     try {
@@ -4033,8 +4036,8 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
       formData.append('doc_type', docType);
       
       // Append all files
-      for (let i = 0; i < files.length; i++) {
-        formData.append('files', files[i]);
+      for (const file of files) {
+        formData.append('files', file);
       }
       
       const response = await axios.post(`${API}/clients/${client.id}/documents/upload`, formData, {
@@ -4048,12 +4051,13 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
       setClientDocs(prev => ({
         ...prev,
         [uploadedField]: true,
-        [docsField]: [...(prev[docsField] || []), ...response.data.files]
+        [docsField]: [...(prev[docsField] || []), ...(response.data.files || [])]
       }));
       
-      toast.success(`${response.data.files.length} documento(s) subido(s)`);
+      toast.success(`${response.data.files?.length || 1} documento(s) subido(s)`);
       onRefresh();
     } catch (error) {
+      console.error('Upload error:', error);
       toast.error(error.response?.data?.detail || 'Error al subir documento');
     } finally {
       setUploading(null);
