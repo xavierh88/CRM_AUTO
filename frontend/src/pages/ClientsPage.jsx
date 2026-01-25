@@ -3978,10 +3978,22 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
     id_uploaded: client.id_uploaded || false,
     income_proof_uploaded: client.income_proof_uploaded || false,
     residence_proof_uploaded: client.residence_proof_uploaded || false,
-    id_file_url: client.id_file_url || null,
-    income_proof_file_url: client.income_proof_file_url || null,
-    residence_proof_file_url: client.residence_proof_file_url || null
+    id_documents: client.id_documents || [],
+    income_documents: client.income_documents || [],
+    residence_documents: client.residence_documents || []
   });
+  const [expandedDocType, setExpandedDocType] = useState(null);
+
+  // Load documents list
+  const loadDocuments = async (docType) => {
+    try {
+      const response = await axios.get(`${API}/clients/${client.id}/documents/list/${docType}`);
+      const field = `${docType}_documents`;
+      setClientDocs(prev => ({ ...prev, [field]: response.data.documents }));
+    } catch (error) {
+      console.error('Error loading documents:', error);
+    }
+  };
 
   const handleSave = async () => {
     try {
