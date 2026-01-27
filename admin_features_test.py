@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 class AdminFeaturesAPITester:
-    def __init__(self, base_url="https://concesionario-crm.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://autocrm-dash.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.admin_token = None
         self.admin_id = None
