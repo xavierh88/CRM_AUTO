@@ -6652,8 +6652,11 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
         "time_at_address_months": submission.get("timeAtAddressMonths"),
         "id_uploaded": id_uploaded,
         "id_file_url": id_file_url,
+        "id_documents": id_documents,  # New multi-document system
         "income_proof_uploaded": False,
         "residence_proof_uploaded": False,
+        "income_documents": [],  # Empty for now
+        "residence_documents": [],  # Empty for now
         "salesperson_id": current_user["id"],
         "salesperson_name": current_user.get("name") or current_user.get("email"),
         "created_at": datetime.now(timezone.utc).isoformat(),
