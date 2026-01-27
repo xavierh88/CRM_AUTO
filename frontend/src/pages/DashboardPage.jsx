@@ -231,12 +231,6 @@ export default function DashboardPage() {
                     <span>Todos Telemarketers</span>
                   </div>
                 </SelectItem>
-                <SelectItem value="role_salesperson">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-cyan-500" />
-                    <span>Todos Vendedores</span>
-                  </div>
-                </SelectItem>
                 
                 {/* Separator */}
                 <div className="h-px bg-slate-200 my-1"></div>
@@ -266,10 +260,10 @@ export default function DashboardPage() {
                   </SelectItem>
                 ))}
                 
-                {users.filter(u => u.role === 'telemarketer' || u.role === 'salesperson').length > 0 && (
-                  <div className="px-2 py-1 text-xs font-semibold text-slate-500 bg-slate-50">Telemarketers / Vendedores</div>
+                {users.filter(u => u.role === 'telemarketer').length > 0 && (
+                  <div className="px-2 py-1 text-xs font-semibold text-slate-500 bg-slate-50">Telemarketers</div>
                 )}
-                {users.filter(u => u.role === 'telemarketer' || u.role === 'salesperson').map((user) => (
+                {users.filter(u => u.role === 'telemarketer').map((user) => (
                   <SelectItem key={user.id} value={user.id}>
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-orange-500" />
