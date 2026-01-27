@@ -194,20 +194,73 @@ export default function DashboardPage() {
           {/* User Filter - Admin only */}
           {isAdmin && users.length > 0 && (
             <Select value={selectedUser} onValueChange={setSelectedUser}>
-              <SelectTrigger className="w-36 sm:w-44">
+              <SelectTrigger className="w-44 sm:w-52">
                 <SelectValue placeholder="Usuario" />
               </SelectTrigger>
               <SelectContent>
+                {/* General filters */}
                 <SelectItem value="all">
                   <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    <span>Todos los Usuarios</span>
+                    <Users className="w-4 h-4 text-blue-500" />
+                    <span className="font-medium">Todos los Usuarios</span>
                   </div>
                 </SelectItem>
-                {users.map((user) => (
+                
+                {/* Filter by role */}
+                <SelectItem value="role_admin">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-purple-500" />
+                    <span>Todos Administradores</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="role_bdc_manager">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-green-500" />
+                    <span>Todos BDC Managers</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="role_telemarketer">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-orange-500" />
+                    <span>Todos Telemarketers</span>
+                  </div>
+                </SelectItem>
+                
+                {/* Separator */}
+                <div className="h-px bg-slate-200 my-1"></div>
+                
+                {/* Individual users grouped by role */}
+                {users.filter(u => u.role === 'admin').length > 0 && (
+                  <div className="px-2 py-1 text-xs font-semibold text-slate-500 bg-slate-50">Administradores</div>
+                )}
+                {users.filter(u => u.role === 'admin').map((user) => (
                   <SelectItem key={user.id} value={user.id}>
                     <div className="flex items-center gap-2">
-                      <User className="w-4 h-4" />
+                      <User className="w-4 h-4 text-purple-500" />
+                      <span>{user.name || user.email}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+                
+                {users.filter(u => u.role === 'bdc_manager').length > 0 && (
+                  <div className="px-2 py-1 text-xs font-semibold text-slate-500 bg-slate-50">BDC Managers</div>
+                )}
+                {users.filter(u => u.role === 'bdc_manager').map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-green-500" />
+                      <span>{user.name || user.email}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+                
+                {users.filter(u => u.role === 'telemarketer').length > 0 && (
+                  <div className="px-2 py-1 text-xs font-semibold text-slate-500 bg-slate-50">Telemarketers</div>
+                )}
+                {users.filter(u => u.role === 'telemarketer').map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-orange-500" />
                       <span>{user.name || user.email}</span>
                     </div>
                   </SelectItem>
