@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { 
   Users, Calendar, DollarSign, FileCheck, TrendingUp, 
-  UserPlus, CarFront, Clock, Activity, Target, Users2, Filter, CheckCircle
+  UserPlus, CarFront, Clock, Activity, Target, Users2, Filter, CheckCircle, User
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, 
@@ -25,6 +25,21 @@ export default function DashboardPage() {
   const [period, setPeriod] = useState('all');
   const [selectedMonth, setSelectedMonth] = useState('');
   const [availableMonths, setAvailableMonths] = useState([]);
+  const [selectedUser, setSelectedUser] = useState('all'); // New: filter by user
+  const [users, setUsers] = useState([]); // New: list of users
+
+  // Fetch users for filter (Admin only)
+  useEffect(() => {
+    if (isAdmin) {
+      axios.get(`${API}/users`).then(res => {
+        // Filter to only show telemarketers and bdc managers
+        const filteredUsers = res.data.filter(u => 
+          u.role === 'telemarketer' || u.role === 'bdc_manager' || u.role === 'salesperson'
+        );
+        setUsers(filteredUsers);
+      }).catch(err => console.error('Failed to fetch users:', err));
+    }
+  }, [isAdmin]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -34,6 +49,11 @@ export default function DashboardPage() {
         params.append('month', selectedMonth);
       } else {
         params.append('period', period);
+      }
+      
+      // Add user filter for admin
+      if (isAdmin && selectedUser && selectedUser !== 'all') {
+        params.append('user_id', selectedUser);
       }
       
       const [statsRes, perfRes] = await Promise.all([
