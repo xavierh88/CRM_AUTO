@@ -7,7 +7,7 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 
 ### Authentication & Access Control
 - ✅ JWT-based authentication
-- ✅ Roles: Admin y Vendedor (Salesperson)
+- ✅ Roles: Admin, BDC Manager, Telemarketer
 - ✅ Admin approval for new accounts
 - ✅ Admin-only features properly restricted
 
@@ -17,13 +17,19 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - ✅ Progress bar with instant updates
 - ✅ Sold status indicators (star/car icons)
 - ✅ Date of Birth field
-- ✅ Time at Address (years/months) - FIXED mapping from Pre-Qualify
+- ✅ Time at Address (years/months)
 - ✅ Housing Type (Dueño/Renta/Vivo con familiares)
 - ✅ Rent Amount (conditional)
-- ✅ UI modals fixed - no more overlay issues
 - ✅ **ID Type field** (Licencia de Conducir, Pasaporte, etc.) - Admin only
 - ✅ **ID Number field** - Admin only
 - ✅ **SSN/ITIN fields** - Admin only
+
+### Document Management
+- ✅ Multi-document upload support (multiple files per type)
+- ✅ Document types: ID, Income Proof, Residence Proof
+- ✅ Combined PDF download for all documents of a type
+- ✅ Individual document download/delete
+- ✅ Pre-Qualify to Client document transfer
 
 ### User Records (Oportunidades)
 - ✅ Nested sales opportunities per client
@@ -31,35 +37,48 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - ✅ Employment section with time at employment (years/months)
 - ✅ Income Frequency and Net Income Amount
 - ✅ Commission fields (Admin-only)
-- ✅ **ID Type field now properly mapped from Pre-Qualify**
+- ✅ Record completion status tracking
 
 ### Pre-Qualify Module
 - ✅ Public form for lead capture
 - ✅ Admin-only review page (/prequalify)
 - ✅ Multiple file upload support (combines into single PDF)
 - ✅ Automatic document transfer when converting to client
-- ✅ **Time fields separated (years/months) - FIXED**
-- ✅ **Notes include formatted time strings (e.g., "2 años, 6 meses")**
 - ✅ Email notifications to ALL admins on new submission
 - ✅ **In-app notifications for new submissions (Admin only)**
-- ✅ **ID Type mapping from website to CRM** (DL→Licencia, Passport→Pasaporte, etc.)
+- ✅ **ID Type mapping from website to CRM**
+
+### Dashboard
+- ✅ Role-based statistics (Admin sees all, BDC Manager excludes admin data, Telemarketer sees own)
+- ✅ Date period filters (All time, Last 6 months, This month, Specific month)
+- ✅ **User filter for Admin** - Can view stats for specific users
+- ✅ Sales performance chart by salesperson
+- ✅ Appointment status breakdown
+- ✅ Finance type breakdown (Financiado/Lease)
+- ✅ Monthly sales trend chart
+
+### Notifications System
+- ✅ In-app notifications for admins
+- ✅ New Pre-Qualify submissions trigger notifications
+- ✅ Note reminder notifications (immediate for <24h, scheduled for >24h)
+- ✅ Appointment reminder notifications (1 day before)
+- ✅ Click notification to navigate to relevant page
+
+### Agenda/Calendar
+- ✅ Appointment scheduling
+- ✅ Reminders integrated with agenda view
+- ✅ Clickable client names in reminders
 
 ### Backup & Restore (Admin Only)
 - ✅ Download complete database backup as JSON
 - ✅ Restore database from backup file
 - ✅ Delete all data option (with confirmation)
-- ✅ Reset ID Type options
+- ✅ Merge Mode for restore (updates existing + adds new)
 
 ### Communications
 - ✅ Twilio SMS integration (pending A2P approval)
 - ✅ Two-way SMS inbox
 - ✅ SMTP Email notifications (Gmail)
-
-### Notifications System
-- ✅ In-app notifications for admins
-- ✅ New Pre-Qualify submissions trigger notifications
-- ✅ Click notification to navigate to Pre-Qualify page
-- ✅ Mark all as read functionality
 
 ## Technical Stack
 - **Backend:** FastAPI + MongoDB (motor) + Pydantic
@@ -75,324 +94,105 @@ CRM completo para concesionarios de autos en español con gestión de clientes, 
 - ✅ Nginx reverse proxy
 - ✅ systemd service management
 
-## Session Work Completed (January 14, 2025)
-
-### Admin Email Updated
-- ✅ Main admin email changed to: `xavier.hernandez.1988@gmail.com`
-- ✅ Password remains: `Cali2020`
-- ✅ Added endpoint `PUT /api/users/{user_id}/email` for admin to update user emails
-
-### Backup System Enhanced
-- ✅ Backup includes 19 collections with all data
-- ✅ Dealers include addresses in backup
-- ✅ Added **Merge Mode** for restore:
-  - **Combinar (Merge)**: Updates existing records and adds new ones without deleting current data
-  - **Reemplazar (Replace)**: Deletes all data and replaces with backup (old behavior)
-- ✅ UI updated with radio buttons to select restore mode
-
-### Default Config Data Updated
-- ✅ Default dealers now include addresses:
-  - Downey: 7444 Florence Ave, Downey, CA 90240
-  - Fullerton: 1100 S Harbor Blvd, Fullerton, CA 92832
-  - Hollywood: 6200 Hollywood Blvd, Los Angeles, CA 90028
-  - Long Beach: 1500 E Anaheim St, Long Beach, CA 90813
-
-### New Role System Implemented
-- ✅ Renamed "Salesperson" role to "Telemarketer"
-- ✅ Created new "BDC Manager" role with permissions:
-  - Can view all clients (like Admin)
-  - Can access "Vendedores" (performance metrics) page
-  - Can view and manage "Solicitudes" (client transfer requests)
-  - Can create and edit clients of any Telemarketer
-  - Cannot access Admin configuration (Banks, Dealers, etc.)
-  - Cannot create/delete users
-
-### New "Sold" Page Created
-- ✅ New menu item "Sold" showing clients with completed sales
-- ✅ Telemarketer: Only sees their own sold clients
-- ✅ BDC Manager / Admin: Sees all sold clients with filter by Telemarketer
-- ✅ Clients automatically move to "Sold" when record_status = "completed"
-- ✅ Main Clients page now excludes sold clients (exclude_sold parameter)
-
-### Menu Reorganization
-- ✅ Added "Sold" item after "Clients"
-- ✅ Moved "Import" below "Pre-Qualify"
-- ✅ "Solicitudes" now only visible to Admin and BDC Manager
-- ✅ "Vendedores" visible to Admin and BDC Manager
-
-### Appointment Location Fix
-- ✅ Public appointment page now shows full dealer address instead of just name
-- ✅ Backend endpoint `/api/public/appointment/{token}` returns `dealer_address` field
-
-### Logo Updated Across CRM
-- ✅ Updated logo from: `/logo.png` to: `https://carplusautosalesgroup.com/img/carplus.png`
-- ✅ Logo updated in:
-  - Login page (`/app/frontend/src/pages/LoginPage.jsx`)
-  - Sidebar (`/app/frontend/src/components/Layout.jsx`)
-  - Public appointment page (`/app/frontend/src/pages/PublicAppointmentPage.jsx`)
-  - Public documents page (`/app/frontend/src/pages/PublicDocumentsPage.jsx`)
-  - Pre-qualify form (`/app/frontend/public/prequalify-FINAL.html`)
-  - All email templates in backend (appointment, documents, collaboration, pre-qualify notifications)
-- ✅ Company branding constants added to backend:
-  - `COMPANY_LOGO_URL = "https://carplusautosalesgroup.com/img/carplus.png"`
-  - `COMPANY_NAME = "CARPLUS AUTOSALE"`
-  - `COMPANY_TAGLINE = "Friendly Brokerage"`
-
-### Appointment System Issues - VERIFIED & FIXED
-- ✅ Appointment form works correctly for vendedor (salesperson) role - NOT blank
-- ✅ Dealer dropdown shows all options (verified with 5 dealers)
-- ✅ Admin notifications are created when appointments are created
-- ✅ `send_appointment_email` endpoint now uses dealer full address (from config_lists)
-- ✅ `send_appointment_sms` endpoint already using dealer full address (confirmed)
-
-### Dealer Addresses Configured
-- ✅ Downey: 7444 Florence Ave, Downey, CA 90240
-- ✅ Fullerton: 1100 S Harbor Blvd, Fullerton, CA 92832
-- ✅ Hollywood: 6200 Hollywood Blvd, Los Angeles, CA 90028
-- ✅ Long Beach: 1500 E Anaheim St, Long Beach, CA 90813
-
-### Backup System - EXPANDED
-- ✅ Backup now includes ALL 19 collections (previously only 8):
-  - users, clients, user_records, cosigner_records, cosigner_relations
-  - appointments, prequalify_submissions, config_lists, record_comments
-  - client_comments, client_requests, notifications, sms_logs, email_logs
-  - sms_templates, sms_conversations, imported_contacts, public_links, collaboration_requests
-- ✅ Restore function updated to support all collections
-- ✅ Delete-all-data function updated to clear all collections
-
-### Pre-Qualify to Client Conversion - VERIFIED
-- ✅ Admin can convert pre-qualify submission to client
-- ✅ Client is assigned to the admin who converts it (`salesperson_id = admin_id`)
-- ✅ Record is created with employment data from pre-qualify
-- ✅ Notes are created with `admin_only=True` flag (only admins can see pre-qualify data)
-- ✅ Submission status changes to `converted` with `matched_client_id`
-
-### New Test Suites Created
-- ✅ `/app/tests/test_appointments_and_config.py` - 14 tests for appointments and config lists
-- ✅ `/app/tests/test_backup_and_prequalify_conversion.py` - 14 tests for backup and pre-qualify conversion
-
-### Test Credentials Created
-- ✅ Vendedor test account: `test_vendedor@test.com` / `test123`
-- ✅ Test client: Juan Perez (+15551234567) with record
-
 ---
 
-## Session Work Completed (January 11, 2025)
+## Session Work Completed (January 27, 2026)
 
-### Pre-Qualify to Client Data Mapping - FIXED
-- ✅ Backend endpoint `/prequalify/submit-with-file` now accepts separated time fields
-- ✅ Create client endpoint maps these fields correctly to client and record
-- ✅ Notes contain formatted time strings
+### Dashboard User Filter - IMPLEMENTED ✅
+- Added `user_id` parameter to `GET /api/dashboard/stats` endpoint
+- Admin can now filter dashboard statistics by specific user
+- Dropdown in frontend shows list of telemarketers and BDC managers
+- All stats (clients, sales, appointments, etc.) filter based on selected user
 
-### UI Modal Layout Issues - FIXED
-- ✅ "Add Client" modal uses responsive grid
-- ✅ "Client Info" modal fixed with proper spacing
-- ✅ No more element overlap issues
-
-### Backend Refactoring - IN PROGRESS
-- ✅ Created `/app/backend/config.py` - Configuration and DB connection
-- ✅ Created `/app/backend/auth.py` - Authentication utilities
-- ✅ Created `/app/backend/models/` - Pydantic models separated by entity:
-  - `user.py`, `client.py`, `record.py`, `appointment.py`, `cosigner.py`, `config_list.py`, `prequalify.py`
-- ✅ Created `/app/backend/services/` - Reusable services:
-  - `email.py`, `sms.py`, `pdf.py`
-- Note: `server.py` still contains all routes (4900+ lines) - can be gradually migrated
-
-### Frontend Refactoring - DOCUMENTED
-- ✅ Created `/app/frontend/src/components/clients/` folder structure
-- Note: `ClientsPage.jsx` (4097 lines) contains internal components that can be extracted gradually
-
-### Website Package - COMPLETED
-- ✅ Created `/app/carplus-website-con-prequalify.zip` containing:
-  - Original website files (without Emergent branding)
-  - `prequalify.html` - Updated form with separated time fields
-  - `README.md` - Installation instructions in Spanish
-
-## File Locations
-
-### Backend Refactored Structure
-```
-/app/backend/
-├── server.py           # Main entry point (routes still here)
-├── config.py           # NEW: Configuration & DB
-├── auth.py             # NEW: Auth utilities
-├── models/
-│   ├── __init__.py     # Exports all models
-│   ├── user.py
-│   ├── client.py
-│   ├── record.py
-│   ├── appointment.py
-│   ├── cosigner.py
-│   ├── config_list.py
-│   └── prequalify.py
-└── services/
-    ├── __init__.py
-    ├── email.py
-    ├── sms.py
-    └── pdf.py
-```
-
-### Downloadable Packages
-- `/app/carplus-website-con-prequalify.zip` - Website with pre-qualify form
-- `/app/carplus-prequalify-form-updated.zip` - Standalone pre-qualify form
-
----
-
-## Session Work Completed (January 23, 2026)
-
-### Record Comments Reminders - IMPLEMENTED ✅
-- **Feature:** Added reminder functionality to Record Comments (same as Client Notes)
-- **Backend Changes (`/app/backend/server.py`):**
-  - Modified `POST /api/user-records/{record_id}/comments` to accept `reminder_at` parameter
-  - If reminder < 24 hours: notification created immediately
-  - If reminder > 24 hours: notification will be sent 1 day before via scheduler
-  - Scheduler job now checks both `client_comments` and `record_comments` collections
-- **Frontend Changes (`/app/frontend/src/pages/ClientsPage.jsx`):**
-  - Added `commentReminderAt` state for record comments
-  - Added datetime-local input with Bell icon for setting reminders
-  - Displays reminder status on existing comments (🔔 Recordatorio or ✓ Notificado)
-  - Toast messages inform user about notification timing
-
-### Notifications Bug Fix - FIXED ✅
-- **Issue:** Clicking on notifications led to a blank/white page
-- **Root Cause:** Notification links used `/clientes` instead of `/clients`
-- **Fix:** 
-  - Updated all notification links to use correct route `/clients`
-  - Added `title` field to notifications for better display
-  - Added `client_id` to notifications for better tracking
-  - Notification now includes client phone in search parameter for auto-search
-
-### Note Reminders Enhancement - IMPLEMENTED ✅
-- **Feature:** Smarter reminder notification timing
-- **Logic:**
-  - If reminder is **more than 24 hours away**: Notification sent 1 day before (via scheduler)
-  - If reminder is **less than 24 hours away**: Notification created **immediately** when note is saved
-- **Backend Changes:**
-  - Modified `POST /api/clients/{client_id}/comments` to check reminder time and create immediate notification
-  - Modified `check_comment_reminders_job` scheduler to check for reminders due within 24 hours
-  - Response now includes `notification_created: true/false` to indicate if immediate notification was sent
-- **Frontend Changes:**
-  - Updated toast messages to inform user about notification timing
-  - Reduced notification polling from 30s to 15s for more responsive updates
-
-### Dashboard Role-Based Filtering - IMPLEMENTED ✅
-- **Issue:** Telemarketer and BDC Manager dashboard showed all data including Admin data
-- **Requirement:** Dashboard should filter data based on user role:
-  - **Telemarketer:** Only sees their own data (clients, records, appointments, sales created by them)
-  - **BDC Manager:** Sees all Telemarketer data but NOT Admin data
-  - **Admin:** Sees all data from all users
-  
-- **Backend Changes (`/app/backend/server.py`):**
-  - Modified `GET /api/dashboard/stats` endpoint (line 2176):
-    - Added `admin_ids` exclusion logic
-    - Created `clients_owner_filter` based on role
-    - Filters: total_clients, new_clients_month, docs_complete, docs_pending, sales_count, sales_month, sold_clients, active_clients
-  - Modified `GET /api/dashboard/salesperson-performance` endpoint (line 2404):
-    - Added `match_filter` to exclude admin salesperson_id for BDC Manager
-    - Admin sees all 6 salespersons, BDC Manager sees 5 (excludes admin)
-
-- **Frontend Changes:**
-  - Modified `/app/frontend/src/context/AuthContext.js`:
-    - Added `isBDCManager` computed property: `user?.role === 'bdc_manager' || user?.role === 'bdc'`
-  - Modified `/app/frontend/src/pages/DashboardPage.jsx`:
-    - Added `canViewPerformance = isAdmin || isBDCManager`
-    - Performance chart now visible to both Admin and BDC Manager
-    - Status legend only shown to Telemarketers
-
-### Performance Chart Date Filter - IMPLEMENTED ✅
-- **Feature:** Added date filter to the "Salesperson Performance por Vendedor" chart
-- **Options:**
-  - "Todo el Tiempo" (all) - Shows all historical data
-  - "Últimos 6 Meses" (6months) - Shows data from last 180 days
-  - "Este Mes" (month) - Shows only current month data
-  - Specific month (YYYY-MM) - Shows data for a specific month
-- **Backend:** Modified `GET /api/dashboard/salesperson-performance` to accept `period` and `month` parameters
-- **Frontend:** Performance chart now uses same date filter as other dashboard stats
-- **UI:** Chart title shows selected period in blue text, e.g., "(Este Mes)"
-
-### Minor Bug Fix - FIXED ✅
-- **Issue:** `create_client` endpoint threw `AttributeError` when owner user not found in DB
-- **Fix:** Added null check for owner before accessing `.get('name')`
+### Pre-Qualify Document Transfer - ENHANCED ✅
+- Updated `/api/prequalify/submissions/{id}/create-client` endpoint
+- Now creates documents in new multi-document system (`id_documents` array)
+- Maintains backwards compatibility with legacy `id_file_url` field
+- Documents stored in client-specific folder: `/uploads/clients/{client_id}/`
 
 ### Test Results
-- Created `/app/backend/tests/test_dashboard_role_filtering.py` - 12 tests
-- 100% pass rate (12/12 tests passed)
-- Verified: Admin sees 53 clients/6 salespersons, BDC Manager sees 53 clients/5 salespersons (excludes admin)
+- Backend: 16/17 tests passed (94%)
+- Frontend: 100% tests passed
+- No white screen issue detected - proper error handling in place
 
 ---
 
-## Session Work Completed (January 19, 2026)
+## Pending Issues
 
-### Bug Fix: White Screen After Creating Appointment - FIXED ✅
-- **Issue:** Screen turned white after creating an appointment due to SMS/Email notification errors
-- **Root Cause:** The SMS endpoint returned HTTP 404 because Twilio A2P 10DLC campaign is pending approval, causing unhandled error
-- **Fix:** Modified `handleCreateAppointment` in `ClientsPage.jsx` to:
-  - Create appointment first (separate try-catch)
-  - Attempt to send notification in nested try-catch
-  - Show success message even if notification fails
-  - Show warning toast if notification couldn't be sent
+### P0 - Critical
+None currently identified
 
-### New Feature: Owner Filter for Clients Page - IMPLEMENTED ✅
-- **Purpose:** Allow Admin/BDC Manager to filter clients by ownership
-- **Options:**
-  - "Mis Clientes" (mine) - Only clients created by current user
-  - "De Otros" (others) - Clients created by other users
-  - "Todos" (all) - All clients
-- **Backend:** Added `owner_filter` parameter to `GET /api/clients` endpoint
-- **Frontend:** Added dropdown filter in `ClientsPage.jsx` (only visible for admin/bdc_manager)
-- **Note:** Telemarketers always see only their own clients (backend enforced)
+### P1 - High Priority  
+- [ ] Notification navigation for Telemarketers - May not correctly find clients from other users
+- [ ] Admin doesn't see all their own clients in "Mis Clientes" filter
 
-### New Feature: Note Reminders System - IMPLEMENTED ✅
-- **Purpose:** Allow users to set reminder dates on notes/comments for follow-up
-- **Backend Changes:**
-  - Modified `POST /api/clients/{client_id}/comments` to accept `reminder_at` (datetime)
-  - Added `reminder_sent` field to track notification status
-  - Created `check_comment_reminders_job` scheduler (runs every 5 minutes)
-  - Scheduler creates notifications for due reminders
-- **Frontend Changes:**
-  - Added datetime-local input in notes modal
-  - Shows reminder indicator (🔔) in notes list
-  - Shows "Recordatorio enviado" when reminder notification was sent
-- **Scheduler Status:** Running alongside existing marketing SMS job
+### P2 - Medium Priority
+- [ ] Twilio SMS - Pending A2P 10DLC campaign approval
 
-### UI Fix: Added Missing Notes Button - FIXED ✅
-- Testing agent discovered the notes button was defined but not rendered in client cards
-- Added amber MessageCircle button to client card actions
-
-### Test Suite Created
-- `/app/tests/test_crm_features_iteration10.py` - 13 tests for all new features
-- 100% pass rate on backend and frontend
-
----
-
-## Pending/Future Tasks
-
-### P1 - Verification Pending
-- [ ] Admin page data lists - User needs to confirm if Banks, Dealers, Cars load correctly
-- [ ] SMS functionality - Pending Twilio A2P 10DLC campaign approval
-
-### P2 - User Requested but Not Started
-- [ ] Delete old admin users from database (`admin_201930@dealer.com`, `xadmin`)
-
-### P3 - Technical Debt (Continue when needed)
-- [ ] Migrate routes from server.py to /routes/ modules
-- [ ] Extract components from ClientsPage.jsx to /components/clients/
+### P3 - Technical Debt
+- [ ] Refactor `ClientsPage.jsx` (~4500 lines) - Break into smaller components
+- [ ] Refactor `server.py` (~6800 lines) - Split into modular routers
+- [ ] Delete old admin users from database
 
 ### P4 - Enhancements
 - [ ] Co-signer comments/notes section
 - [ ] Dashboard export to Excel/PDF
 - [ ] Advanced analytics dashboard
 
+---
+
+## File Locations
+
+### Backend Structure
+```
+/app/backend/
+├── server.py           # Main entry point (routes still here)
+├── config.py           # Configuration & DB
+├── auth.py             # Auth utilities
+├── models/             # Pydantic models
+└── services/           # Email, SMS, PDF services
+```
+
+### Frontend Structure
+```
+/app/frontend/src/
+├── pages/              # Page components
+│   ├── ClientsPage.jsx # Main clients page (needs refactoring)
+│   ├── DashboardPage.jsx # Dashboard with filters
+│   └── ...
+├── components/
+│   └── ui/            # Shadcn UI components
+└── context/           # Auth context
+```
+
+---
+
+## API Endpoints (Key)
+
+### Dashboard
+- `GET /api/dashboard/stats` - Get dashboard statistics
+  - Params: `period`, `month`, `user_id` (Admin only)
+- `GET /api/dashboard/salesperson-performance` - Get salesperson performance data
+
+### Clients
+- `GET /api/clients` - List clients (with owner_filter, search, sort_by)
+- `POST /api/clients/{id}/documents/upload` - Upload documents
+- `GET /api/clients/{id}/documents/download/{doc_type}` - Download combined PDF
+
+### Pre-Qualify
+- `GET /api/prequalify/submissions` - List submissions
+- `POST /api/prequalify/submissions/{id}/create-client` - Convert to client
+
+---
+
 ## Credentials
 - **Admin:** xavier.hernandez.1988@gmail.com / Cali2020
 - **Live URL:** https://crm.carplusautosalesgroup.com
 
 ## Test Files
-- `/app/tests/test_prequalify_and_clients.py` - Pre-qualify and client tests
-- `/app/tests/test_appointments_and_config.py` - Appointments and config lists tests (14 tests)
-- `/app/tests/test_backup_and_prequalify_conversion.py` - Backup and pre-qualify conversion tests (14 tests)
-- `/app/tests/test_crm_features_iteration10.py` - Owner filter, note reminders, appointment fixes (13 tests)
-- `/app/backend/tests/test_dashboard_role_filtering.py` - Dashboard role-based filtering (12 tests)
+- `/app/backend/tests/test_dashboard_role_filtering.py`
+- `/app/backend/tests/test_dashboard_user_filter.py`
+- `/app/test_reports/iteration_12.json`
 
 ## Last Updated
-January 23, 2026 - Dashboard role-based filtering for Telemarketer, BDC Manager, and Admin
+January 27, 2026 - Dashboard user filter for Admin, PreQualify document transfer enhancement
