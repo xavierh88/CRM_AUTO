@@ -88,6 +88,8 @@ function App() {
           {/* Public routes for clients (no auth required) */}
           <Route path="/c/docs/:token" element={<PublicDocumentsPage />} />
           <Route path="/c/appointment/:token" element={<PublicAppointmentPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
           
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
