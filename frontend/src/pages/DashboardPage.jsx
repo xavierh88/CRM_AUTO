@@ -53,7 +53,13 @@ export default function DashboardPage() {
       
       // Add user filter for admin
       if (isAdmin && selectedUser && selectedUser !== 'all') {
-        params.append('user_id', selectedUser);
+        if (selectedUser.startsWith('role_')) {
+          // Filter by role
+          params.append('user_role', selectedUser.replace('role_', ''));
+        } else {
+          // Filter by specific user ID
+          params.append('user_id', selectedUser);
+        }
       }
       
       const [statsRes, perfRes] = await Promise.all([
