@@ -2594,7 +2594,8 @@ async def search_client_by_phone(phone: str, current_user: dict = Depends(get_cu
 async def get_dashboard_stats(
     current_user: dict = Depends(get_current_user),
     period: str = "all",  # "all", "6months", "month", or specific "YYYY-MM"
-    month: str = None  # Optional specific month in format "YYYY-MM"
+    month: str = None,  # Optional specific month in format "YYYY-MM"
+    user_id: str = None  # Optional user ID filter (Admin only)
 ):
     # Get list of admin user IDs (to exclude their data from non-admins)
     admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
@@ -2602,9 +2603,13 @@ async def get_dashboard_stats(
     
     # Base query for records/appointments - depends on role
     if current_user["role"] == "admin":
-        # Admin sees all data
-        base_query = {}
-        clients_owner_filter = {}
+        # Admin sees all data, but can filter by specific user
+        if user_id:
+            base_query = {"salesperson_id": user_id}
+            clients_owner_filter = {"created_by": user_id}
+        else:
+            base_query = {}
+            clients_owner_filter = {}
     elif current_user["role"] == "bdc_manager":
         # BDC Manager sees all data EXCEPT admin data
         base_query = {"salesperson_id": {"$nin": admin_ids}}
