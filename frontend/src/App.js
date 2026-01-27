@@ -21,6 +21,8 @@ import Layout from "./components/Layout";
 // Public Pages (for clients)
 import PublicDocumentsPage from "./pages/PublicDocumentsPage";
 import PublicAppointmentPage from "./pages/PublicAppointmentPage";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
