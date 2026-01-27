@@ -6566,23 +6566,42 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
     # Transfer ID document if exists
     id_file_url = None
     id_uploaded = False
+    id_documents = []  # New multi-document system
     prequalify_id_file = submission.get("id_file_url")
     
     if prequalify_id_file:
         try:
             # Copy file to client's document location
             upload_dir = Path(__file__).parent / "uploads"
+            
+            # Create client-specific upload directory
+            client_upload_dir = upload_dir / "clients" / client_id
+            client_upload_dir.mkdir(parents=True, exist_ok=True)
+            
             old_path = upload_dir / Path(prequalify_id_file).name
             logger.info(f"Looking for file at: {old_path}")
             if old_path.exists():
                 file_extension = old_path.suffix
-                new_filename = f"{client_id}_id{file_extension}"
-                new_path = upload_dir / new_filename
+                file_id = uuid.uuid4().hex[:8]
+                new_filename = f"id_{file_id}{file_extension}"
+                new_path = client_upload_dir / new_filename
                 
                 shutil.copy2(old_path, new_path)
                 
-                id_file_url = f"/uploads/{new_filename}"
+                id_file_url = f"/uploads/clients/{client_id}/{new_filename}"
                 id_uploaded = True
+                
+                # Add to new multi-document system
+                id_documents = [{
+                    "id": file_id,
+                    "filename": f"ID_from_prequalify{file_extension}",
+                    "path": str(new_path),
+                    "type": "application/pdf" if file_extension == '.pdf' else f"image/{file_extension[1:]}",
+                    "uploaded_at": datetime.now(timezone.utc).isoformat(),
+                    "uploaded_by": current_user["id"],
+                    "source": "prequalify"
+                }]
+                
                 logger.info(f"Transferred ID document from pre-qualify to client: {id_file_url}")
             else:
                 logger.warning(f"Pre-qualify ID file not found at: {old_path}")
