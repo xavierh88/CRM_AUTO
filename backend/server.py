@@ -2595,18 +2595,28 @@ async def get_dashboard_stats(
     current_user: dict = Depends(get_current_user),
     period: str = "all",  # "all", "6months", "month", or specific "YYYY-MM"
     month: str = None,  # Optional specific month in format "YYYY-MM"
-    user_id: str = None  # Optional user ID filter (Admin only)
+    user_id: str = None,  # Optional user ID filter (Admin only)
+    user_role: str = None  # Optional role filter (Admin only): "admin", "bdc_manager", "telemarketer"
 ):
     # Get list of admin user IDs (to exclude their data from non-admins)
     admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
     admin_ids = [u["id"] for u in admin_users]
     
+    # Get users by role if filtering by role
+    role_user_ids = None
+    if user_role and current_user["role"] == "admin":
+        role_users = await db.users.find({"role": user_role}, {"_id": 0, "id": 1}).to_list(100)
+        role_user_ids = [u["id"] for u in role_users]
+    
     # Base query for records/appointments - depends on role
     if current_user["role"] == "admin":
-        # Admin sees all data, but can filter by specific user
+        # Admin sees all data, but can filter by specific user or role
         if user_id:
             base_query = {"salesperson_id": user_id}
             clients_owner_filter = {"created_by": user_id}
+        elif role_user_ids is not None:
+            base_query = {"salesperson_id": {"$in": role_user_ids}}
+            clients_owner_filter = {"created_by": {"$in": role_user_ids}}
         else:
             base_query = {}
             clients_owner_filter = {}
