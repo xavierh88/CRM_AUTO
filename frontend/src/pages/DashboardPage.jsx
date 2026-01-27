@@ -190,6 +190,31 @@ export default function DashboardPage() {
               ))}
             </SelectContent>
           </Select>
+
+          {/* User Filter - Admin only */}
+          {isAdmin && users.length > 0 && (
+            <Select value={selectedUser} onValueChange={setSelectedUser}>
+              <SelectTrigger className="w-36 sm:w-44">
+                <SelectValue placeholder="Usuario" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    <span>Todos los Usuarios</span>
+                  </div>
+                </SelectItem>
+                {users.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      <span>{user.name || user.email}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
