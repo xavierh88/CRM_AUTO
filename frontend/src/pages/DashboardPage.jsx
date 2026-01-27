@@ -70,7 +70,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [period, selectedMonth, canViewPerformance]);
+  }, [period, selectedMonth, canViewPerformance, isAdmin, selectedUser]);
 
   useEffect(() => {
     fetchData();
