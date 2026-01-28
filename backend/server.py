@@ -915,13 +915,13 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
     admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
     admin_ids = [u["id"] for u in admin_users]
     
-    # SPECIAL CASE: If coming from notification with search, bypass ownership filters
-    # This allows users to see clients they have reminders for
-    if from_notification and search:
-        # No ownership filter - just search by phone/name
-        pass  # Don't add any created_by filter
+    # ADMIN: When searching, show ALL clients regardless of owner filter
+    # This ensures admins can always find any client
+    if current_user["role"] == "admin" and search:
+        # No ownership filter for admin searches - show all matching clients
+        pass
     elif current_user["role"] == "admin":
-        # Admin can see ALL clients or filter
+        # Admin without search - apply filters normally
         if salesperson_id:
             query["created_by"] = salesperson_id
         elif owner_filter:
@@ -930,6 +930,9 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
             elif owner_filter == 'others':
                 query["created_by"] = {"$ne": current_user["id"]}
             # 'all' means no filter, show everything
+    elif from_notification and search:
+        # SPECIAL CASE: If coming from notification with search, bypass ownership filters
+        pass  # Don't add any created_by filter
     elif current_user["role"] == "bdc_manager":
         # BDC Manager can see all clients EXCEPT those created by admins
         if salesperson_id:
