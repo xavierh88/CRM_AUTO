@@ -177,14 +177,18 @@ export default function ClientsPage() {
 
   const fetchClients = async (search = '', fromNotification = false) => {
     try {
-      const params = new URLSearchParams({ exclude_sold: 'true' });
+      const params = new URLSearchParams();
       if (search) params.append('search', search);
       
       // If coming from notification, use special flag to bypass ownership filters
+      // Also DON'T exclude sold clients when searching from notification/agenda
       if (fromNotification || isFromNotification) {
         params.append('from_notification', 'true');
         params.append('owner_filter', 'all');
+        // Don't exclude sold - we want to find sold clients too
       } else {
+        // Only exclude sold in normal browsing mode
+        params.append('exclude_sold', 'true');
         // Add owner filter - only applies for non-telemarketer users
         if ((isAdmin || isBdcManager) && ownerFilter && ownerFilter !== 'all') {
           if (ownerFilter.startsWith('user:')) {
