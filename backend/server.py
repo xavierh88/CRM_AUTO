@@ -915,6 +915,18 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
     admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
     admin_ids = [u["id"] for u in admin_users]
     
+    # Fix for potential ID mismatch - if salesperson_id doesn't find exact match, try similar IDs
+    actual_salesperson_id = salesperson_id
+    if salesperson_id:
+        # Check if this salesperson_id exists in users
+        user_exists = await db.users.find_one({"id": salesperson_id})
+        if not user_exists:
+            # Try to find a similar user ID (first 20 chars match)
+            similar_user = await db.users.find_one({"id": {"$regex": f"^{salesperson_id[:20]}"}})
+            if similar_user:
+                actual_salesperson_id = similar_user["id"]
+                logger.info(f"Fixed salesperson_id from {salesperson_id} to {actual_salesperson_id}")
+    
     # SPECIAL CASE: If coming from notification with search, bypass ownership filters
     # This allows users to see clients they have reminders for
     if from_notification and search:
@@ -922,8 +934,8 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
         pass  # Don't add any created_by filter
     elif current_user["role"] == "admin":
         # Admin can see ALL clients or filter
-        if salesperson_id:
-            query["created_by"] = salesperson_id
+        if actual_salesperson_id:
+            query["created_by"] = actual_salesperson_id
         elif owner_filter:
             if owner_filter == 'mine':
                 query["created_by"] = current_user["id"]
