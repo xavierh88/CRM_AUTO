@@ -1416,6 +1416,9 @@ async def download_client_document(
     elif file_url.startswith('/api/'):
         filename = file_url.split('/')[-1]
         file_path = UPLOAD_DIR / filename
+    elif file_url.startswith('/var/www/'):
+        # Handle absolute path from production
+        file_path = Path(file_url)
     else:
         file_path = Path(file_url)
     
