@@ -921,8 +921,8 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
         # Check if this salesperson_id exists in users
         user_exists = await db.users.find_one({"id": salesperson_id})
         if not user_exists:
-            # Try to find a similar user ID (first 20 chars match)
-            similar_user = await db.users.find_one({"id": {"$regex": f"^{salesperson_id[:20]}"}})
+            # Try to find a similar user ID (first 15 chars match - before potential typo)
+            similar_user = await db.users.find_one({"id": {"$regex": f"^{salesperson_id[:15]}"}})
             if similar_user:
                 actual_salesperson_id = similar_user["id"]
                 logger.info(f"Fixed salesperson_id from {salesperson_id} to {actual_salesperson_id}")
