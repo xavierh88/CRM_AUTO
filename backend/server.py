@@ -915,16 +915,16 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
     admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
     admin_ids = [u["id"] for u in admin_users]
     
-    # Fix for potential ID mismatch - if salesperson_id doesn't find exact match, try similar IDs
+    # Fix for potential ID mismatch - search by partial ID match
     actual_salesperson_id = salesperson_id
     if salesperson_id:
-        # Check if this salesperson_id exists in users
-        user_exists = await db.users.find_one({"id": salesperson_id})
-        if not user_exists:
-            # Try to find a similar user ID (first 15 chars match - before potential typo)
-            similar_user = await db.users.find_one({"id": {"$regex": f"^{salesperson_id[:15]}"}})
-            if similar_user:
-                actual_salesperson_id = similar_user["id"]
+        # Check if this exact salesperson_id has clients
+        client_with_id = await db.clients.find_one({"created_by": salesperson_id})
+        if not client_with_id:
+            # Try to find clients with similar created_by (first 15 chars match)
+            client_similar = await db.clients.find_one({"created_by": {"$regex": f"^{salesperson_id[:15]}"}})
+            if client_similar:
+                actual_salesperson_id = client_similar["created_by"]
                 logger.info(f"Fixed salesperson_id from {salesperson_id} to {actual_salesperson_id}")
     
     # SPECIAL CASE: If coming from notification with search, bypass ownership filters
