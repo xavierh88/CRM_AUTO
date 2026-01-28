@@ -180,29 +180,14 @@ export default function ClientsPage() {
       const params = new URLSearchParams();
       if (search) params.append('search', search);
       
-      // If searching, DON'T exclude sold clients - user wants to find all clients
-      // Only exclude sold when browsing without search
-      if (search || fromNotification || isFromNotification) {
-        // Don't exclude sold - we want to find sold clients too
-        if (fromNotification || isFromNotification) {
-          params.append('from_notification', 'true');
-          params.append('owner_filter', 'all');
-        } else {
-          // Normal search - keep owner filter but don't exclude sold
-          if ((isAdmin || isBdcManager) && ownerFilter && ownerFilter !== 'all') {
-            if (ownerFilter.startsWith('user:')) {
-              const userId = ownerFilter.replace('user:', '');
-              params.append('salesperson_id', userId);
-            } else {
-              params.append('owner_filter', ownerFilter);
-            }
-          } else if (ownerFilter) {
-            params.append('owner_filter', ownerFilter);
-          }
-        }
+      // NEVER exclude sold - show all clients with sold indicator (star/cart icon)
+      // The user wants to see sold clients in search results
+      
+      // If coming from notification, bypass ownership filters
+      if (fromNotification || isFromNotification) {
+        params.append('from_notification', 'true');
+        params.append('owner_filter', 'all');
       } else {
-        // Only exclude sold in normal browsing mode (no search)
-        params.append('exclude_sold', 'true');
         // Add owner filter - only applies for non-telemarketer users
         if ((isAdmin || isBdcManager) && ownerFilter && ownerFilter !== 'all') {
           if (ownerFilter.startsWith('user:')) {
