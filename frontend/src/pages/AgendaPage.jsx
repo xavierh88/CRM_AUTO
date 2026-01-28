@@ -368,7 +368,7 @@ function AppointmentSection({ title, appointments, getStatusBadge, updateStatus,
                   <div className="flex items-center gap-3 mb-2 flex-wrap">
                     <Bell className="w-4 h-4 text-purple-500" />
                     <Link 
-                      to={`/clients?search=${encodeURIComponent(appt.client?.phone || '')}`}
+                      to={`/clients?search=${encodeURIComponent(appt.client?.phone || '')}&from_agenda=true`}
                       className="font-semibold text-purple-600 hover:text-purple-800 underline"
                       onClick={(e) => e.stopPropagation()}
                       data-testid={`reminder-client-link-${appt.id}`}
@@ -434,7 +434,7 @@ function AppointmentSection({ title, appointments, getStatusBadge, updateStatus,
                   <div className="flex items-center gap-3 mb-2 flex-wrap">
                     <User className="w-4 h-4 text-slate-400" />
                     <Link 
-                      to={`/clients?search=${encodeURIComponent(appt.client?.phone || '')}`}
+                      to={`/clients?search=${encodeURIComponent(appt.client?.phone || '')}&from_agenda=true`}
                       className="font-semibold text-blue-600 hover:text-blue-800 underline"
                       onClick={(e) => e.stopPropagation()}
                       data-testid={`agenda-client-link-${appt.id}`}
