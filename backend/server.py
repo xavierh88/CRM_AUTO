@@ -906,6 +906,9 @@ import re as regex_module
 
 @api_router.get("/clients", response_model=List[dict])
 async def get_clients(include_deleted: bool = False, search: Optional[str] = None, salesperson_id: Optional[str] = None, exclude_sold: bool = False, owner_filter: Optional[str] = None, sort_by: Optional[str] = None, from_notification: bool = False, current_user: dict = Depends(get_current_user)):
+    # Debug log
+    logger.info(f"GET /clients - search={search}, salesperson_id={salesperson_id}, exclude_sold={exclude_sold}, owner_filter={owner_filter}")
+    
     query = {} if include_deleted and current_user["role"] == "admin" else {"is_deleted": {"$ne": True}}
     
     # Get list of admin user IDs (to exclude their clients from non-admins)
