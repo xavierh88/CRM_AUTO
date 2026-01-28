@@ -968,6 +968,9 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
             {"phone": search_regex}
         ]
     
+    # Debug: log final query
+    logger.info(f"GET /clients - FINAL QUERY: {query}")
+    
     # Determine sort field
     if sort_by == "activity":
         # Sort by last_contact (most recent activity first)
