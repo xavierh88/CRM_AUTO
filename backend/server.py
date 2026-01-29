@@ -928,13 +928,16 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
                 actual_salesperson_id = similar_user["id"]
                 logger.info(f"Fixed salesperson_id from {salesperson_id} to {actual_salesperson_id}")
     
-    # SPECIAL CASE: If coming from notification with search, bypass ownership filters
-    # This allows users to see clients they have reminders for
-    if from_notification and search:
-        # No ownership filter - just search by phone/name
-        pass  # Don't add any created_by filter
+    # SPECIAL CASE: Admin searching - show ALL matching clients regardless of owner
+    # This ensures admin can always find any client when searching
+    if current_user["role"] == "admin" and search:
+        # No ownership filter for admin searches
+        pass
+    elif from_notification and search:
+        # If coming from notification with search, bypass ownership filters
+        pass
     elif current_user["role"] == "admin":
-        # Admin can see ALL clients or filter
+        # Admin without search - apply filters normally
         if actual_salesperson_id:
             query["created_by"] = actual_salesperson_id
         elif owner_filter:
