@@ -918,15 +918,21 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
     # Fix for potential ID mismatch - verify against actual user IDs in database
     actual_salesperson_id = salesperson_id
     if salesperson_id:
+        logger.info(f"Checking salesperson_id: {salesperson_id}")
         # First check if user with this exact ID exists
         user_exact = await db.users.find_one({"id": salesperson_id})
+        logger.info(f"User exact match: {user_exact is not None}")
         if not user_exact:
             # User doesn't exist with exact ID - try to find similar user ID
             # This handles cases where frontend sends slightly wrong ID
             similar_user = await db.users.find_one({"id": {"$regex": f"^{salesperson_id[:15]}"}})
+            logger.info(f"Similar user search pattern: ^{salesperson_id[:15]}")
+            logger.info(f"Similar user found: {similar_user.get('name') if similar_user else 'None'}")
             if similar_user:
                 actual_salesperson_id = similar_user["id"]
                 logger.info(f"Fixed salesperson_id from {salesperson_id} to {actual_salesperson_id}")
+        else:
+            logger.info(f"User found: {user_exact.get('name')}")
     
     # SPECIAL CASE: If coming from notification with search, bypass ownership filters
     if from_notification and search:
@@ -939,6 +945,7 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
                 {"created_by": actual_salesperson_id},
                 {"created_by": {"$regex": f"^{actual_salesperson_id[:20]}"}}
             ]
+            logger.info(f"Query with salesperson filter: created_by={actual_salesperson_id} or regex ^{actual_salesperson_id[:20]}")
         elif owner_filter:
             if owner_filter == 'mine':
                 query["created_by"] = current_user["id"]
