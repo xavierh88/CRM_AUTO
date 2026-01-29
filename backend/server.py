@@ -915,37 +915,29 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
     admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
     admin_ids = [u["id"] for u in admin_users]
     
-    # Fix for potential ID mismatch - verify against actual user IDs in database
+    # Get the correct salesperson ID from database
     actual_salesperson_id = salesperson_id
     if salesperson_id:
-        logger.info(f"Checking salesperson_id: {salesperson_id}")
-        # First check if user with this exact ID exists
+        # Check if user with this exact ID exists
         user_exact = await db.users.find_one({"id": salesperson_id})
-        logger.info(f"User exact match: {user_exact is not None}")
-        if not user_exact:
-            # User doesn't exist with exact ID - try to find similar user ID
-            # This handles cases where frontend sends slightly wrong ID
+        if user_exact:
+            actual_salesperson_id = user_exact["id"]
+            logger.info(f"User found: {user_exact.get('name')} with ID: {actual_salesperson_id}")
+        else:
+            # User doesn't exist - try partial match
             similar_user = await db.users.find_one({"id": {"$regex": f"^{salesperson_id[:15]}"}})
-            logger.info(f"Similar user search pattern: ^{salesperson_id[:15]}")
-            logger.info(f"Similar user found: {similar_user.get('name') if similar_user else 'None'}")
             if similar_user:
                 actual_salesperson_id = similar_user["id"]
-                logger.info(f"Fixed salesperson_id from {salesperson_id} to {actual_salesperson_id}")
-        else:
-            logger.info(f"User found: {user_exact.get('name')}")
+                logger.info(f"Fixed salesperson_id to: {actual_salesperson_id}")
     
-    # SPECIAL CASE: If coming from notification with search, bypass ownership filters
+    # Apply ownership filters
     if from_notification and search:
-        pass
+        pass  # No filter for notifications
     elif current_user["role"] == "admin":
-        # Admin can see ALL clients or filter
         if actual_salesperson_id:
-            # Use regex to match similar created_by IDs (handles encoding issues)
-            query["$or"] = [
-                {"created_by": actual_salesperson_id},
-                {"created_by": {"$regex": f"^{actual_salesperson_id[:20]}"}}
-            ]
-            logger.info(f"Query with salesperson filter: created_by={actual_salesperson_id} or regex ^{actual_salesperson_id[:20]}")
+            # EXACT match only - no regex
+            query["created_by"] = actual_salesperson_id
+            logger.info(f"Filtering by created_by: {actual_salesperson_id}")
         elif owner_filter:
             if owner_filter == 'mine':
                 query["created_by"] = current_user["id"]
