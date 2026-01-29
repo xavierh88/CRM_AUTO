@@ -921,31 +921,29 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
         # First check if user with this exact ID exists
         user_exact = await db.users.find_one({"id": salesperson_id})
         if not user_exact:
-            # User doesn't exist - try to find similar user ID
-            # This handles cases where frontend sends slightly wrong ID (e.g., cc5 vs ce5)
+            # User doesn't exist with exact ID - try to find similar user ID
+            # This handles cases where frontend sends slightly wrong ID
             similar_user = await db.users.find_one({"id": {"$regex": f"^{salesperson_id[:15]}"}})
             if similar_user:
                 actual_salesperson_id = similar_user["id"]
                 logger.info(f"Fixed salesperson_id from {salesperson_id} to {actual_salesperson_id}")
     
-    # SPECIAL CASE: Admin searching - show ALL matching clients regardless of owner
-    # This ensures admin can always find any client when searching
-    if current_user["role"] == "admin" and search:
-        # No ownership filter for admin searches
-        pass
-    elif from_notification and search:
-        # If coming from notification with search, bypass ownership filters
+    # SPECIAL CASE: If coming from notification with search, bypass ownership filters
+    if from_notification and search:
         pass
     elif current_user["role"] == "admin":
-        # Admin without search - apply filters normally
+        # Admin can see ALL clients or filter
         if actual_salesperson_id:
-            query["created_by"] = actual_salesperson_id
+            # Use regex to match similar created_by IDs (handles encoding issues)
+            query["$or"] = [
+                {"created_by": actual_salesperson_id},
+                {"created_by": {"$regex": f"^{actual_salesperson_id[:20]}"}}
+            ]
         elif owner_filter:
             if owner_filter == 'mine':
                 query["created_by"] = current_user["id"]
             elif owner_filter == 'others':
                 query["created_by"] = {"$ne": current_user["id"]}
-            # 'all' means no filter, show everything
     elif current_user["role"] == "bdc_manager":
         # BDC Manager can see all clients EXCEPT those created by admins
         if salesperson_id:
