@@ -3,65 +3,96 @@
 **PRODUCT REQUIREMENTS:**
 - **Roles:** Admin, Telemarketer, and BDC Manager.
 - **Role Permissions:**
-    - **Telemarketer:** Can only see their own clients.
+    - **Telemarketer:** Can only see their own clients, unless accessing a specific client via a notification link.
     - **BDC Manager:** Can see all Telemarketer data, access performance pages, and manage client transfers. Cannot see clients belonging to Admins.
-    - **Admin:** Full access, can see all data from all users.
+    - **Admin:** Full access, can see all data from all users. Can filter dashboard stats by a specific user.
 - **Client & Record Management:**
     - **Sold Clients:** Move clients marked as 'completed' to a new Sold page.
     - **Client Filtering:** Filter clients by owner: Mine, Others, a specific user, or All.
-    - **Note Reminders:** Add an option to set a date/time reminder on a note, which should trigger a notification.
-    - **Client Sorting:** Order the client list by recent activity.
-    - **Agenda Linking:** Clicking a client's name in the Agenda should navigate to that client's details in the main client list.
+    - **Note Reminders:** Add an option to set a date/time reminder on a client's note, which should trigger a notification and appear in the Agenda.
+    - **Document Management:** Allow uploading multiple documents per category for each client. Allow downloading a combined PDF of all documents for a category.
 - **Bug Fixes:**
-    - Fix the white screen that appears after creating or updating an appointment.
-    - Fix the dashboard sales count, which was not matching the Sold page.
-    - Fix notification clicks leading to a white screen.
-- **Admin & Backend:**
-    - Provide extensive support for production deployment issues on Hostinger VPS.
-    - Guide the user through the Twilio A2P 10DLC registration process.
+    - Fix notifications leading to a blank page.
+    - Fix clients appearing in the Sold section incorrectly.
+    - Fix documents uploaded via the public pre-qualification form not appearing in the CRM.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The application is a full-stack CRM with a FastAPI backend, React frontend, and MongoDB database. A significant number of features and bug fixes were implemented in this session. The agent fixed critical bugs related to white screens on appointment creation/update and notification clicks. Key features were added, including a granular client filter by owner (with role-based permissions), a note reminder system with background notifications, and client list sorting. The agent resolved a mismatch in the sold client count between the dashboard and the dedicated Sold page. The Agenda page was updated so admins can see all appointments, and client names are now clickable, linking directly to their details. The agent also provided extensive hands-on support for the user's production environment, guiding them through creating systemd services, debugging port in use errors, and deploying new code.
+The application is a full-stack CRM with a FastAPI backend, React frontend, and MongoDB. In this session, the agent implemented role-based filtering for the dashboard, allowing Admins and BDC Managers to see relevant team data. A date filter was added to the salesperson performance chart. A major bug causing a blank screen when clicking notifications was resolved by allowing users to view clients outside their direct ownership when navigating from a notification link. A new feature to add reminders to client notes was implemented, which now also appear in the Agenda page alongside appointments. The system for uploading documents within the CRM was completely overhauled to support multiple files per category and download a combined PDF. The agent also provided extensive guidance on production deployment via SSH and Git.
 
 **Last working item**:
-    - Last item agent was working: The user reported that an admin user was not seeing all of their own created clients under the Mis Clientes filter. The agent suspected a data issue where the  ID on the client documents in production does not match the admin's current user ID. To confirm this, the agent created a diagnostic endpoint  and was guiding the user on how to run it on their production server.
-    - Status: BLOCKED
-    - Agent Testing Done: Y
+    - Last item agent was working: The user reported a bug where a client (Rene Ezquivel) continues to appear in the Sold section even after the completed status is removed from their record. The agent acknowledged the issue and was about to start investigating the backend logic.
+    - Status: NOT STARTED
+    - Agent Testing Done: N
     - Which testing method agent to use? backend testing agent
     - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-  - Issue 1: Admin doesn't see all their own clients in the Mis Clientes filter. (P0)
-  - Issue 2: Twilio SMS is not functional. (P1)
+  - Issue 1: A client remains in the Sold list even after their record status is changed from completed. (P0)
+  - Issue 2: Documents uploaded via the public pre-qualification form do not appear in the client's profile inside the CRM, or cannot be downloaded. (P1)
+  - Issue 3: The Admin dashboard filter by user is incomplete. (P2)
+  - Issue 4: Admin user doesn't see all their own clients under the Mis Clientes filter (production data issue). (P3)
+  - Issue 5: Twilio SMS functionality is not working. (P4)
   
   Issues Detail:
   - Issue 1: 
-     - Attempted fixes: The agent correctly implemented the filtering logic in the backend. To debug the production data issue, the agent created a diagnostic endpoint . The agent then fixed a syntax error they introduced that broke the login.
+     - Attempted fixes: None. The agent just received the bug report.
      - Next debug checklist: 
-        1. Guide the user to successfully run the  command to hit the  endpoint on their production server.
-        2. Analyze the output to confirm if the  IDs on the missing clients match the admin's current user ID.
-        3. If there is a mismatch, create a script or endpoint to update the  field on the affected client documents to the correct admin user ID.
+        1. Examine the endpoint that updates a user record's status. Verify that when a record is no longer completed, the  flag on the parent  document is correctly set to .
+        2. Review the  endpoint to ensure its query logic correctly filters for  and doesn't rely on other stale data.
+        3. Check for any background jobs or sync scripts () that might be incorrectly marking the client as sold.
+     - Why fix this issue and what will be achieved with the fix? This is a critical data integrity bug. Fixing it ensures the Sold list is accurate, which is core to the CRM's purpose.
+     - Status:  NOT STARTED
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? backend
+     - Blocked on other issue: None.
+  - Issue 2: 
+     - Attempted fixes: The agent started investigating but was redirected to other tasks. The agent reviewed the public upload endpoint () and the internal document handling code.
+     - Next debug checklist: 
+        1. Trace the flow from the public upload page. When documents are submitted, confirm they are correctly saved to the  collection with the right  and .
+        2. Verify the  component correctly fetches and displays documents from this new system when a user opens the .
+        3. Ensure the download button in the modal correctly calls the  endpoint.
+     - Why fix this issue and what will be achieved with the fix? This breaks the pre-qualification workflow, which is a key lead generation tool for the user.
+     - Status:  NOT STARTED
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? both
+     - Blocked on other issue: None.
+  - Issue 3: 
+     - Attempted fixes: The agent added a user selection dropdown to  and started modifying the  endpoint in  to accept a  parameter.
+     - Next debug checklist: 
+        1. Complete the backend logic in  to filter all stats calculations by the provided  if the current user is an admin.
+        2. Ensure the frontend  function in  correctly passes the selected user's ID to the backend.
+        3. Test the functionality by logging in as an admin and switching between General and a specific user to see if the stats update.
+     - Why fix this issue and what will be achieved with the fix? This feature allows admins to monitor individual salesperson performance from the main dashboard.
+     - Status:  IN PROGRESS
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? both
+     - Blocked on other issue: None.
+  - Issue 4: 
+     - Attempted fixes: The agent created a diagnostic endpoint  to investigate data inconsistencies in the production database.
+     - Next debug checklist: Guide the user to run the diagnostic  command on their production server and analyze the output to find the root cause (likely a user ID mismatch).
      - Why fix this issue and what will be achieved with the fix? This is a core functionality issue preventing admins from correctly viewing their own portfolio of clients.
      - Status:  BLOCKED
      - Is recurring issue? Y
      - Should Test frontend/backend/both after fix? backend
-     - Blocked on other issue: User needs to successfully execute diagnostic commands on their production server.
-  - Issue 2: 
-     - Attempted fixes: The agent guided the user through the Twilio A2P 10DLC registration process and identified that the campaign status is still In progress. The agent also identified a potential mismatch between the  in the  file and the one on the Twilio console.
-     - Next debug checklist: 
-        1. Wait for the user to confirm the A2P campaign has been approved by Twilio.
-        2. Ask the user for the correct and complete  from the Twilio console.
-        3. Update the  in the  file on the production server.
-     - Why fix this issue and what will be achieved with the fix? This will enable all SMS functionalities, including appointment reminders and marketing messages.
+     - Blocked on other issue: User action required to run diagnostic commands in their production environment.
+  - Issue 5: 
+     - Attempted fixes: Agent guided the user through the A2P 10DLC registration.
+     - Next debug checklist: Wait for user confirmation that the Twilio campaign has been approved and obtain the correct .
+     - Why fix this issue and what will be achieved with the fix? This will enable all SMS functionalities, a critical communication channel for the CRM.
      - Status:  BLOCKED
      - Is recurring issue? Y
      - Should Test frontend/backend/both after fix? backend
-     - Blocked on other issue: Twilio's campaign approval process and user providing the correct SID.
+     - Blocked on other issue: External dependency (Twilio approval).
 
 **In progress Task List**:
-  - None.
+  - Task 1:  Implement user filter on Admin dashboard.
+     - Where to resume: , inside the  function. The agent needs to add the logic to filter the MongoDB aggregation pipelines by .
+     - What will be achieved with this? Admins will be able to view performance statistics for the whole team or for individual salespeople.
+     - Status:  IN PROGRESS
+     - Should Test frontend/backend/both after fix? both
+     - Blocked on something: Blocked by higher priority bug fixes (Issue 1 and 2).
 
 **Upcoming and Future Tasks**
 Upcoming Tasks:
@@ -74,107 +105,114 @@ Future Tasks:
 - Implement a full dashboard with report exporting to Excel/PDF.
 
 **Completed work in this session**
-- **Bug Fixes:**
-    - Fixed the white screen on appointment creation by handling SMS/email errors gracefully.
-    - Fixed the white screen on appointment updates by creating a dedicated  Pydantic model.
-    - Fixed dashboard sales count (, , ) to be consistent with the Sold page logic.
-    - Fixed notification clicks leading to a white screen by ensuring a valid  is always present and standardizing the  field.
-- **Feature Implementation:**
-    - **Client Filtering:** Implemented a robust owner filter in  allowing filtering by Mine, Others, All, and specific users, with permissions correctly handled for Admin, BDC Manager, and Telemarketer roles in .
-    - **Note Reminders:** Added UI for setting reminders and created a background scheduler job () to send notifications.
-    - **Agenda Enhancements:**
-        - Modified the  endpoint to allow Admins to see all appointments.
-        - Made client names in the Agenda page clickable, navigating the user to the  and automatically searching for the client by phone number.
-    - **Client Sorting:** Added a dropdown to sort the client list by  date.
-- **Database and Production:**
-    - Created an endpoint () to synchronize historical data for sold clients.
-    - Cleaned up old/test admin users from the database.
-    - Provided extensive production support, including creating a  service () for the backend and debugging deployment issues (e.g., port in use).
+- **Dashboard Enhancements:**
+  - Implemented role-based filtering for dashboard statistics () for Admin, BDC Manager, and Telemarketer roles.
+  - Added a date filter (All Time, This Month, etc.) to the Salesperson Performance chart.
+- **Notification & Navigation Bug Fix:**
+  - Fixed a critical bug where clicking a notification led to a blank page. The fix involves passing a  parameter in the URL and updating backend logic to allow users to view specific clients outside their normal permissions.
+- **Reminder & Agenda Feature:**
+  - Added functionality to set reminders on client notes, which create notifications.
+  - Integrated these reminders into the , displaying them alongside appointments with a distinct icon and link to the client.
+- **Document Management Overhaul:**
+  - Reworked the document handling system within the CRM ().
+  - Users can now upload multiple files for each document type (ID, Income, etc.).
+  - Implemented a feature to download a combined PDF containing all images/documents for a specific type.
+  - Fixed a white screen bug caused by a missing  import after uploading a document.
+- **UI/UX & Minor Fixes:**
+  - Changed the Notes / Reseñas button icon to a bell icon ().
+  - Removed the reminder functionality from Record Comments as requested by the user, keeping it only in Client Notes.
+  - Provided extensive, repeated guidance on production deployment steps (git pull, npm run build, systemctl restart).
 
 **Earlier issues found/mentioned but not fixed**
    - None.
 
 **Known issue recurrence from previous fork**
-  - None.
+  - **Issue:** Admin's Mis Clientes filter not working correctly in production.
+  - **Recurrence count:** 2
+  - **Status:** BLOCKED
 
 **Code Architecture**
-- **Backend:** Monolithic FastAPI application in . It urgently needs to be refactored into a modular structure.
-- **Frontend:** React application in . Key complex components are  and .
+- **Backend:** Monolithic FastAPI application in . Urgently needs to be refactored into a modular structure (e.g., , ).
+- **Frontend:** React application in . The most complex component is , which manages state for clients, records, modals, comments, notes, and documents.
 
 **Key Technical Concepts**
-- **Role-Based Access Control (RBAC):** Permissions are enforced in the backend, particularly in the  and  endpoints, to control data visibility for different user roles.
-- **Background Jobs:**  is used to run periodic tasks for sending marketing SMS and checking for comment/appointment reminders.
-- **React Navigation & State:** The link between the  and  was implemented using React Router's  component and  to pass the client's phone number for an automatic search.
-- **Production Deployment (Linux):** The agent guided the user in creating and managing a  service for the FastAPI backend, demonstrating knowledge of production environment setup on a VPS.
+- **Role-Based Access Control (RBAC):** Permissions are enforced in backend endpoints (, ) to control data visibility. A special exception was added for notification links.
+- **Document Processing:** New Python libraries (, , ) were added to combine multiple uploaded images into a single downloadable PDF on the fly.
+- **Background Jobs:**  runs jobs to send reminder notifications.
+- **Complex Frontend State:** State management in  and  uses , , and  to handle data fetching, filtering, and UI updates.
 
 **key DB schema**
-- : Added  and  to track when a client is marked as sold.
-- : Added  and  for the reminder feature.
-- : Standardized to use  and  to ensure consistency and prevent UI errors.
+- : A new collection was created to handle multi-document uploads.
+  - : 
+- : The old single-file document fields (e.g., ) are being phased out in favor of the new  collection. The  flag is critical for the Sold page.
+-  & : These collections now support  fields to drive the new agenda/notification feature.
 
 **changes in tech stack**
-  - None.
+  - **Backend:** Added new dependencies: , , .
 
 **All files of reference**
-- : Heavily modified for bug fixes, new features, permission logic, and diagnostic endpoints.
-- : Significantly updated to handle new filters, sorting, and the logic for deep-linking from the agenda.
-- : Modified to make client names clickable links.
-- : Updated to display the correct Sold Clients count.
-- : Fixed to handle navigation correctly.
+- : Heavily modified for all new features and bug fixes (dashboard stats, document handling, notifications, agenda).
+- : Significantly updated to handle the new multi-document upload system, fix notification navigation bugs, and manage various modals.
+- : Updated to include filters for date period and user (for admins).
+- : Modified to fetch and display both appointments and note reminders from a new endpoint.
+- : Added  flag.
 
 **Areas that need refactoring**:
-- ** (CRITICAL):** This monolithic file is now over 5,000 lines long and is becoming unmanageable. It must be broken down into separate files for routers, models, and services.
-- ** (CRITICAL):** This component handles client listing, filtering, sorting, modals for records, notes, appointments, and more. It is overly complex and should be decomposed into smaller, reusable components.
+- ** (CRITICAL):** This file is dangerously large and difficult to maintain. It must be broken down into separate files by functionality (e.g., , , ).
+- ** (CRITICAL):** This component is a god component responsible for too much. The logic for modals (Client Info, Notes, Records) and the document section should be extracted into their own components.
 
 **key api endpoints**
 - **New:**
-  - : A diagnostic endpoint to help debug client ownership issues.
-  - : An endpoint to synchronize historical data by marking clients as sold if they have a completed record.
+  - : Uploads multiple files for a client's document type.
+  - : Lists all uploaded documents for a client.
+  - : Downloads a combined PDF of documents for a specific type.
+  - : A new unified endpoint that returns both appointments and note reminders for the Agenda page.
 - **Modified:**
-  - : Logic updated to handle  (mine, others, specific user), , and role-based permissions.
-  - : Logic updated to allow admins to see all appointments, regardless of creator.
-  - : Updated to use a new  model to prevent validation errors.
-  - : Logic for  and  updated to be consistent with the  flag on clients.
-  -  & : Standardized to use the  field.
+  - : Logic was updated multiple times to handle , allowing users to see a specific client even if they don't have direct permission.
+  - : Now accepts a  parameter for admin filtering.
+  - : Reminder functionality was removed.
+  - : The endpoint for client notes, which handles creating immediate or scheduled reminder notifications.
 
 **Critical Info for New Agent**
-- **Production Environment:** The user's production server on Hostinger is a frequent source of issues. Be prepared to provide explicit, step-by-step SSH commands for deployment (, ), service management (), and debugging (-- No entries --, ). Always confirm with the user that they have deployed the latest changes before debugging a feature they report as not working.
-- **Data Inconsistency:** The current Mis Clientes bug is almost certainly a data issue in the production database, not a code issue. Do not attempt to fix the code further. The priority is to get the output from the  endpoint to confirm the user ID mismatch and then create a script to correct the data.
-- **Twilio SMS:** SMS functionality is blocked pending Twilio's A2P campaign approval. Do not spend time debugging SMS until the user confirms the campaign is Approved. You will also need to get the correct  from the user to update the  file.
+- **Production Deployment is Manual:** The user frequently reports issues that are resolved in the agent's environment but not in production. You MUST guide the user through the full deployment process (, , , ) every time you push a fix. The user uses GitHub to sync code.
+- **Data Integrity vs. Code Bugs:** Be aware that many reported issues are due to data problems in production (e.g., deleted clients, inconsistent user IDs). The Sold page bug is the current top priority and is likely a logic error in the code that sets the  flag.
+- **Task Switching:** The user frequently reports new, high-priority bugs that interrupt ongoing work. Be prepared to pause tasks (like the dashboard filter) to address critical user-facing issues, but keep track of the paused work to resume later.
 
 **documents and test reports created in this job**
+-  (updated multiple times)
 - 
 
 **Last 10 User Messages and any pending HUMAN messages** 
-10. **User:** Reports that the link from the Agenda page to the Client page is not working.
-9. **Agent:** Implements a simpler solution using a URL search parameter ().
-8. **User:** Suggests searching by phone number instead of name, which is a better idea.
-7. **Agent:** Implements the search by phone number.
-6. **User:** Reports two new bugs: an admin is missing some of their own clients in the Mis Clientes filter, and Telemarketers/Managers can see admin clients.
-5. **Agent:** Fixes the permission issue and determines the Mis Clientes issue is due to data inconsistency in production (clients created by now-deleted users).
-4. **User:** Clarifies the Mis Clientes issue: the admin themself created the clients, but they still don't appear.
-3. **Agent:** Creates a diagnostic endpoint  to investigate, but introduces a syntax error that breaks login.
-2. **User:** Reports the login is now broken.
-1. **Agent:** Fixes the syntax error and asks the user to run the diagnostic command again. The user sends a screenshot showing a Connection refused error, indicating their production service is not running or ready.
+10. **User:** Reports that after uploading documents, the screen turns white. (Resolved by importing  component).
+9. **User:** Reports an error in the admin dashboard (wants user filter) and an error with pre-qualification documents not appearing.
+8. **User:** Reports a new, higher-priority bug: a client appears as Sold even when their record is not completed. (This became the current focus).
+7. **User:** Asks for reminders to also appear in the Agenda and be clickable. (Implemented).
+6. **User:** Reports that notification clicks still don't work, providing a screenshot showing 0 results. (Agent identified this is due to old, bad links and a permissions issue for Telemarketers).
+5. **User:** Reports that after deploying, the bell icon change is not visible. (Agent explained deployment steps again).
+4. **User:** Wants the Notes/Reviews icon changed to a bell. (Implemented).
+3. **User:** Asks for reminder functionality in Record Comments. (Implemented, then removed at user's next request).
+2. **User:** Reports a bug with notification clicks leading to a blank page.
+1. **User:** Provides a screenshot of a Connection refused error while trying to run diagnostics in production. (Resolved in this session).
 
 **Project Health Check:**
 - **Broken:**
-    - The Admin's Mis Clientes filter is not working as expected in production, likely due to a data consistency issue.
-    - SMS functionality is non-operational pending Twilio's A2P campaign approval.
+    - The Sold clients list is showing incorrect data.
+    - Document flow from the public pre-qualification form to the internal CRM is not working.
 - **Mocked:** None.
 
 **3rd Party Integrations**
-- **Twilio (SMS):** Configured for A2P 10DLC. The campaign is **In progress** and awaiting approval from Twilio. Functionality is currently blocked.
+- **Twilio (SMS):** Configured for A2P 10DLC. Campaign status is **In progress** and blocked pending Twilio approval.
+- **pypdf, reportlab, Pillow:** Newly added Python libraries for generating PDF documents from uploaded images.
 
 **Testing status**
-  - Testing agent used after significant changes: YES
+  - Testing agent used after significant changes: YES (for dashboard roles).
   - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: None in this session.
-  - Known regressions: None identified in the code. User-perceived regressions were due to deployment issues or production data inconsistencies.
+  - Test files created: 
+  - Known regressions: The Sold page functionality is now broken.
 
 **Credentials to test flow:**
 - **Admin Email:** 
 - **Admin Password:** 
 
 **What agent forgot to execute**
-- The agent successfully addressed all user requests from the current session. The main pending action is to analyze the output from the diagnostic endpoint, which the user has not yet been able to provide.</analysis>
+The agent started work on two user requests (Admin dashboard filter, pre-qual document issue) but was interrupted by a new, higher-priority bug (Sold page issue) and did not complete the initial tasks. The agent needs to resolve the high-priority bugs and then circle back to finish the incomplete features.</analysis>
