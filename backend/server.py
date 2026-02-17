@@ -1567,9 +1567,11 @@ async def update_user_record(record_id: str, record_data: dict, current_user: di
     client_update = {"last_contact": datetime.now(timezone.utc).isoformat()}
     
     # If record is marked as completed (sold), mark the client as sold too
+    logger.info(f"Record update - record_status in cleaned_data: {cleaned_data.get('record_status')}, client_id: {client_id}")
     if cleaned_data.get("record_status") == "completed":
         client_update["is_sold"] = True
         client_update["sold_at"] = datetime.now(timezone.utc).isoformat()
+        logger.info(f"Marking client {client_id} as SOLD")
     elif "record_status" in cleaned_data and cleaned_data.get("record_status") != "completed":
         # Check if client has any OTHER completed records before removing is_sold
         other_completed = await db.user_records.count_documents({
@@ -1578,12 +1580,16 @@ async def update_user_record(record_id: str, record_data: dict, current_user: di
             "record_status": "completed",
             "is_deleted": {"$ne": True}
         })
+        logger.info(f"Client {client_id} has {other_completed} OTHER completed records")
         if other_completed == 0:
             # No other completed records, remove sold status
             client_update["is_sold"] = False
             client_update["sold_at"] = None
+            logger.info(f"Removing SOLD status from client {client_id}")
     
-    await db.clients.update_one({"id": client_id}, {"$set": client_update})
+    logger.info(f"Client update to apply: {client_update}")
+    update_result = await db.clients.update_one({"id": client_id}, {"$set": client_update})
+    logger.info(f"Client update result: matched={update_result.matched_count}, modified={update_result.modified_count}")
     
     updated = await db.user_records.find_one({"id": record_id}, {"_id": 0})
     
