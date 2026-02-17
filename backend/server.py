@@ -477,6 +477,9 @@ class ClientResponse(BaseModel):
     created_at: str
     created_by: str
     is_deleted: bool = False
+    # Sold status
+    is_sold: Optional[bool] = None
+    sold_at: Optional[str] = None
 
 class UserRecordCreate(BaseModel):
     client_id: str
