@@ -5802,6 +5802,56 @@ async def sync_sold_clients(current_user: dict = Depends(get_current_user)):
         logger.error(f"Sync sold clients error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error al sincronizar: {str(e)}")
 
+@api_router.post("/admin/fix-sold-clients")
+async def fix_sold_clients(current_user: dict = Depends(get_current_user)):
+    """Fix clients incorrectly marked as sold - remove is_sold flag from clients with no completed records (Admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores")
+    
+    try:
+        # Find all clients marked as sold
+        sold_clients = await db.clients.find(
+            {"is_sold": True, "is_deleted": {"$ne": True}},
+            {"_id": 0, "id": 1, "first_name": 1, "last_name": 1}
+        ).to_list(1000)
+        
+        fixed_count = 0
+        fixed_clients = []
+        
+        for client in sold_clients:
+            client_id = client["id"]
+            # Check if this client has any completed records
+            completed_count = await db.user_records.count_documents({
+                "client_id": client_id,
+                "record_status": "completed",
+                "is_deleted": {"$ne": True}
+            })
+            
+            if completed_count == 0:
+                # No completed records, remove sold status
+                await db.clients.update_one(
+                    {"id": client_id},
+                    {"$set": {"is_sold": False, "sold_at": None}}
+                )
+                fixed_count += 1
+                fixed_clients.append({
+                    "id": client_id,
+                    "name": f"{client.get('first_name', '')} {client.get('last_name', '')}"
+                })
+        
+        logger.info(f"Fixed sold clients by {current_user['email']}: {fixed_count} clients corrected")
+        
+        return {
+            "message": f"Corrección completada: {fixed_count} clientes ya no marcados como vendidos",
+            "fixed_count": fixed_count,
+            "total_checked": len(sold_clients),
+            "fixed_clients": fixed_clients
+        }
+        
+    except Exception as e:
+        logger.error(f"Fix sold clients error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al corregir: {str(e)}")
+
 @api_router.get("/admin/debug-clients")
 async def debug_clients(current_user: dict = Depends(get_current_user)):
     """Debug endpoint to check client ownership (Admin only)"""
