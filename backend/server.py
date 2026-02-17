@@ -1570,6 +1570,18 @@ async def update_user_record(record_id: str, record_data: dict, current_user: di
     if cleaned_data.get("record_status") == "completed":
         client_update["is_sold"] = True
         client_update["sold_at"] = datetime.now(timezone.utc).isoformat()
+    elif "record_status" in cleaned_data and cleaned_data.get("record_status") != "completed":
+        # Check if client has any OTHER completed records before removing is_sold
+        other_completed = await db.user_records.count_documents({
+            "client_id": client_id,
+            "id": {"$ne": record_id},  # Exclude current record being updated
+            "record_status": "completed",
+            "is_deleted": {"$ne": True}
+        })
+        if other_completed == 0:
+            # No other completed records, remove sold status
+            client_update["is_sold"] = False
+            client_update["sold_at"] = None
     
     await db.clients.update_one({"id": client_id}, {"$set": client_update})
     
