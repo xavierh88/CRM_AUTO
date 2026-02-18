@@ -552,12 +552,23 @@
                 console.log('Respuesta del CRM:', result);
                 
                 if (response.ok) {
-                    successAlert.style.display = 'block';
+                    // Show modal instead of just alert
+                    const modal = document.getElementById('smsConsentModal');
+                    const smsMessage = document.getElementById('smsConsentMessage');
+                    
+                    // Show SMS consent message if they opted in
+                    if (smsConsentChecked) {
+                        smsMessage.style.display = 'block';
+                    } else {
+                        smsMessage.style.display = 'none';
+                    }
+                    
+                    modal.style.display = 'flex';
+                    
                     this.reset();
                     selectedFiles = [];
                     updateFileList();
                     document.getElementById('rentGroup').style.display = 'none';
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 } else {
                     throw new Error(result.detail || 'Error al enviar');
                 }
