@@ -6262,6 +6262,7 @@ async def submit_prequalify_with_file(
     estimatedDownPayment: Optional[str] = Form(None),
     downPayment: Optional[str] = Form(None),  # Alternative from website
     consentAccepted: bool = Form(False),
+    smsConsent: bool = Form(False),  # SMS notification consent for Twilio A2P compliance
     language: Optional[str] = Form(None),
     # Support multiple file field names
     id_file: Optional[UploadFile] = File(None),
