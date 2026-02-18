@@ -427,6 +427,12 @@
         // ===== CONFIGURACIÓN =====
         const CRM_URL = 'https://crm.carplusautosalesgroup.com';
         
+        // ===== MODAL =====
+        function closeModal() {
+            document.getElementById('smsConsentModal').style.display = 'none';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
         // ===== ARCHIVOS =====
         let selectedFiles = [];
         
