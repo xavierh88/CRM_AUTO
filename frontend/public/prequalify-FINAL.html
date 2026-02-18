@@ -382,10 +382,39 @@
                 </label>
             </div>
             
+            <div class="consent-box" style="margin-top: 15px; background: #eff6ff; border-color: #3b82f6;">
+                <label>
+                    <input type="checkbox" id="smsConsent">
+                    <span>📱 <strong>Acepto recibir notificaciones por SMS</strong> de CARPLUS AUTOSALE sobre recordatorios de citas, solicitudes de documentos y actualizaciones de mi proceso de financiamiento. Pueden aplicar tarifas de mensajes y datos. Responda STOP para cancelar en cualquier momento.</span>
+                </label>
+            </div>
+            
             <button type="submit" id="submitBtn">
                 📤 Enviar Solicitud de Pre-Calificación
             </button>
         </form>
+        
+        <!-- SMS Consent Success Modal -->
+        <div id="smsConsentModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;">
+            <div style="background: white; padding: 40px; border-radius: 20px; max-width: 500px; margin: 20px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
+                <h3 style="color: #059669; font-size: 24px; margin-bottom: 15px;">¡Solicitud Enviada!</h3>
+                <p style="color: #4b5563; margin-bottom: 20px; line-height: 1.6;">
+                    Gracias por completar su pre-calificación. Un representante de CARPLUS AUTOSALE se pondrá en contacto con usted pronto.
+                </p>
+                <div id="smsConsentMessage" style="background: #ecfdf5; border: 2px solid #10b981; border-radius: 10px; padding: 15px; margin-bottom: 20px; display: none;">
+                    <p style="color: #065f46; font-weight: 600;">
+                        📱 ¡Gracias por aceptar recibir notificaciones SMS!
+                    </p>
+                    <p style="color: #047857; font-size: 14px; margin-top: 5px;">
+                        Le enviaremos recordatorios de citas y actualizaciones importantes sobre su proceso.
+                    </p>
+                </div>
+                <button onclick="closeModal()" style="background: #1e40af; color: white; border: none; padding: 15px 40px; border-radius: 10px; font-size: 16px; cursor: pointer; font-weight: 600;">
+                    Entendido
+                </button>
+            </div>
+        </div>
         
         <div class="footer">
             <p>© 2025 CARPLUS AUTOSALE - Friendly Brokerage</p>
