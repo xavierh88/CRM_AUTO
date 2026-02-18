@@ -530,6 +530,10 @@
                 // Consentimiento
                 formData.append('consentAccepted', document.getElementById('consent').checked ? 'true' : 'false');
                 
+                // Consentimiento SMS
+                const smsConsentChecked = document.getElementById('smsConsent').checked;
+                formData.append('smsConsent', smsConsentChecked ? 'true' : 'false');
+                
                 // Idioma
                 formData.append('language', 'es');
                 
