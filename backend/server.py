@@ -6455,6 +6455,8 @@ async def submit_prequalify_with_file(
         "incomeFrequency": incomeFrequency,
         "estimatedDownPayment": final_downPayment,  # Use normalized value
         "consentAccepted": consentAccepted,
+        "smsConsent": smsConsent,  # SMS notification consent for Twilio A2P compliance
+        "smsConsentDate": datetime.now(timezone.utc).isoformat() if smsConsent else None,
         "language": language,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "status": "pending",
