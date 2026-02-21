@@ -490,22 +490,46 @@ export default function PreQualifyPage() {
                           </div>
                         ))}
                       </div>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="mt-3"
-                        onClick={() => {
-                          if (detailData.comparison.latest_record_id) {
-                            handleAddToNotes(detailData.comparison.latest_record_id);
-                          } else {
-                            toast.error('Este cliente no tiene records. Primero cree un record para el cliente.');
-                          }
-                        }}
-                        disabled={!detailData.comparison.latest_record_id}
-                      >
-                        <MessageSquare className="w-4 h-4 mr-1" />
-                        Agregar diferencias a Notas del Record
-                      </Button>
+                      <div className="flex gap-2 mt-3">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            if (detailData.comparison.latest_record_id) {
+                              handleAddToNotes(detailData.comparison.latest_record_id);
+                            } else {
+                              toast.error('Este cliente no tiene records. Primero cree un record para el cliente.');
+                            }
+                          }}
+                          disabled={!detailData.comparison.latest_record_id}
+                        >
+                          <MessageSquare className="w-4 h-4 mr-1" />
+                          Agregar datos a Notas
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="default"
+                          className="bg-blue-600 hover:bg-blue-700"
+                          onClick={async () => {
+                            try {
+                              const response = await axios.post(
+                                `${API}/prequalify/submissions/${selectedSubmission}/sync-to-client`,
+                                {},
+                                { headers: { Authorization: `Bearer ${token}` } }
+                              );
+                              toast.success(response.data.message || 'Datos actualizados correctamente');
+                              fetchSubmissions();
+                              setSelectedSubmission(null);
+                              setDetailData(null);
+                            } catch (error) {
+                              toast.error(error.response?.data?.detail || 'Error al actualizar datos');
+                            }
+                          }}
+                        >
+                          <RefreshCw className="w-4 h-4 mr-1" />
+                          Reescribir TODOS los datos del Cliente
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <p className="text-sm text-emerald-600">
