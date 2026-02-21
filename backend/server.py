@@ -1897,6 +1897,7 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
 .value {{ color: #1e293b; }}
 .badge {{ display: inline-block; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin: 2px; }}
 .badge-warning {{ background: #fef3c7; color: #92400e; }}
+.badge-info {{ background: #dbeafe; color: #1e40af; }}
 </style>
 </head>
 <body>
@@ -1911,11 +1912,57 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
 <div class="info-row"><span class="label">Nombre:</span> <span class="value">{client.get('first_name', '')} {client.get('last_name', '')}</span></div>
 <div class="info-row"><span class="label">Teléfono:</span> <span class="value">{client.get('phone', 'N/A')}</span></div>
 <div class="info-row"><span class="label">Email:</span> <span class="value">{client.get('email', 'N/A')}</span></div>
-<div class="info-row"><span class="label">Dirección:</span> <span class="value">{client.get('address', 'N/A')} {client.get('apartment', '')}</span></div>
-</div>
-
+"""
+    
+    # Add date of birth if available
+    if client.get('date_of_birth'):
+        email_body += f'<div class="info-row"><span class="label">Fecha de Nacimiento:</span> <span class="value">{client.get("date_of_birth")}</span></div>'
+    
+    # Add address
+    address_parts = [client.get('address', '')]
+    if client.get('apartment'):
+        address_parts.append(f"Apt {client.get('apartment')}")
+    email_body += f'<div class="info-row"><span class="label">Dirección:</span> <span class="value">{" ".join(address_parts) if any(address_parts) else "N/A"}</span></div>'
+    
+    # Add housing info if available
+    if client.get('housing_type'):
+        housing_info = client.get('housing_type')
+        if client.get('rent_amount'):
+            housing_info += f" (${client.get('rent_amount')}/mes)"
+        email_body += f'<div class="info-row"><span class="label">Vivienda:</span> <span class="value">{housing_info}</span></div>'
+    
+    # Add time at address if available
+    if client.get('time_at_address_years') is not None or client.get('time_at_address_months') is not None:
+        years = client.get('time_at_address_years', 0) or 0
+        months = client.get('time_at_address_months', 0) or 0
+        email_body += f'<div class="info-row"><span class="label">Tiempo en Dirección:</span> <span class="value">{years} años, {months} meses</span></div>'
+    
+    email_body += '</div>'
+    
+    # Client ID Information Section
+    email_body += """
 <div class="section">
-<div class="section-title">📄 Documentación</div>
+<div class="section-title">🪪 Identificación del Cliente</div>
+"""
+    if client.get('id_type'):
+        email_body += f'<div class="info-row"><span class="label">Tipo de ID:</span> <span class="value">{client.get("id_type")}</span></div>'
+    if client.get('id_number'):
+        email_body += f'<div class="info-row"><span class="label">Número de ID:</span> <span class="value">{client.get("id_number")}</span></div>'
+    if client.get('ssn_type'):
+        email_body += f'<div class="info-row"><span class="label">Tipo SSN/ITIN:</span> <span class="value">{client.get("ssn_type")}</span></div>'
+    if client.get('ssn'):
+        # Only show last 4 digits for security
+        ssn_value = client.get('ssn')
+        if len(ssn_value) > 4:
+            ssn_value = "***-**-" + ssn_value[-4:]
+        email_body += f'<div class="info-row"><span class="label">SSN/ITIN:</span> <span class="value">{ssn_value}</span></div>'
+    
+    email_body += '</div>'
+    
+    # Record Documentation Section
+    email_body += """
+<div class="section">
+<div class="section-title">📄 Documentación del Record</div>
 <div class="info-row">
 """
     
