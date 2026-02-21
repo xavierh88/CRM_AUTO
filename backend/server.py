@@ -2292,8 +2292,22 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
                 # LEGACY SYSTEM for co-signers
                 for legacy_field, doc_label in legacy_fields:
                     if cs_info.get(legacy_field):
-                        file_path = os.path.join(uploads_dir, os.path.basename(cs_info[legacy_field]))
-                        if os.path.exists(file_path):
+                        file_url = cs_info[legacy_field]
+                        
+                        # Try multiple path strategies
+                        possible_paths = [
+                            file_url,  # Direct path as stored
+                            os.path.join(uploads_dir, os.path.basename(file_url)),  # Reconstruct from basename
+                            os.path.join("/var/www/carplus/backend/uploads", os.path.basename(file_url)),  # Production path
+                        ]
+                        
+                        file_path = None
+                        for p in possible_paths:
+                            if p and os.path.exists(p):
+                                file_path = p
+                                break
+                        
+                        if file_path:
                             already_attached = any(att['path'] == file_path for att in attachments)
                             if not already_attached:
                                 attachments.append({
