@@ -2276,7 +2276,6 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
                                     'path': file_path,
                                     'name': f"{cs_name}_{doc_label}{os.path.splitext(file_path)[1]}"
                                 })
-                        })
         
         for recipient_email in request.emails:
             msg = MIMEMultipart('mixed')  # Changed to 'mixed' to support attachments
