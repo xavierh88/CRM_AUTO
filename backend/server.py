@@ -2242,15 +2242,29 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
             for legacy_field, doc_label in legacy_fields:
                 if client.get(legacy_field):
                     file_url = client[legacy_field]
-                    file_path = os.path.join(uploads_dir, os.path.basename(file_url))
-                    logger.info(f"  Legacy {legacy_field}: url={file_url}, path={file_path}, exists={os.path.exists(file_path)}")
-                    if os.path.exists(file_path):
+                    
+                    # Try multiple path strategies
+                    possible_paths = [
+                        file_url,  # Direct path as stored
+                        os.path.join(uploads_dir, os.path.basename(file_url)),  # Reconstruct from basename
+                        os.path.join("/var/www/carplus/backend/uploads", os.path.basename(file_url)),  # Production path
+                    ]
+                    
+                    file_path = None
+                    for p in possible_paths:
+                        if p and os.path.exists(p):
+                            file_path = p
+                            break
+                    
+                    logger.info(f"  Legacy {legacy_field}: url={file_url}, found_path={file_path}")
+                    
+                    if file_path:
                         # Avoid duplicates - check if we already have this file
                         already_attached = any(att['path'] == file_path for att in attachments)
                         if not already_attached:
                             attachments.append({
                                 'path': file_path,
-                                'name': f"{client_name}_{doc_label}_legacy{os.path.splitext(file_path)[1]}"
+                                'name': f"{client_name}_{doc_label}{os.path.splitext(file_path)[1]}"
                             })
             
             logger.info(f"Total attachments found: {len(attachments)}")
