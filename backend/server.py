@@ -2207,6 +2207,8 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
             uploads_dir = "/app/backend/uploads"
             client_name = f"{client.get('first_name', 'Cliente')}_{client.get('last_name', '')}".replace(' ', '_')
             
+            logger.info(f"Looking for documents to attach for client {client_name}")
+            
             # NEW SYSTEM: Check for multiple documents in arrays (id_documents, income_documents, residence_documents)
             doc_types = [
                 ('id_documents', 'ID'),
@@ -2216,10 +2218,12 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
             
             for doc_field, doc_label in doc_types:
                 documents = client.get(doc_field, [])
+                logger.info(f"  {doc_field}: {len(documents) if documents else 0} documents")
                 if documents and isinstance(documents, list):
                     for idx, doc in enumerate(documents, 1):
                         # Check both 'path' and 'file_path' keys for compatibility
                         file_path = doc.get('path', '') or doc.get('file_path', '')
+                        logger.info(f"    Doc {idx}: path={file_path}, exists={os.path.exists(file_path) if file_path else False}")
                         if file_path and os.path.exists(file_path):
                             ext = os.path.splitext(file_path)[1]
                             suffix = f"_{idx}" if len(documents) > 1 else ""
