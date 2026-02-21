@@ -2205,59 +2205,77 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
         attachments = []
         if request.attach_documents:
             uploads_dir = "/app/backend/uploads"
+            client_name = f"{client.get('first_name', 'Cliente')}_{client.get('last_name', '')}".replace(' ', '_')
             
-            # Client documents
-            if client.get('id_file_url'):
-                file_path = os.path.join(uploads_dir, os.path.basename(client['id_file_url']))
-                if os.path.exists(file_path):
-                    attachments.append({
-                        'path': file_path,
-                        'name': f"{client.get('first_name', 'Cliente')}_{client.get('last_name', '')}_ID{os.path.splitext(file_path)[1]}"
-                    })
+            # NEW SYSTEM: Check for multiple documents in arrays (id_documents, income_documents, residence_documents)
+            doc_types = [
+                ('id_documents', 'ID'),
+                ('income_documents', 'Ingresos'),
+                ('residence_documents', 'Residencia')
+            ]
             
-            if client.get('income_proof_file_url'):
-                file_path = os.path.join(uploads_dir, os.path.basename(client['income_proof_file_url']))
-                if os.path.exists(file_path):
-                    attachments.append({
-                        'path': file_path,
-                        'name': f"{client.get('first_name', 'Cliente')}_{client.get('last_name', '')}_Ingresos{os.path.splitext(file_path)[1]}"
-                    })
+            for doc_field, doc_label in doc_types:
+                documents = client.get(doc_field, [])
+                if documents and isinstance(documents, list):
+                    for idx, doc in enumerate(documents, 1):
+                        file_path = doc.get('file_path', '')
+                        if file_path and os.path.exists(file_path):
+                            ext = os.path.splitext(file_path)[1]
+                            suffix = f"_{idx}" if len(documents) > 1 else ""
+                            attachments.append({
+                                'path': file_path,
+                                'name': f"{client_name}_{doc_label}{suffix}{ext}"
+                            })
             
-            if client.get('residence_proof_file_url'):
-                file_path = os.path.join(uploads_dir, os.path.basename(client['residence_proof_file_url']))
-                if os.path.exists(file_path):
-                    attachments.append({
-                        'path': file_path,
-                        'name': f"{client.get('first_name', 'Cliente')}_{client.get('last_name', '')}_Residencia{os.path.splitext(file_path)[1]}"
-                    })
+            # LEGACY SYSTEM: Also check old single-file fields for backwards compatibility
+            legacy_fields = [
+                ('id_file_url', 'ID'),
+                ('income_proof_file_url', 'Ingresos'),
+                ('residence_proof_file_url', 'Residencia')
+            ]
+            
+            for legacy_field, doc_label in legacy_fields:
+                if client.get(legacy_field):
+                    file_path = os.path.join(uploads_dir, os.path.basename(client[legacy_field]))
+                    if os.path.exists(file_path):
+                        # Avoid duplicates - check if we already have this file
+                        already_attached = any(att['path'] == file_path for att in attachments)
+                        if not already_attached:
+                            attachments.append({
+                                'path': file_path,
+                                'name': f"{client_name}_{doc_label}_legacy{os.path.splitext(file_path)[1]}"
+                            })
             
             # Also include co-signer documents if available
             for idx, cosigner in enumerate(cosigners_data, 1):
                 cs_info = cosigner['info']
-                cs_name = f"CoSigner{idx}_{cs_info.get('first_name', '')}"
+                cs_name = f"CoSigner{idx}_{cs_info.get('first_name', '')}".replace(' ', '_')
                 
-                if cs_info.get('id_file_url'):
-                    file_path = os.path.join(uploads_dir, os.path.basename(cs_info['id_file_url']))
-                    if os.path.exists(file_path):
-                        attachments.append({
-                            'path': file_path,
-                            'name': f"{cs_name}_ID{os.path.splitext(file_path)[1]}"
-                        })
+                # NEW SYSTEM for co-signers
+                for doc_field, doc_label in doc_types:
+                    documents = cs_info.get(doc_field, [])
+                    if documents and isinstance(documents, list):
+                        for doc_idx, doc in enumerate(documents, 1):
+                            file_path = doc.get('file_path', '')
+                            if file_path and os.path.exists(file_path):
+                                ext = os.path.splitext(file_path)[1]
+                                suffix = f"_{doc_idx}" if len(documents) > 1 else ""
+                                attachments.append({
+                                    'path': file_path,
+                                    'name': f"{cs_name}_{doc_label}{suffix}{ext}"
+                                })
                 
-                if cs_info.get('income_proof_file_url'):
-                    file_path = os.path.join(uploads_dir, os.path.basename(cs_info['income_proof_file_url']))
-                    if os.path.exists(file_path):
-                        attachments.append({
-                            'path': file_path,
-                            'name': f"{cs_name}_Ingresos{os.path.splitext(file_path)[1]}"
-                        })
-                
-                if cs_info.get('residence_proof_file_url'):
-                    file_path = os.path.join(uploads_dir, os.path.basename(cs_info['residence_proof_file_url']))
-                    if os.path.exists(file_path):
-                        attachments.append({
-                            'path': file_path,
-                            'name': f"{cs_name}_Residencia{os.path.splitext(file_path)[1]}"
+                # LEGACY SYSTEM for co-signers
+                for legacy_field, doc_label in legacy_fields:
+                    if cs_info.get(legacy_field):
+                        file_path = os.path.join(uploads_dir, os.path.basename(cs_info[legacy_field]))
+                        if os.path.exists(file_path):
+                            already_attached = any(att['path'] == file_path for att in attachments)
+                            if not already_attached:
+                                attachments.append({
+                                    'path': file_path,
+                                    'name': f"{cs_name}_{doc_label}{os.path.splitext(file_path)[1]}"
+                                })
                         })
         
         for recipient_email in request.emails:
