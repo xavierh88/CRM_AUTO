@@ -6871,6 +6871,100 @@ async def add_prequalify_to_notes(submission_id: str, record_id: str, current_us
     await db.prequalify_submissions.update_one({"id": submission_id}, {"$set": {"status": "reviewed"}})
     return {"message": "Data added to record notes", "note_id": note_doc["id"]}
 
+@api_router.post("/prequalify/submissions/{submission_id}/sync-to-client")
+async def sync_prequalify_to_client(submission_id: str, current_user: dict = Depends(get_current_user)):
+    """Overwrite existing client data with pre-qualification submission data (Admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    submission = await db.prequalify_submissions.find_one({"id": submission_id}, {"_id": 0})
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    
+    if not submission.get("matched_client_id"):
+        raise HTTPException(status_code=400, detail="No matched client found for this submission")
+    
+    client_id = submission["matched_client_id"]
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Matched client not found")
+    
+    # Build update data from submission
+    update_data = {}
+    
+    # Personal info
+    if submission.get("firstName"):
+        update_data["first_name"] = submission["firstName"]
+    if submission.get("lastName"):
+        update_data["last_name"] = submission["lastName"]
+    if submission.get("email"):
+        update_data["email"] = submission["email"]
+    if submission.get("phone"):
+        update_data["phone"] = submission["phone"]
+    if submission.get("dateOfBirth"):
+        update_data["date_of_birth"] = submission["dateOfBirth"]
+    
+    # Address info
+    if submission.get("address"):
+        update_data["address"] = submission["address"]
+    if submission.get("apartment"):
+        update_data["apartment"] = submission["apartment"]
+    if submission.get("city"):
+        update_data["city"] = submission["city"]
+    if submission.get("state"):
+        update_data["state"] = submission["state"]
+    if submission.get("zipCode"):
+        update_data["zip_code"] = submission["zipCode"]
+    
+    # Housing info
+    if submission.get("housingType"):
+        update_data["housing_type"] = submission["housingType"]
+    if submission.get("rentAmount"):
+        update_data["rent_amount"] = submission["rentAmount"]
+    if submission.get("timeAtAddressYears") is not None:
+        update_data["time_at_address_years"] = submission["timeAtAddressYears"]
+    if submission.get("timeAtAddressMonths") is not None:
+        update_data["time_at_address_months"] = submission["timeAtAddressMonths"]
+    
+    # ID info
+    if submission.get("idType"):
+        update_data["id_type"] = submission["idType"]
+    if submission.get("idNumber"):
+        update_data["id_number"] = submission["idNumber"]
+    
+    # SSN/ITIN info
+    if submission.get("ssnType"):
+        update_data["ssn_type"] = submission["ssnType"]
+    if submission.get("ssn"):
+        update_data["ssn"] = submission["ssn"]
+    
+    # Update timestamp
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_by"] = current_user["id"]
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No data to update")
+    
+    # Update the client
+    result = await db.clients.update_one({"id": client_id}, {"$set": update_data})
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=500, detail="Failed to update client")
+    
+    # Mark submission as synced
+    await db.prequalify_submissions.update_one(
+        {"id": submission_id}, 
+        {"$set": {"status": "synced", "synced_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    logger.info(f"Synced prequalify submission {submission_id} to client {client_id} by {current_user['email']}")
+    
+    return {
+        "message": "Datos del cliente actualizados correctamente",
+        "client_id": client_id,
+        "fields_updated": list(update_data.keys())
+    }
+
 # Include router and middleware
 app.include_router(api_router)
 
