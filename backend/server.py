@@ -2241,7 +2241,9 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
             
             for legacy_field, doc_label in legacy_fields:
                 if client.get(legacy_field):
-                    file_path = os.path.join(uploads_dir, os.path.basename(client[legacy_field]))
+                    file_url = client[legacy_field]
+                    file_path = os.path.join(uploads_dir, os.path.basename(file_url))
+                    logger.info(f"  Legacy {legacy_field}: url={file_url}, path={file_path}, exists={os.path.exists(file_path)}")
                     if os.path.exists(file_path):
                         # Avoid duplicates - check if we already have this file
                         already_attached = any(att['path'] == file_path for att in attachments)
@@ -2250,6 +2252,8 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
                                 'path': file_path,
                                 'name': f"{client_name}_{doc_label}_legacy{os.path.splitext(file_path)[1]}"
                             })
+            
+            logger.info(f"Total attachments found: {len(attachments)}")
             
             # Also include co-signer documents if available
             for idx, cosigner in enumerate(cosigners_data, 1):
