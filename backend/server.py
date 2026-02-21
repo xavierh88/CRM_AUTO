@@ -2257,7 +2257,8 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
                     documents = cs_info.get(doc_field, [])
                     if documents and isinstance(documents, list):
                         for doc_idx, doc in enumerate(documents, 1):
-                            file_path = doc.get('file_path', '')
+                            # Check both 'path' and 'file_path' keys for compatibility
+                            file_path = doc.get('path', '') or doc.get('file_path', '')
                             if file_path and os.path.exists(file_path):
                                 ext = os.path.splitext(file_path)[1]
                                 suffix = f"_{doc_idx}" if len(documents) > 1 else ""
