@@ -514,8 +514,7 @@ export default function PreQualifyPage() {
                             try {
                               const response = await axios.post(
                                 `${API}/prequalify/submissions/${selectedSubmission}/sync-to-client`,
-                                {},
-                                { headers: { Authorization: `Bearer ${token}` } }
+                                {}
                               );
                               toast.success(response.data.message || 'Datos actualizados correctamente');
                               fetchSubmissions();
