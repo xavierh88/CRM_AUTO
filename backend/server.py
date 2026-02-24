@@ -7001,10 +7001,15 @@ async def sync_prequalify_to_client(submission_id: str, current_user: dict = Dep
     if submission.get("id_file_url"):
         update_data["id_file_url"] = submission["id_file_url"]
         update_data["id_uploaded"] = True
+        logger.info(f"Copying document from submission: {submission.get('id_file_url')}")
+    else:
+        logger.info(f"No id_file_url found in submission. Available keys: {list(submission.keys())}")
     
     # Update timestamp
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     update_data["updated_by"] = current_user["id"]
+    
+    logger.info(f"Update data for client {client_id}: {update_data}")
     
     if not update_data:
         raise HTTPException(status_code=400, detail="No data to update")
