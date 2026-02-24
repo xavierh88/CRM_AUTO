@@ -6829,8 +6829,19 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
         "time_at_address_months": submission.get("timeAtAddressMonths"),
         "id_uploaded": id_uploaded,
         "id_file_url": id_file_url,
+        # Also add to the new documents array system
+        "id_documents": [{
+            "id": str(uuid.uuid4()),
+            "filename": "ID_PreQualify",
+            "path": id_file_url,
+            "type": "application/pdf",
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+            "uploaded_by": current_user["id"]
+        }] if id_file_url else [],
         "income_proof_uploaded": False,
+        "income_documents": [],
         "residence_proof_uploaded": False,
+        "residence_documents": [],
         "salesperson_id": current_user["id"],
         "salesperson_name": current_user.get("name") or current_user.get("email"),
         "created_at": datetime.now(timezone.utc).isoformat(),
