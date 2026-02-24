@@ -513,7 +513,7 @@ export default function PreQualifyPage() {
                           onClick={async () => {
                             try {
                               const response = await axios.post(
-                                `${API}/prequalify/submissions/${selectedSubmission}/sync-to-client`,
+                                `${API}/prequalify/submissions/${selectedSubmission.id}/sync-to-client`,
                                 {}
                               );
                               toast.success(response.data.message || 'Datos actualizados correctamente');
