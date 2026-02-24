@@ -6966,6 +6966,11 @@ async def sync_prequalify_to_client(submission_id: str, current_user: dict = Dep
     if submission.get("ssn"):
         update_data["ssn"] = submission["ssn"]
     
+    # Copy document file if exists
+    if submission.get("id_file_url"):
+        update_data["id_file_url"] = submission["id_file_url"]
+        update_data["id_uploaded"] = True
+    
     # Update timestamp
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     update_data["updated_by"] = current_user["id"]
