@@ -6737,22 +6737,53 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
         try:
             # Copy file to client's document location
             upload_dir = Path(__file__).parent / "uploads"
-            old_path = upload_dir / Path(prequalify_id_file).name
-            logger.info(f"Looking for file at: {old_path}")
-            if old_path.exists():
+            
+            # Handle different path formats
+            if prequalify_id_file.startswith('/uploads/'):
+                filename = prequalify_id_file.replace('/uploads/', '')
+            elif prequalify_id_file.startswith('/app/backend/uploads/'):
+                filename = os.path.basename(prequalify_id_file)
+            elif prequalify_id_file.startswith('/var/www/carplus/backend/uploads/'):
+                filename = os.path.basename(prequalify_id_file)
+            else:
+                filename = os.path.basename(prequalify_id_file)
+            
+            # Try multiple possible paths
+            possible_paths = [
+                upload_dir / filename,
+                Path(prequalify_id_file),  # Direct path
+                Path("/var/www/carplus/backend/uploads") / filename,
+                Path("/app/backend/uploads") / filename,
+            ]
+            
+            old_path = None
+            for p in possible_paths:
+                if p.exists():
+                    old_path = p
+                    break
+            
+            logger.info(f"Looking for file, trying paths: {[str(p) for p in possible_paths]}")
+            
+            if old_path and old_path.exists():
                 file_extension = old_path.suffix
                 new_filename = f"{client_id}_id{file_extension}"
                 new_path = upload_dir / new_filename
                 
                 shutil.copy2(old_path, new_path)
                 
-                id_file_url = f"/uploads/{new_filename}"
+                id_file_url = str(new_path)  # Store full path
                 id_uploaded = True
                 logger.info(f"Transferred ID document from pre-qualify to client: {id_file_url}")
             else:
-                logger.warning(f"Pre-qualify ID file not found at: {old_path}")
+                # If file not found, just use the original URL
+                id_file_url = prequalify_id_file
+                id_uploaded = True
+                logger.warning(f"Pre-qualify ID file not found, using original URL: {prequalify_id_file}")
         except Exception as e:
             logger.error(f"Error transferring ID document: {str(e)}")
+            # Still set the URL even if copy fails
+            id_file_url = prequalify_id_file
+            id_uploaded = True
     
     # Map ID type from pre-qualify to CRM format
     id_type_mapping = {
