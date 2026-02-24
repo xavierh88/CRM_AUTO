@@ -6999,9 +6999,21 @@ async def sync_prequalify_to_client(submission_id: str, current_user: dict = Dep
     
     # Copy document file if exists
     if submission.get("id_file_url"):
-        update_data["id_file_url"] = submission["id_file_url"]
+        id_file_url = submission["id_file_url"]
+        update_data["id_file_url"] = id_file_url
         update_data["id_uploaded"] = True
-        logger.info(f"Copying document from submission: {submission.get('id_file_url')}")
+        
+        # Also add to the new documents array system
+        update_data["id_documents"] = [{
+            "id": str(uuid.uuid4()),
+            "filename": "ID_PreQualify",
+            "path": id_file_url,
+            "type": "application/pdf",
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+            "uploaded_by": current_user["id"]
+        }]
+        
+        logger.info(f"Copying document from submission: {id_file_url}")
     else:
         logger.info(f"No id_file_url found in submission. Available keys: {list(submission.keys())}")
     
