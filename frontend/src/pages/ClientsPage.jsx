@@ -771,6 +771,12 @@ export default function ClientsPage() {
                           <p className="font-semibold text-slate-900">
                             {client.first_name} {client.last_name}
                           </p>
+                          {/* Sold indicator */}
+                          {client.is_sold && (
+                            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                              VENDIDO
+                            </span>
+                          )}
                           {/* Sold badges - show stars based on sold count */}
                           {soldCount > 0 && (
                             <div className="flex items-center gap-1">
