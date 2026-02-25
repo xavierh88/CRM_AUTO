@@ -177,7 +177,7 @@ export default function ClientsPage() {
 
   const fetchClients = async (search = '', fromNotification = false) => {
     try {
-      const params = new URLSearchParams({ exclude_sold: 'true' });
+      const params = new URLSearchParams({ exclude_sold: 'false' });  // Show sold clients in search
       if (search) params.append('search', search);
       
       // If coming from notification, use special flag to bypass ownership filters
