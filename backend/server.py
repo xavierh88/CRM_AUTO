@@ -4584,6 +4584,15 @@ async def upload_public_documents(
         if id_path:
             update_data["id_uploaded"] = True
             update_data["id_file_url"] = id_path
+            # Also add to new documents array
+            update_data["id_documents"] = [{
+                "id": str(uuid.uuid4()),
+                "filename": "ID_Document",
+                "path": id_path,
+                "type": "application/pdf",
+                "uploaded_at": datetime.now(timezone.utc).isoformat(),
+                "uploaded_by": "client_public"
+            }]
     
     # Process Income documents
     if income_documents and len(income_documents) > 0 and income_documents[0].filename:
@@ -4591,6 +4600,15 @@ async def upload_public_documents(
         if income_path:
             update_data["income_proof_uploaded"] = True
             update_data["income_proof_file_url"] = income_path
+            # Also add to new documents array
+            update_data["income_documents"] = [{
+                "id": str(uuid.uuid4()),
+                "filename": "Income_Proof",
+                "path": income_path,
+                "type": "application/pdf",
+                "uploaded_at": datetime.now(timezone.utc).isoformat(),
+                "uploaded_by": "client_public"
+            }]
     
     # Process Residence documents
     if residence_documents and len(residence_documents) > 0 and residence_documents[0].filename:
@@ -4598,6 +4616,15 @@ async def upload_public_documents(
         if residence_path:
             update_data["residence_proof_uploaded"] = True
             update_data["residence_proof_file_url"] = residence_path
+            # Also add to new documents array
+            update_data["residence_documents"] = [{
+                "id": str(uuid.uuid4()),
+                "filename": "Residence_Proof",
+                "path": residence_path,
+                "type": "application/pdf",
+                "uploaded_at": datetime.now(timezone.utc).isoformat(),
+                "uploaded_by": "client_public"
+            }]
     
     # Update client with document info
     await db.clients.update_one({"id": client_id}, {"$set": update_data})
