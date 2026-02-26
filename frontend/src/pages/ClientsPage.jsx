@@ -4449,11 +4449,13 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
             <div className="space-y-3 mt-2">
               {/* Document Type Component */}
               {[
-                { type: 'id', label: t('clients.idUploaded'), field: 'id_uploaded', docsField: 'id_documents' },
-                { type: 'income', label: t('clients.incomeProof'), field: 'income_proof_uploaded', docsField: 'income_documents' },
-                { type: 'residence', label: 'Comprobante de Residencia', field: 'residence_proof_uploaded', docsField: 'residence_documents', icon: Home }
-              ].map(({ type, label, field, docsField, icon: Icon }) => {
+                { type: 'id', label: t('clients.idUploaded'), field: 'id_uploaded', docsField: 'id_documents', legacyField: 'id_file_url' },
+                { type: 'income', label: t('clients.incomeProof'), field: 'income_proof_uploaded', docsField: 'income_documents', legacyField: 'income_proof_file_url' },
+                { type: 'residence', label: 'Comprobante de Residencia', field: 'residence_proof_uploaded', docsField: 'residence_documents', legacyField: 'residence_proof_file_url', icon: Home }
+              ].map(({ type, label, field, docsField, legacyField, icon: Icon }) => {
                 const docs = clientDocs[docsField] || [];
+                const hasLegacyDoc = clientDocs[legacyField] || client?.[legacyField];
+                const hasAnyDoc = docs.length > 0 || hasLegacyDoc;
                 const isExpanded = expandedDocType === type;
                 
                 return (
