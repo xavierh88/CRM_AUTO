@@ -1316,6 +1316,37 @@ async def download_client_document(
     from reportlab.pdfgen import canvas as pdf_canvas
     import io
     
+    def find_file(path_str):
+        """Try to find file in multiple possible locations"""
+        if not path_str:
+            return None
+        
+        # Possible locations to check
+        possible_paths = [
+            Path(path_str),  # Direct path as stored
+            UPLOAD_DIR / os.path.basename(path_str),  # Just filename in uploads
+            Path("/var/www/carplus/backend/uploads") / os.path.basename(path_str),  # Production path
+            Path("/app/backend/uploads") / os.path.basename(path_str),  # Docker path
+        ]
+        
+        # Handle /uploads/ prefix
+        if path_str.startswith('/uploads/'):
+            possible_paths.insert(0, UPLOAD_DIR / path_str.replace('/uploads/', ''))
+            possible_paths.insert(0, Path("/var/www/carplus/backend") / path_str.lstrip('/'))
+        
+        # Handle clients subfolder
+        if '/clients/' in path_str:
+            possible_paths.insert(0, Path("/var/www/carplus/backend") / path_str.lstrip('/'))
+            possible_paths.insert(0, UPLOAD_DIR / path_str.split('/uploads/')[-1] if '/uploads/' in path_str else path_str)
+        
+        for p in possible_paths:
+            if p.exists():
+                logger.info(f"Found file at: {p}")
+                return p
+        
+        logger.warning(f"File not found. Tried paths: {[str(p) for p in possible_paths[:4]]}")
+        return None
+    
     if doc_type not in ['id', 'income', 'residence']:
         raise HTTPException(status_code=400, detail="Invalid document type")
     
@@ -1333,8 +1364,8 @@ async def download_client_document(
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
         
-        file_path = Path(doc.get("path", ""))
-        if not file_path.exists():
+        file_path = find_file(doc.get("path", ""))
+        if not file_path:
             raise HTTPException(status_code=404, detail="Document file not found")
         
         with open(file_path, 'rb') as f:
@@ -1354,8 +1385,9 @@ async def download_client_document(
         pdf_writer = PdfWriter()
         
         for doc in documents:
-            file_path = Path(doc.get("path", ""))
-            if not file_path.exists():
+            file_path = find_file(doc.get("path", ""))
+            if not file_path:
+                logger.warning(f"Skipping document {doc.get('id')} - file not found at {doc.get('path')}")
                 continue
             
             file_ext = file_path.suffix.lower()
