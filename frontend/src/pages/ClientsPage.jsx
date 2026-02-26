@@ -4494,8 +4494,8 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
                           </Button>
                         </label>
                         
-                        {/* Download combined PDF */}
-                        {docs.length > 0 && (
+                        {/* Download combined PDF - show if has docs array OR legacy field */}
+                        {hasAnyDoc && (
                           <Button 
                             size="sm" 
                             variant="ghost" 
