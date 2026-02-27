@@ -531,10 +531,35 @@ export default function PreQualifyPage() {
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm text-emerald-600">
-                      <CheckCircle2 className="w-4 h-4 inline mr-1" />
-                      Los datos coinciden con el perfil del cliente
-                    </p>
+                    <div className="mt-3">
+                      <p className="text-sm text-emerald-600 mb-3">
+                        <CheckCircle2 className="w-4 h-4 inline mr-1" />
+                        Los datos coinciden con el perfil del cliente
+                      </p>
+                      {/* Always show sync button even if data matches */}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                        onClick={async () => {
+                          try {
+                            const response = await axios.post(
+                              `${API}/prequalify/submissions/${selectedSubmission.id}/sync-to-client`,
+                              {}
+                            );
+                            toast.success(response.data.message || 'Datos actualizados correctamente');
+                            fetchSubmissions();
+                            setSelectedSubmission(null);
+                            setDetailData(null);
+                          } catch (error) {
+                            toast.error(error.response?.data?.detail || 'Error al actualizar datos');
+                          }
+                        }}
+                      >
+                        <RefreshCw className="w-4 h-4 mr-1" />
+                        Sincronizar datos de nuevo
+                      </Button>
+                    </div>
                   )}
                 </div>
               ) : (
