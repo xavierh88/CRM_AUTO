@@ -6435,6 +6435,7 @@ class PreQualifySubmission(BaseModel):
     timeAtAddressYears: Optional[int] = None
     timeAtAddressMonths: Optional[int] = None
     employerName: Optional[str] = None
+    employerPhoneNumber: Optional[str] = None  # NEW: Employer phone number
     # Time with employer - separated fields
     timeWithEmployerYears: Optional[int] = None
     timeWithEmployerMonths: Optional[int] = None
@@ -6467,6 +6468,7 @@ class PreQualifyResponse(BaseModel):
     timeAtAddressYears: Optional[int] = None
     timeAtAddressMonths: Optional[int] = None
     employerName: Optional[str] = None
+    employerPhoneNumber: Optional[str] = None  # NEW: Employer phone number
     # Time with employer - separated fields
     timeWithEmployerYears: Optional[int] = None
     timeWithEmployerMonths: Optional[int] = None
