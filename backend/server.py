@@ -87,6 +87,78 @@ app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+
+# ==================== DOCUMENT OPTIMIZATION ====================
+
+def optimize_document(file_path: Path, max_size_kb: int = 500, max_dimension: int = 1800) -> Path:
+    """
+    Optimize a document for storage while maintaining readability.
+    - For images: Resize if too large, convert to optimized JPEG
+    - For PDFs: Compress images within the PDF
+    Returns the path to the optimized file.
+    """
+    from PIL import Image
+    
+    file_ext = file_path.suffix.lower()
+    
+    # Image optimization
+    if file_ext in ['.jpg', '.jpeg', '.png', '.webp', '.heic']:
+        try:
+            with Image.open(file_path) as img:
+                # Convert to RGB if necessary (for PNG with transparency)
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    # Create white background for transparent images
+                    background = Image.new('RGB', img.size, (255, 255, 255))
+                    if img.mode == 'P':
+                        img = img.convert('RGBA')
+                    background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                    img = background
+                elif img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Resize if too large while maintaining aspect ratio
+                width, height = img.size
+                if width > max_dimension or height > max_dimension:
+                    if width > height:
+                        new_width = max_dimension
+                        new_height = int(height * (max_dimension / width))
+                    else:
+                        new_height = max_dimension
+                        new_width = int(width * (max_dimension / height))
+                    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                
+                # Save as optimized JPEG
+                optimized_path = file_path.with_suffix('.jpg')
+                
+                # Start with quality 85, reduce if file is too large
+                quality = 85
+                while quality >= 50:
+                    img.save(optimized_path, 'JPEG', quality=quality, optimize=True)
+                    if optimized_path.stat().st_size <= max_size_kb * 1024:
+                        break
+                    quality -= 10
+                
+                # Remove original if different path
+                if optimized_path != file_path:
+                    file_path.unlink()
+                
+                logger.info(f"Optimized image: {file_path.name} -> {optimized_path.stat().st_size / 1024:.1f}KB")
+                return optimized_path
+                
+        except Exception as e:
+            logger.error(f"Failed to optimize image {file_path}: {e}")
+            return file_path
+    
+    # PDF optimization - just return as-is for now (complex to recompress)
+    elif file_ext == '.pdf':
+        # For PDFs, we'll keep them as-is to preserve document integrity
+        logger.info(f"PDF document kept as-is: {file_path.name}")
+        return file_path
+    
+    # Other file types - return as-is
+    return file_path
+
+
 # ==================== SCHEDULER ====================
 
 scheduler = AsyncIOScheduler()
@@ -3001,6 +3073,224 @@ async def get_dashboard_stats(
         "current_period": month or period,
         "total_down_payment": round(total_down_payment, 2)
     }
+
+
+@api_router.get("/dashboard/stats/{stat_type}/details")
+async def get_dashboard_stat_details(
+    stat_type: str,
+    current_user: dict = Depends(get_current_user),
+    period: str = "all",
+    month: str = None
+):
+    """Get detailed list of items for a dashboard statistic (clickable stats)"""
+    # Get admin IDs for role filtering
+    admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
+    admin_ids = [u["id"] for u in admin_users]
+    
+    # Build owner filter based on role
+    if current_user["role"] == "admin":
+        clients_owner_filter = {}
+        records_filter = {}
+    elif current_user["role"] == "bdc_manager":
+        clients_owner_filter = {"created_by": {"$nin": admin_ids}}
+        records_filter = {"salesperson_id": {"$nin": admin_ids}}
+    else:
+        clients_owner_filter = {"created_by": current_user["id"]}
+        records_filter = {"salesperson_id": current_user["id"]}
+    
+    # Calculate date filter
+    now = datetime.now(timezone.utc)
+    date_filter = {}
+    if month:
+        year, mon = month.split("-")
+        start_date = datetime(int(year), int(mon), 1, tzinfo=timezone.utc)
+        if int(mon) == 12:
+            end_date = datetime(int(year) + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            end_date = datetime(int(year), int(mon) + 1, 1, tzinfo=timezone.utc)
+        date_filter = {"$gte": start_date.isoformat(), "$lt": end_date.isoformat()}
+    elif period == "month":
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        date_filter = {"$gte": start_date.isoformat()}
+    elif period == "6months":
+        start_date = now - timedelta(days=180)
+        date_filter = {"$gte": start_date.isoformat()}
+    
+    result = {"stat_type": stat_type, "items": [], "count": 0}
+    
+    if stat_type == "total_clients":
+        query = {"is_deleted": {"$ne": True}}
+        if clients_owner_filter:
+            query.update(clients_owner_filter)
+        if date_filter:
+            query["created_at"] = date_filter
+        
+        clients = await db.clients.find(
+            query,
+            {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1, "email": 1, "created_at": 1}
+        ).sort("created_at", -1).to_list(500)
+        result["items"] = clients
+        result["count"] = len(clients)
+    
+    elif stat_type == "new_clients_month":
+        first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        query = {"is_deleted": {"$ne": True}, "created_at": {"$gte": first_of_month.isoformat()}}
+        if clients_owner_filter:
+            query.update(clients_owner_filter)
+        
+        clients = await db.clients.find(
+            query,
+            {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1, "email": 1, "created_at": 1}
+        ).sort("created_at", -1).to_list(500)
+        result["items"] = clients
+        result["count"] = len(clients)
+    
+    elif stat_type == "sales" or stat_type == "sold_clients":
+        query = {"is_sold": True, "is_deleted": {"$ne": True}}
+        if clients_owner_filter:
+            query.update(clients_owner_filter)
+        
+        clients = await db.clients.find(
+            query,
+            {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1, "email": 1, "sold_at": 1}
+        ).sort("sold_at", -1).to_list(500)
+        result["items"] = clients
+        result["count"] = len(clients)
+    
+    elif stat_type == "sales_month":
+        first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        query = {"is_sold": True, "is_deleted": {"$ne": True}, "sold_at": {"$gte": first_of_month.isoformat()}}
+        if clients_owner_filter:
+            query.update(clients_owner_filter)
+        
+        clients = await db.clients.find(
+            query,
+            {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1, "email": 1, "sold_at": 1}
+        ).sort("sold_at", -1).to_list(500)
+        result["items"] = clients
+        result["count"] = len(clients)
+    
+    elif stat_type == "today_appointments":
+        today = now.strftime("%Y-%m-%d")
+        query = {"date": today}
+        if records_filter:
+            query.update(records_filter)
+        
+        appointments = await db.appointments.find(
+            query,
+            {"_id": 0, "id": 1, "client_id": 1, "date": 1, "time": 1, "status": 1, "dealer": 1}
+        ).to_list(500)
+        
+        # Enrich with client names
+        for appt in appointments:
+            client = await db.clients.find_one({"id": appt.get("client_id")}, {"_id": 0, "first_name": 1, "last_name": 1})
+            if client:
+                appt["client_name"] = f"{client.get('first_name', '')} {client.get('last_name', '')}"
+        
+        result["items"] = appointments
+        result["count"] = len(appointments)
+    
+    elif stat_type == "week_appointments":
+        week_start = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
+        week_end = (now + timedelta(days=6-now.weekday())).strftime("%Y-%m-%d")
+        query = {"date": {"$gte": week_start, "$lte": week_end}}
+        if records_filter:
+            query.update(records_filter)
+        
+        appointments = await db.appointments.find(
+            query,
+            {"_id": 0, "id": 1, "client_id": 1, "date": 1, "time": 1, "status": 1, "dealer": 1}
+        ).sort("date", 1).to_list(500)
+        
+        for appt in appointments:
+            client = await db.clients.find_one({"id": appt.get("client_id")}, {"_id": 0, "first_name": 1, "last_name": 1})
+            if client:
+                appt["client_name"] = f"{client.get('first_name', '')} {client.get('last_name', '')}"
+        
+        result["items"] = appointments
+        result["count"] = len(appointments)
+    
+    elif stat_type == "total_records":
+        query = {"is_deleted": {"$ne": True}}
+        if records_filter:
+            query.update(records_filter)
+        if date_filter:
+            query["created_at"] = date_filter
+        
+        records = await db.user_records.find(
+            query,
+            {"_id": 0, "id": 1, "client_id": 1, "record_status": 1, "created_at": 1}
+        ).sort("created_at", -1).to_list(500)
+        
+        for rec in records:
+            client = await db.clients.find_one({"id": rec.get("client_id")}, {"_id": 0, "first_name": 1, "last_name": 1})
+            if client:
+                rec["client_name"] = f"{client.get('first_name', '')} {client.get('last_name', '')}"
+        
+        result["items"] = records
+        result["count"] = len(records)
+    
+    elif stat_type == "total_cosigners":
+        cosigner_relations = await db.cosigner_relations.find(
+            {},
+            {"_id": 0, "buyer_client_id": 1, "cosigner_client_id": 1}
+        ).to_list(500)
+        
+        items = []
+        for rel in cosigner_relations:
+            buyer = await db.clients.find_one({"id": rel.get("buyer_client_id")}, {"_id": 0, "first_name": 1, "last_name": 1})
+            cosigner = await db.clients.find_one({"id": rel.get("cosigner_client_id")}, {"_id": 0, "first_name": 1, "last_name": 1})
+            items.append({
+                "buyer_name": f"{buyer.get('first_name', '')} {buyer.get('last_name', '')}" if buyer else "N/A",
+                "cosigner_name": f"{cosigner.get('first_name', '')} {cosigner.get('last_name', '')}" if cosigner else "N/A",
+                "buyer_client_id": rel.get("buyer_client_id"),
+                "cosigner_client_id": rel.get("cosigner_client_id")
+            })
+        
+        result["items"] = items
+        result["count"] = len(items)
+    
+    elif stat_type == "active_clients":
+        week_ago = (now - timedelta(days=7)).isoformat()
+        query = {"is_deleted": {"$ne": True}, "last_contact": {"$gte": week_ago}}
+        if clients_owner_filter:
+            query.update(clients_owner_filter)
+        
+        clients = await db.clients.find(
+            query,
+            {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1, "email": 1, "last_contact": 1}
+        ).sort("last_contact", -1).to_list(500)
+        result["items"] = clients
+        result["count"] = len(clients)
+    
+    elif stat_type == "docs_complete":
+        query = {"id_uploaded": True, "income_proof_uploaded": True, "is_deleted": {"$ne": True}}
+        if clients_owner_filter:
+            query.update(clients_owner_filter)
+        
+        clients = await db.clients.find(
+            query,
+            {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1, "email": 1}
+        ).to_list(500)
+        result["items"] = clients
+        result["count"] = len(clients)
+    
+    elif stat_type == "docs_pending":
+        query = {"$or": [{"id_uploaded": False}, {"income_proof_uploaded": False}], "is_deleted": {"$ne": True}}
+        if clients_owner_filter:
+            query.update(clients_owner_filter)
+        
+        clients = await db.clients.find(
+            query,
+            {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1, "email": 1, "id_uploaded": 1, "income_proof_uploaded": 1}
+        ).to_list(500)
+        result["items"] = clients
+        result["count"] = len(clients)
+    
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown stat type: {stat_type}")
+    
+    return result
 
 @api_router.get("/dashboard/salesperson-performance")
 async def get_salesperson_performance(
@@ -6410,6 +6700,7 @@ async def submit_prequalify_with_file(
     timeAtAddressYears: Optional[str] = Form(None),
     timeAtAddressMonths: Optional[str] = Form(None),
     employerName: Optional[str] = Form(None),
+    employerPhoneNumber: Optional[str] = Form(None),  # NEW: Employer phone number
     # Time with employer - separated fields (support both naming conventions)
     timeWithEmployerYears: Optional[str] = Form(None),
     timeWithEmployerMonths: Optional[str] = Form(None),
@@ -6505,7 +6796,7 @@ async def submit_prequalify_with_file(
             
             for idx, file in enumerate(all_files):
                 file_extension = Path(file.filename).suffix.lower()
-                if file_extension not in ['.pdf', '.jpg', '.jpeg', '.png']:
+                if file_extension not in ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic']:
                     continue  # Skip invalid files
                 
                 content = await file.read()
@@ -6514,6 +6805,11 @@ async def submit_prequalify_with_file(
                 
                 with open(temp_path, "wb") as f:
                     f.write(content)
+                
+                # Optimize image files before further processing
+                if file_extension in ['.jpg', '.jpeg', '.png', '.webp', '.heic']:
+                    temp_path = optimize_document(temp_path, max_size_kb=400, max_dimension=1600)
+                    file_extension = temp_path.suffix.lower()  # May have changed to .jpg
                 
                 temp_files.append((temp_path, file_extension))
             
@@ -6608,6 +6904,7 @@ async def submit_prequalify_with_file(
         "timeAtAddressYears": final_timeAtAddressYears,
         "timeAtAddressMonths": final_timeAtAddressMonths,
         "employerName": employerName,
+        "employerPhoneNumber": employerPhoneNumber,  # NEW: Employer phone number
         # Time with employer - use normalized int values
         "timeWithEmployerYears": final_employmentYears,
         "timeWithEmployerMonths": final_employmentMonths,
@@ -6999,6 +7296,111 @@ async def add_prequalify_to_notes(submission_id: str, record_id: str, current_us
     await db.record_comments.insert_one(note_doc)
     await db.prequalify_submissions.update_one({"id": submission_id}, {"$set": {"status": "reviewed"}})
     return {"message": "Data added to record notes", "note_id": note_doc["id"]}
+
+@api_router.get("/clients/{client_id}/prequalify")
+async def get_client_prequalify(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Get prequalify submission linked to a client (Admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # First get the client to find phone number
+    client = await db.clients.find_one({"id": client_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Search for prequalify submissions that match this client
+    # Check by matched_client_id or by phone number
+    prequalify = await db.prequalify_submissions.find_one(
+        {
+            "$or": [
+                {"matched_client_id": client_id},
+                {"phone": {"$regex": client.get("phone", "")[-10:] if client.get("phone") else "NOMATCH", "$options": "i"}}
+            ]
+        },
+        {"_id": 0},
+        sort=[("created_at", -1)]  # Get most recent
+    )
+    
+    if not prequalify:
+        return {"found": False, "prequalify": None}
+    
+    return {"found": True, "prequalify": prequalify}
+
+
+@api_router.get("/clients/export/excel")
+async def export_clients_excel(current_user: dict = Depends(get_current_user)):
+    """Export all clients to Excel (Name, LastName, Email, Phone only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Get all non-deleted clients
+    clients = await db.clients.find(
+        {"is_deleted": {"$ne": True}},
+        {"_id": 0, "first_name": 1, "last_name": 1, "email": 1, "phone": 1}
+    ).sort("created_at", -1).to_list(None)
+    
+    # Create Excel file
+    df = pd.DataFrame(clients)
+    df.columns = ["Nombre", "Apellido", "Email", "Teléfono"]
+    
+    # Create Excel in memory
+    output = io.BytesIO()
+    df.to_excel(output, index=False, sheet_name="Clientes")
+    output.seek(0)
+    
+    # Generate filename with date
+    filename = f"clientes_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@api_router.delete("/prequalify/submissions/{submission_id}")
+async def delete_prequalify_submission(submission_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a prequalify submission and its associated documents (Admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    submission = await db.prequalify_submissions.find_one({"id": submission_id}, {"_id": 0})
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    
+    # Delete associated file if exists
+    id_file_url = submission.get("id_file_url")
+    if id_file_url:
+        # Resolve file path
+        upload_dir = Path(__file__).parent / "uploads"
+        possible_paths = []
+        
+        if id_file_url.startswith('/uploads/'):
+            filename = id_file_url.replace('/uploads/', '')
+            possible_paths.append(upload_dir / filename)
+        else:
+            possible_paths.append(Path(id_file_url))
+            possible_paths.append(upload_dir / os.path.basename(id_file_url))
+        
+        for file_path in possible_paths:
+            try:
+                if file_path.exists():
+                    file_path.unlink()
+                    logger.info(f"Deleted prequalify document: {file_path}")
+                    break
+            except Exception as e:
+                logger.error(f"Error deleting file {file_path}: {e}")
+    
+    # Delete from database
+    result = await db.prequalify_submissions.delete_one({"id": submission_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=500, detail="Failed to delete submission")
+    
+    logger.info(f"Deleted prequalify submission {submission_id} by {current_user['email']}")
+    
+    return {"message": "Precalificación eliminada correctamente", "deleted_file": id_file_url is not None}
+
 
 @api_router.post("/prequalify/submissions/{submission_id}/sync-to-client")
 async def sync_prequalify_to_client(submission_id: str, current_user: dict = Depends(get_current_user)):

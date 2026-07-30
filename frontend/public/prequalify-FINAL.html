@@ -328,9 +328,15 @@
             
             <h2>💼 Información de Empleo</h2>
             
-            <div class="form-group">
-                <label>Nombre del Empleador</label>
-                <input type="text" id="employerName" placeholder="ABC Company">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nombre del Empleador</label>
+                    <input type="text" id="employerName" placeholder="ABC Company">
+                </div>
+                <div class="form-group">
+                    <label>Teléfono del Empleador</label>
+                    <input type="tel" id="employerPhoneNumber" placeholder="(555) 555-5555">
+                </div>
             </div>
             
             <div class="form-group">
@@ -528,6 +534,7 @@
                 
                 // Campos de empleo
                 formData.append('employerName', document.getElementById('employerName').value || '');
+                formData.append('employerPhoneNumber', document.getElementById('employerPhoneNumber').value || '');
                 formData.append('incomeType', document.getElementById('incomeType').value || '');
                 formData.append('netIncome', document.getElementById('netIncome').value || '');
                 formData.append('incomeFrequency', document.getElementById('incomeFrequency').value || '');

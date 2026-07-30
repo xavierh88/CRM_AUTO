@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { 
   Plus, Search, Info, Calendar, ChevronDown, ChevronRight, 
   Send, Trash2, CheckCircle2, XCircle, UserPlus, Phone, RefreshCw, MessageSquare,
-  X, FileText, MessageCircle, Upload, Download, Home, Mail, Users, Bell
+  X, FileText, MessageCircle, Upload, Download, Home, Mail, Users, Bell, FileSpreadsheet, ClipboardList
 } from 'lucide-react';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import SmsInboxDialog from '../components/SmsInboxDialog';
@@ -44,6 +44,11 @@ export default function ClientsPage() {
   const [newClientNote, setNewClientNote] = useState('');
   const [noteReminderAt, setNoteReminderAt] = useState('');
   const [loadingNotes, setLoadingNotes] = useState(false);
+  
+  // Prequalify info modal state
+  const [prequalifyInfoClient, setPrequalifyInfoClient] = useState(null);
+  const [prequalifyData, setPrequalifyData] = useState(null);
+  const [loadingPrequalify, setLoadingPrequalify] = useState(false);
   
   // Salespersons list for collaborator selection
   const [salespersons, setSalespersons] = useState([]);
@@ -337,6 +342,45 @@ export default function ClientsPage() {
     }
   };
 
+  // Export clients to Excel
+  const handleExportExcel = async () => {
+    try {
+      const response = await axios.get(`${API}/clients/export/excel`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `clientes_export_${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Archivo Excel descargado exitosamente');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al exportar clientes');
+    }
+  };
+
+  // Open prequalify info for a client
+  const openPrequalifyInfo = async (client) => {
+    setPrequalifyInfoClient(client);
+    setLoadingPrequalify(true);
+    setPrequalifyData(null);
+    
+    try {
+      const response = await axios.get(`${API}/clients/${client.id}/prequalify`);
+      setPrequalifyData(response.data);
+    } catch (error) {
+      console.error('Error fetching prequalify info:', error);
+      setPrequalifyData({ found: false, prequalify: null });
+    } finally {
+      setLoadingPrequalify(false);
+    }
+  };
+
   // Search with debounce
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -395,13 +439,24 @@ export default function ClientsPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{t('clients.title')}</h1>
           <p className="text-slate-500 mt-1 text-sm">{clients.length} total clients</p>
         </div>
-        <Dialog open={showAddClient} onOpenChange={setShowAddClient}>
-          <DialogTrigger asChild>
-            <Button className="bg-slate-900 hover:bg-slate-800" data-testid="add-client-btn">
-              <Plus className="w-4 h-4 mr-2" />
-              {t('clients.addNew')}
+        <div className="flex gap-2 flex-wrap">
+          {isAdmin && (
+            <Button 
+              variant="outline" 
+              onClick={handleExportExcel}
+              data-testid="export-clients-btn"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Exportar Excel
             </Button>
-          </DialogTrigger>
+          )}
+          <Dialog open={showAddClient} onOpenChange={setShowAddClient}>
+            <DialogTrigger asChild>
+              <Button className="bg-slate-900 hover:bg-slate-800" data-testid="add-client-btn">
+                <Plus className="w-4 h-4 mr-2" />
+                {t('clients.addNew')}
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{t('clients.addNew')}</DialogTitle>
@@ -598,6 +653,7 @@ export default function ClientsPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Search */}
@@ -830,6 +886,21 @@ export default function ClientsPage() {
                       >
                         <Info className="w-4 h-4" />
                       </Button>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openPrequalifyInfo(client);
+                          }}
+                          data-testid={`client-prequalify-btn-${client.id}`}
+                          title="Ver Precalificación"
+                          className="text-purple-500 hover:text-purple-700 hover:bg-purple-50"
+                        >
+                          <ClipboardList className="w-4 h-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -1074,6 +1145,99 @@ export default function ClientsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Prequalify Info Modal */}
+      {prequalifyInfoClient && (
+        <Dialog open={!!prequalifyInfoClient} onOpenChange={() => { setPrequalifyInfoClient(null); setPrequalifyData(null); }}>
+          <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-purple-600" />
+                Información de Precalificación
+              </DialogTitle>
+              <p className="text-sm text-slate-500">
+                {prequalifyInfoClient.first_name} {prequalifyInfoClient.last_name}
+              </p>
+            </DialogHeader>
+            
+            {loadingPrequalify ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+              </div>
+            ) : !prequalifyData?.found ? (
+              <div className="text-center py-8 text-slate-500">
+                <ClipboardList className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                <p>No se encontró información de precalificación para este cliente</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Personal Info */}
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <h4 className="font-medium text-slate-700 mb-2">Información Personal</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><span className="text-slate-500">Nombre:</span> {prequalifyData.prequalify.firstName} {prequalifyData.prequalify.lastName}</div>
+                    <div><span className="text-slate-500">Teléfono:</span> {prequalifyData.prequalify.phone}</div>
+                    <div><span className="text-slate-500">Email:</span> {prequalifyData.prequalify.email || 'N/A'}</div>
+                    <div><span className="text-slate-500">Fecha Nac:</span> {prequalifyData.prequalify.dateOfBirth || 'N/A'}</div>
+                    <div><span className="text-slate-500">Tipo ID:</span> {prequalifyData.prequalify.idType || 'N/A'}</div>
+                    <div><span className="text-slate-500">Número ID:</span> {prequalifyData.prequalify.idNumber || 'N/A'}</div>
+                  </div>
+                </div>
+
+                {/* Address Info */}
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <h4 className="font-medium text-blue-700 mb-2">Dirección</h4>
+                  <div className="text-sm">
+                    <p>{prequalifyData.prequalify.address || 'N/A'}, {prequalifyData.prequalify.city || ''} {prequalifyData.prequalify.state || ''} {prequalifyData.prequalify.zipCode || ''}</p>
+                    <p className="mt-1 text-blue-600">
+                      <span className="text-blue-500">Tipo:</span> {prequalifyData.prequalify.housingType || 'N/A'} | 
+                      <span className="text-blue-500 ml-2">Tiempo:</span> {prequalifyData.prequalify.timeAtAddressYears || 0} años, {prequalifyData.prequalify.timeAtAddressMonths || 0} meses
+                    </p>
+                  </div>
+                </div>
+
+                {/* Employment Info */}
+                <div className="p-3 bg-emerald-50 rounded-lg">
+                  <h4 className="font-medium text-emerald-700 mb-2">Empleo e Ingresos</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><span className="text-emerald-600">Empleador:</span> {prequalifyData.prequalify.employerName || 'N/A'}</div>
+                    <div><span className="text-emerald-600">Tel Empleador:</span> {prequalifyData.prequalify.employerPhoneNumber || 'N/A'}</div>
+                    <div><span className="text-emerald-600">Tiempo:</span> {prequalifyData.prequalify.timeWithEmployerYears || 0} años, {prequalifyData.prequalify.timeWithEmployerMonths || 0} meses</div>
+                    <div><span className="text-emerald-600">Tipo Ingreso:</span> {prequalifyData.prequalify.incomeType || 'N/A'}</div>
+                    <div><span className="text-emerald-600">Ingreso Neto:</span> {prequalifyData.prequalify.netIncome || 'N/A'}</div>
+                    <div><span className="text-emerald-600">Frecuencia:</span> {prequalifyData.prequalify.incomeFrequency || 'N/A'}</div>
+                  </div>
+                  <div className="mt-2 p-2 bg-white rounded border border-emerald-200">
+                    <span className="text-emerald-700 font-medium">Down Payment Estimado: {prequalifyData.prequalify.estimatedDownPayment || 'N/A'}</span>
+                  </div>
+                </div>
+
+                {/* Submission Info */}
+                <div className="p-3 bg-amber-50 rounded-lg text-sm">
+                  <p className="text-amber-700">
+                    <span className="font-medium">Fecha de envío:</span> {new Date(prequalifyData.prequalify.created_at).toLocaleString('es-ES')}
+                  </p>
+                  <p className="text-amber-600 mt-1">
+                    <span className="font-medium">Estado:</span> {prequalifyData.prequalify.status}
+                  </p>
+                  {prequalifyData.prequalify.id_file_url && (
+                    <p className="mt-2">
+                      <a 
+                        href={`${process.env.REACT_APP_BACKEND_URL}${prequalifyData.prequalify.id_file_url}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline flex items-center gap-1"
+                      >
+                        <FileText className="w-4 h-4" /> Ver Documento ID
+                      </a>
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

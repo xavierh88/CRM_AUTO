@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { 
   FileText, Clock, CheckCircle2, AlertCircle, User, Phone, Mail, 
   MapPin, Briefcase, DollarSign, Calendar, ExternalLink, Plus,
-  MessageSquare, Eye, EyeOff, UserPlus, RefreshCw, Search, Shield
+  MessageSquare, Eye, EyeOff, UserPlus, RefreshCw, Search, Shield, Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -26,6 +26,7 @@ export default function PreQualifyPage() {
   const [filter, setFilter] = useState('all');
   const [showSSN, setShowSSN] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // Submission ID to delete
 
   useEffect(() => {
     fetchSubmissions();
@@ -89,6 +90,19 @@ export default function PreQualifyPage() {
       fetchSubmissions();
     } catch (error) {
       toast.error('Error al agregar a notas');
+    }
+  };
+
+  const handleDeleteSubmission = async (submissionId) => {
+    try {
+      await axios.delete(`${API}/prequalify/submissions/${submissionId}`);
+      toast.success('Precalificación eliminada correctamente');
+      setDeleteConfirm(null);
+      setSelectedSubmission(null);
+      setDetailData(null);
+      fetchSubmissions();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al eliminar precalificación');
     }
   };
 
@@ -411,6 +425,9 @@ export default function PreQualifyPage() {
                     <span className="text-emerald-600">Empleador:</span> {detailData.submission.employerName || 'N/A'}
                   </div>
                   <div>
+                    <span className="text-emerald-600">Tel. Empleador:</span> {detailData.submission.employerPhoneNumber || 'N/A'}
+                  </div>
+                  <div>
                     <span className="text-emerald-600">Tiempo:</span> {
                       (detailData.submission.timeWithEmployerYears !== null && detailData.submission.timeWithEmployerYears !== undefined) ||
                       (detailData.submission.timeWithEmployerMonths !== null && detailData.submission.timeWithEmployerMonths !== undefined)
@@ -426,7 +443,7 @@ export default function PreQualifyPage() {
                   </div>
                 </div>
                 <div className="mt-3 p-2 bg-white rounded border border-emerald-200">
-                  <span className="text-emerald-700 font-medium">💰 Down Payment Estimado: {detailData.submission.estimatedDownPayment || 'N/A'}</span>
+                  <span className="text-emerald-700 font-medium">Down Payment Estimado: {detailData.submission.estimatedDownPayment || 'N/A'}</span>
                 </div>
               </div>
 
@@ -578,19 +595,58 @@ export default function PreQualifyPage() {
               )}
 
               {/* Actions */}
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <Button variant="outline" onClick={() => { setSelectedSubmission(null); setDetailData(null); }}>
-                  Cerrar
+              <div className="flex justify-between items-center gap-2 pt-4 border-t">
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => setDeleteConfirm(selectedSubmission.id)}
+                  data-testid="delete-prequalify-btn"
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Eliminar
                 </Button>
-                {detailData.submission.status !== 'converted' && !detailData.comparison && (
-                  <Button onClick={handleCreateClient}>
-                    <UserPlus className="w-4 h-4 mr-1" />
-                    Crear Cliente
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => { setSelectedSubmission(null); setDetailData(null); }}>
+                    Cerrar
                   </Button>
-                )}
+                  {detailData.submission.status !== 'converted' && !detailData.comparison && (
+                    <Button onClick={handleCreateClient}>
+                      <UserPlus className="w-4 h-4 mr-1" />
+                      Crear Cliente
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-2">
+              <Trash2 className="w-5 h-5" />
+              Confirmar Eliminación
+            </DialogTitle>
+            <DialogDescription>
+              ¿Está seguro que desea eliminar esta precalificación? Esta acción no se puede deshacer y se eliminarán también los documentos asociados.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => handleDeleteSubmission(deleteConfirm)}
+              data-testid="confirm-delete-prequalify-btn"
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              Eliminar Permanentemente
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

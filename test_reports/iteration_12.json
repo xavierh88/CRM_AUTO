@@ -1,0 +1,83 @@
+{
+  "summary": "Full-stack testing of the 7 CRM improvements (admin@carplus.com / Admin123!). Backend: 16/17 tests passed (1 failure exposes a real bug: employerPhoneNumber not persisted via JSON /api/prequalify/submit and stripped from PreQualifyResponse list). Frontend: all 7 UI features verified working - clickable dashboard stats + detail modals, Excel export downloads valid .xlsx, purple ClipboardList prequalify info button on client rows with 'Información de Precalificación' modal, 'Tel. Empleador' label present in submission detail modal, red 'Eliminar' button opens 'Confirmar Eliminación' dialog with 'Eliminar Permanentemente' confirmation.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/prequalify/submit (JSON) & PreQualifyResponse model",
+        "issue": "Pydantic model `PreQualifySubmission` (server.py L6420-6445) is MISSING `employerPhoneNumber` field, so JSON submissions silently drop it. Additionally, `PreQualifyResponse` (L6447-6483) also lacks the field AND uses `extra=\"ignore\"`, so even values saved by /submit-with-file (which does accept the field, L6703) get stripped when listing via GET /api/prequalify/submissions (response_model=List[PreQualifyResponse]). Detail modal shows 'Tel. Empleador: N/A' as a result.",
+        "priority": "MEDIUM"
+      }
+    ]
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "POST /api/auth/login with admin@carplus.com/Admin123! - 200 OK, role=admin",
+    "GET /api/dashboard/stats/{stat_type}/details - 6 stat_types all return 200 with items[]",
+    "GET /api/dashboard/stats/total_clients/details - returns list with client fields (no _id leak)",
+    "GET /api/dashboard/stats/*/details without auth - 401/403",
+    "GET /api/clients/export/excel - 200, xlsx file, columns=[Nombre, Apellido, Email, Teléfono]",
+    "GET /api/clients/export/excel without auth - 401/403",
+    "GET /api/clients/{client_id}/prequalify - 200 {found:false, prequalify:null} for unmatched client",
+    "GET /api/clients/nonexistent/prequalify - 404",
+    "GET /api/clients/{client_id}/prequalify without auth - 401/403",
+    "DELETE /api/prequalify/submissions/{id} nonexistent - 404",
+    "DELETE /api/prequalify/submissions/{id} without auth - 401/403",
+    "Full delete flow: create submission, DELETE returns 200, verify it's removed from list",
+    "Frontend: Login redirects to /dashboard",
+    "Frontend: Dashboard stat cards (stat-total-clients, etc.) clickable, opens modal 'Clientes Total (54)' with data list",
+    "Frontend: Clients page has 'Exportar Excel' button (data-testid=export-clients-btn) - triggers download of clientes_export_*.xlsx",
+    "Frontend: Each client row has both `client-info-btn-*` and NEW `client-prequalify-btn-*` (purple ClipboardList, title='Ver Precalificación', stroke rgb(168,85,247)=purple-500)",
+    "Frontend: Clicking prequalify info button opens 'Información de Precalificación' modal (shows 'No se encontró...' when no match)",
+    "Frontend: Prequalify submissions detail modal ('Detalle de Pre-Qualify') shows 'Tel. Empleador' label under 'Empleo e Ingresos'",
+    "Frontend: Red 'Eliminar' button in submission modal opens 'Confirmar Eliminación' dialog with Cancelar + 'Eliminar Permanentemente' buttons",
+    "Address/city/state/zipCode fields correctly persisted via JSON submit (verified '123 Test St, Miami, FL, 33101')"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_crm_improvements.py",
+    "/app/test_reports/pytest/pytest_crm_improvements.xml"
+  ],
+
+  "action_items": [
+    "Add `employerPhoneNumber: Optional[str] = None` to Pydantic models `PreQualifySubmission` (server.py ~L6437) AND `PreQualifyResponse` (server.py ~L6469). Otherwise the field submitted via public JSON form is silently dropped and the field saved by /submit-with-file is stripped from the list endpoint response (Detalle modal shows 'Tel. Empleador: N/A').",
+    "(Optional) Consider standardizing field naming - backend mixes camelCase (employerPhoneNumber) with snake_case (id_file_url). Not blocking."
+  ],
+
+  "critical_code_review_comments": [
+    "server.py L6420-6483: Pydantic `PreQualifySubmission` and `PreQualifyResponse` don't declare `employerPhoneNumber` -> silent data loss for JSON submits and list responses. The /submit-with-file endpoint does declare `employerPhoneNumber: Optional[str] = Form(None)` correctly.",
+    "server.py L7317: Regex phone match `phone[-10:]` in GET /clients/{id}/prequalify is not regex-escaped. If a client phone contains regex metachars (rare with normalized phones but possible with '+', parentheses), this could error or match incorrectly. Consider `re.escape()`.",
+    "server.py L7300-7327 & L7330 route ordering: `/clients/{client_id}/prequalify` and `/clients/export/excel` both match `/clients/*/*`. Route matching works because the last segments differ, but the {client_id} pattern could shadow future literal routes. Working today.",
+    "PreQualifyResponse uses ConfigDict(extra='ignore') which is a code smell - silently drops any DB fields not declared in the model. Prefer explicit whitelisting or `extra='allow'` for backward-compat.",
+    "DELETE /prequalify/submissions/{id} correctly deletes DB doc + tries to remove attached file with proper path resolution and error handling."
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_crm_improvements.py (created)"
+  ],
+
+  "success_rate": {
+    "backend": "94% (16/17 tests passed)",
+    "frontend": "100% (all 7 UI improvements verified)"
+  },
+
+  "test_credentials": {
+    "admin": "admin@carplus.com / Admin123!"
+  },
+
+  "seed_data_creation": "Created a few TEST_ prefixed prequalify submissions and clients during testing, all cleaned up via delete endpoints",
+
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+
+  "context_for_next_testing_agent": "All 7 CRM improvements are functionally in place. The one remaining backend issue is the employerPhoneNumber not being wired into the Pydantic models `PreQualifySubmission` (JSON submit) and `PreQualifyResponse` (list endpoint). Frontend already renders the 'Tel. Empleador' label correctly and the /submit-with-file endpoint accepts the field - only the JSON path and list response need model updates. Test file `/app/backend/tests/test_crm_improvements.py` can be re-run for regression.",
+
+  "rca of the issue": "For prequalify employerPhoneNumber not persisted: (1) When public form uses /prequalify/submit (JSON), Pydantic strips undeclared fields, so employerPhoneNumber never reaches DB. (2) When /submit-with-file is used, the field IS saved to Mongo, but GET /prequalify/submissions returns via `response_model=List[PreQualifyResponse]` which lacks the field AND has extra='ignore', stripping it. Fix: Add `employerPhoneNumber: Optional[str] = None` to both models."
+}

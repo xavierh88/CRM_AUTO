@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Button } from '../components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { 
   Users, Calendar, DollarSign, FileCheck, TrendingUp, 
-  UserPlus, CarFront, Clock, Activity, Target, Users2, Filter, CheckCircle, User
+  UserPlus, CarFront, Clock, Activity, Target, Users2, Filter, CheckCircle, User, X, ExternalLink
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, 
@@ -18,6 +22,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 export default function DashboardPage() {
   const { t } = useTranslation();
   const { isAdmin, isBDCManager } = useAuth();
+  const navigate = useNavigate();
   const canViewPerformance = isAdmin || isBDCManager; // Admin and BDC Manager can see performance
   const [stats, setStats] = useState(null);
   const [performance, setPerformance] = useState([]);
@@ -27,6 +32,9 @@ export default function DashboardPage() {
   const [availableMonths, setAvailableMonths] = useState([]);
   const [selectedUser, setSelectedUser] = useState('all'); // New: filter by user
   const [users, setUsers] = useState([]); // New: list of users
+  
+  // Stats detail modal state
+  const [statDetailModal, setStatDetailModal] = useState({ open: false, type: '', title: '', data: [], loading: false });
 
   // Fetch users for filter (Admin only)
   useEffect(() => {
@@ -86,6 +94,30 @@ export default function DashboardPage() {
     if (value) {
       setPeriod(''); // Clear period when selecting specific month
     }
+  };
+
+  // Function to open stat details modal
+  const openStatDetails = async (statType, title) => {
+    setStatDetailModal({ open: true, type: statType, title, data: [], loading: true });
+    try {
+      const params = new URLSearchParams();
+      if (selectedMonth) {
+        params.append('month', selectedMonth);
+      } else if (period && period !== 'all') {
+        params.append('period', period);
+      }
+      const response = await axios.get(`${API}/dashboard/stats/${statType}/details?${params.toString()}`);
+      setStatDetailModal(prev => ({ ...prev, data: response.data.items || [], loading: false }));
+    } catch (error) {
+      console.error('Failed to fetch stat details:', error);
+      setStatDetailModal(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  // Navigate to client from modal
+  const goToClient = (clientId, phone) => {
+    setStatDetailModal(prev => ({ ...prev, open: false }));
+    navigate(`/clients?search=${phone || clientId}`);
   };
 
   const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -225,9 +257,9 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Main Stat Cards - Row 1 */}
+      {/* Main Stat Cards - Row 1 (Clickable) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-        <Card className="dashboard-card">
+        <Card className="dashboard-card cursor-pointer hover:shadow-lg transition-shadow" onClick={() => openStatDetails('total_clients', 'Clientes Total')} data-testid="stat-total-clients">
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col items-center text-center sm:flex-row sm:text-left gap-2 sm:gap-3">
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
@@ -241,7 +273,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="dashboard-card">
+        <Card className="dashboard-card cursor-pointer hover:shadow-lg transition-shadow" onClick={() => openStatDetails('new_clients_month', 'Clientes Nuevos (Mes)')} data-testid="stat-new-clients">
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col items-center text-center sm:flex-row sm:text-left gap-2 sm:gap-3">
               <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
@@ -255,7 +287,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="dashboard-card">
+        <Card className="dashboard-card cursor-pointer hover:shadow-lg transition-shadow" onClick={() => openStatDetails('sales', 'Ventas Total')} data-testid="stat-sales">
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col items-center text-center sm:flex-row sm:text-left gap-2 sm:gap-3">
               <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
@@ -269,7 +301,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="dashboard-card">
+        <Card className="dashboard-card cursor-pointer hover:shadow-lg transition-shadow" onClick={() => openStatDetails('sales_month', 'Ventas del Mes')} data-testid="stat-sales-month">
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col items-center text-center sm:flex-row sm:text-left gap-2 sm:gap-3">
               <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
@@ -283,7 +315,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="dashboard-card">
+        <Card className="dashboard-card cursor-pointer hover:shadow-lg transition-shadow" onClick={() => openStatDetails('sold_clients', 'Clientes Vendidos')} data-testid="stat-sold-clients">
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col items-center text-center sm:flex-row sm:text-left gap-2 sm:gap-3">
               <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
@@ -297,7 +329,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="dashboard-card">
+        <Card className="dashboard-card cursor-pointer hover:shadow-lg transition-shadow" onClick={() => openStatDetails('today_appointments', 'Citas de Hoy')} data-testid="stat-today-appointments">
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col items-center text-center sm:flex-row sm:text-left gap-2 sm:gap-3">
               <div className="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center flex-shrink-0">
@@ -311,7 +343,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="dashboard-card">
+        <Card className="dashboard-card cursor-pointer hover:shadow-lg transition-shadow" onClick={() => openStatDetails('week_appointments', 'Citas de la Semana')} data-testid="stat-week-appointments">
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col items-center text-center sm:flex-row sm:text-left gap-2 sm:gap-3">
               <div className="w-10 h-10 rounded-lg bg-cyan-50 flex items-center justify-center flex-shrink-0">
@@ -326,7 +358,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* KPI Cards - Row 2 */}
+      {/* KPI Cards - Row 2 (Some clickable) */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card className="dashboard-card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
           <CardContent className="p-3 sm:p-4">
@@ -352,7 +384,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="dashboard-card bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+        <Card className="dashboard-card bg-gradient-to-br from-purple-500 to-purple-600 text-white cursor-pointer hover:opacity-90 transition-opacity" onClick={() => openStatDetails('total_records', 'Total de Records')} data-testid="stat-total-records">
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col items-center text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
               <div className="min-w-0">
@@ -364,7 +396,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="dashboard-card bg-gradient-to-br from-amber-500 to-amber-600 text-white">
+        <Card className="dashboard-card bg-gradient-to-br from-amber-500 to-amber-600 text-white cursor-pointer hover:opacity-90 transition-opacity" onClick={() => openStatDetails('total_cosigners', 'Co-Signers')} data-testid="stat-cosigners">
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col items-center text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
               <div className="min-w-0">
@@ -562,7 +594,11 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="flex items-center gap-4 p-4 bg-emerald-50 rounded-xl">
+            <div 
+              className="flex items-center gap-4 p-4 bg-emerald-50 rounded-xl cursor-pointer hover:bg-emerald-100 transition-colors"
+              onClick={() => openStatDetails('docs_complete', 'Documentos Completos')}
+              data-testid="stat-docs-complete"
+            >
               <div className="w-14 h-14 rounded-xl bg-emerald-100 flex items-center justify-center">
                 <FileCheck className="w-7 h-7 text-emerald-600" />
               </div>
@@ -571,7 +607,11 @@ export default function DashboardPage() {
                 <p className="text-sm text-emerald-600">Documentos Completos</p>
               </div>
             </div>
-            <div className="flex items-center gap-4 p-4 bg-orange-50 rounded-xl">
+            <div 
+              className="flex items-center gap-4 p-4 bg-orange-50 rounded-xl cursor-pointer hover:bg-orange-100 transition-colors"
+              onClick={() => openStatDetails('docs_pending', 'Documentos Pendientes')}
+              data-testid="stat-docs-pending"
+            >
               <div className="w-14 h-14 rounded-xl bg-orange-100 flex items-center justify-center">
                 <FileCheck className="w-7 h-7 text-orange-600" />
               </div>
@@ -580,7 +620,11 @@ export default function DashboardPage() {
                 <p className="text-sm text-orange-600">Documentos Pendientes</p>
               </div>
             </div>
-            <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl">
+            <div 
+              className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl cursor-pointer hover:bg-blue-100 transition-colors"
+              onClick={() => openStatDetails('active_clients', 'Clientes Activos (7 días)')}
+              data-testid="stat-active-clients"
+            >
               <div className="w-14 h-14 rounded-xl bg-blue-100 flex items-center justify-center">
                 <Activity className="w-7 h-7 text-blue-600" />
               </div>
@@ -592,6 +636,129 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Stat Detail Modal */}
+      <Dialog open={statDetailModal.open} onOpenChange={(open) => setStatDetailModal(prev => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-blue-600" />
+              {statDetailModal.title} ({statDetailModal.data.length})
+            </DialogTitle>
+          </DialogHeader>
+          
+          {statDetailModal.loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : statDetailModal.data.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              No hay datos para mostrar
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {statDetailModal.type.includes('appointment') ? (
+                    <>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Hora</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Dealer</TableHead>
+                    </>
+                  ) : statDetailModal.type === 'total_cosigners' ? (
+                    <>
+                      <TableHead>Comprador</TableHead>
+                      <TableHead>Co-Signer</TableHead>
+                      <TableHead></TableHead>
+                    </>
+                  ) : statDetailModal.type === 'total_records' ? (
+                    <>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead></TableHead>
+                    </>
+                  ) : (
+                    <>
+                      <TableHead>Nombre</TableHead>
+                      <TableHead>Teléfono</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead></TableHead>
+                    </>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {statDetailModal.data.map((item, idx) => (
+                  <TableRow key={idx}>
+                    {statDetailModal.type.includes('appointment') ? (
+                      <>
+                        <TableCell className="font-medium">{item.client_name || 'N/A'}</TableCell>
+                        <TableCell>{item.date}</TableCell>
+                        <TableCell>{item.time}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            item.status === 'cumplido' ? 'bg-green-100 text-green-700' :
+                            item.status === 'agendado' ? 'bg-blue-100 text-blue-700' :
+                            'bg-slate-100 text-slate-700'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </TableCell>
+                        <TableCell>{item.dealer}</TableCell>
+                      </>
+                    ) : statDetailModal.type === 'total_cosigners' ? (
+                      <>
+                        <TableCell className="font-medium">{item.buyer_name}</TableCell>
+                        <TableCell>{item.cosigner_name}</TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="sm" onClick={() => goToClient(item.buyer_client_id, '')}>
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </>
+                    ) : statDetailModal.type === 'total_records' ? (
+                      <>
+                        <TableCell className="font-medium">{item.client_name || 'N/A'}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            item.record_status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'
+                          }`}>
+                            {item.record_status || 'pending'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs text-slate-500">
+                          {item.created_at ? new Date(item.created_at).toLocaleDateString('es-ES') : ''}
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="sm" onClick={() => goToClient(item.client_id, '')}>
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell className="font-medium">
+                          {item.first_name} {item.last_name}
+                        </TableCell>
+                        <TableCell>{item.phone}</TableCell>
+                        <TableCell className="text-sm text-slate-500">{item.email}</TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="sm" onClick={() => goToClient(item.id, item.phone)}>
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
