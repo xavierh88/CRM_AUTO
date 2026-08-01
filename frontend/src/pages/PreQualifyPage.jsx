@@ -415,33 +415,79 @@ export default function PreQualifyPage() {
                 </div>
               </div>
 
-              {/* Employment Info */}
+              {/* Employment Info - Multiple Employments Support */}
               <div className="p-4 bg-emerald-50 rounded-lg">
                 <h4 className="font-medium text-emerald-700 mb-2 flex items-center gap-1">
                   <Briefcase className="w-4 h-4" /> Empleo e Ingresos
                 </h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-emerald-600">Empleador:</span> {detailData.submission.employerName || 'N/A'}
+                
+                {/* Check if there are multiple employments */}
+                {detailData.submission.employments && detailData.submission.employments.length > 0 ? (
+                  <div className="space-y-4">
+                    {detailData.submission.employments.map((emp, index) => (
+                      <div key={index} className={`p-3 rounded-lg ${index === 0 ? 'bg-emerald-100' : 'bg-white border border-emerald-200'}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-semibold text-emerald-700 bg-emerald-200 px-2 py-1 rounded">
+                            Empleo {index + 1}
+                          </span>
+                          {emp.employmentType && (
+                            <span className="text-xs text-emerald-600">({emp.employmentType})</span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="text-emerald-600">Empleador:</span> {emp.employerName || 'N/A'}
+                          </div>
+                          <div>
+                            <span className="text-emerald-600">Tel:</span> {emp.employerPhoneNumber || 'N/A'}
+                          </div>
+                          <div>
+                            <span className="text-emerald-600">Tiempo:</span> {
+                              (emp.timeWithEmployerYears !== null && emp.timeWithEmployerYears !== undefined) ||
+                              (emp.timeWithEmployerMonths !== null && emp.timeWithEmployerMonths !== undefined)
+                                ? `${emp.timeWithEmployerYears ?? 0} años, ${emp.timeWithEmployerMonths ?? 0} meses`
+                                : 'N/A'
+                            }
+                          </div>
+                          <div>
+                            <span className="text-emerald-600">Tipo:</span> {emp.incomeType || 'N/A'}
+                          </div>
+                          <div>
+                            <span className="text-emerald-600">Ingreso:</span> {emp.netIncome || 'N/A'}
+                          </div>
+                          <div>
+                            <span className="text-emerald-600">Frecuencia:</span> {emp.incomeFrequency || 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <span className="text-emerald-600">Tel. Empleador:</span> {detailData.submission.employerPhoneNumber || 'N/A'}
+                ) : (
+                  /* Legacy single employment display */
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-emerald-600">Empleador:</span> {detailData.submission.employerName || 'N/A'}
+                    </div>
+                    <div>
+                      <span className="text-emerald-600">Tel. Empleador:</span> {detailData.submission.employerPhoneNumber || 'N/A'}
+                    </div>
+                    <div>
+                      <span className="text-emerald-600">Tiempo:</span> {
+                        (detailData.submission.timeWithEmployerYears !== null && detailData.submission.timeWithEmployerYears !== undefined) ||
+                        (detailData.submission.timeWithEmployerMonths !== null && detailData.submission.timeWithEmployerMonths !== undefined)
+                          ? `${detailData.submission.timeWithEmployerYears ?? 0} años, ${detailData.submission.timeWithEmployerMonths ?? 0} meses`
+                          : 'N/A'
+                      }
+                    </div>
+                    <div>
+                      <span className="text-emerald-600">Tipo Ingreso:</span> {detailData.submission.incomeType || 'N/A'}
+                    </div>
+                    <div>
+                      <span className="text-emerald-600">Ingreso Neto:</span> {detailData.submission.netIncome || 'N/A'} / {detailData.submission.incomeFrequency || 'N/A'}
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-emerald-600">Tiempo:</span> {
-                      (detailData.submission.timeWithEmployerYears !== null && detailData.submission.timeWithEmployerYears !== undefined) ||
-                      (detailData.submission.timeWithEmployerMonths !== null && detailData.submission.timeWithEmployerMonths !== undefined)
-                        ? `${detailData.submission.timeWithEmployerYears ?? 0} años, ${detailData.submission.timeWithEmployerMonths ?? 0} meses`
-                        : 'N/A'
-                    }
-                  </div>
-                  <div>
-                    <span className="text-emerald-600">Tipo Ingreso:</span> {detailData.submission.incomeType || 'N/A'}
-                  </div>
-                  <div>
-                    <span className="text-emerald-600">Ingreso Neto:</span> {detailData.submission.netIncome || 'N/A'} / {detailData.submission.incomeFrequency || 'N/A'}
-                  </div>
-                </div>
+                )}
+                
                 <div className="mt-3 p-2 bg-white rounded border border-emerald-200">
                   <span className="text-emerald-700 font-medium">Down Payment Estimado: {detailData.submission.estimatedDownPayment || 'N/A'}</span>
                 </div>

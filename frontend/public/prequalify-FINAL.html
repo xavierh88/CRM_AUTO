@@ -130,6 +130,72 @@
             margin-top: 2px;
         }
         
+        /* Multiple Employment Styles */
+        .employment-block {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        .employment-block.additional {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .employment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #cbd5e1;
+        }
+        .employment-title {
+            font-weight: 600;
+            color: #1e3a8a;
+            font-size: 16px;
+        }
+        .remove-employment-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .remove-employment-btn:hover {
+            background: #dc2626;
+        }
+        .add-employment-btn {
+            width: 100%;
+            padding: 12px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        .add-employment-btn:hover {
+            background: #059669;
+        }
+        .add-employment-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .employment-hint {
+            text-align: center;
+            color: #6b7280;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        
         button[type="submit"] {
             width: 100%;
             padding: 16px;
@@ -328,57 +394,82 @@
             
             <h2>💼 Información de Empleo</h2>
             
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Nombre del Empleador</label>
-                    <input type="text" id="employerName" placeholder="ABC Company">
-                </div>
-                <div class="form-group">
-                    <label>Teléfono del Empleador</label>
-                    <input type="tel" id="employerPhoneNumber" placeholder="(555) 555-5555">
+            <div id="employmentsContainer">
+                <!-- Employment 1 (Primary) -->
+                <div class="employment-block" id="employment1">
+                    <div class="employment-header">
+                        <span class="employment-title">Empleo Principal</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Tipo de Empleo</label>
+                        <select id="employmentType">
+                            <option value="">Seleccionar</option>
+                            <option value="Empleado">Empleado</option>
+                            <option value="Self-Employed">Self-Employed</option>
+                            <option value="1099">1099</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nombre del Empleador</label>
+                            <input type="text" id="employerName" placeholder="ABC Company">
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono del Empleador</label>
+                            <input type="tel" id="employerPhoneNumber" placeholder="(555) 555-5555">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Tiempo con este Empleador</label>
+                        <div class="time-inputs">
+                            <input type="number" id="timeWithEmployerYears" placeholder="Años" min="0" max="99">
+                            <input type="number" id="timeWithEmployerMonths" placeholder="Meses" min="0" max="11">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tipo de Ingreso</label>
+                            <select id="incomeType">
+                                <option value="">Seleccionar</option>
+                                <option value="Empleado">Empleado</option>
+                                <option value="Self-Employed">Self-Employed</option>
+                                <option value="1099">1099</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Ingreso Neto</label>
+                            <input type="text" id="netIncome" placeholder="$4,000">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Frecuencia de Pago</label>
+                        <select id="incomeFrequency">
+                            <option value="">Seleccionar</option>
+                            <option value="Semanal">Semanal</option>
+                            <option value="Quincenal">Quincenal</option>
+                            <option value="Mensual">Mensual</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             
-            <div class="form-group">
-                <label>Tiempo con este Empleador</label>
-                <div class="time-inputs">
-                    <input type="number" id="timeWithEmployerYears" placeholder="Años" min="0" max="99">
-                    <input type="number" id="timeWithEmployerMonths" placeholder="Meses" min="0" max="11">
-                </div>
-            </div>
+            <button type="button" id="addEmploymentBtn" class="add-employment-btn" onclick="addEmployment()">
+                + Agregar otro empleo
+            </button>
+            <p class="employment-hint">Puede agregar hasta 4 empleos diferentes</p>
             
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Tipo de Ingreso</label>
-                    <select id="incomeType">
-                        <option value="">Seleccionar</option>
-                        <option value="Empleado">Empleado</option>
-                        <option value="Self-Employed">Self-Employed</option>
-                        <option value="1099">1099</option>
-                        <option value="Cash">Cash</option>
-                        <option value="Otro">Otro</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Ingreso Neto Mensual</label>
-                    <input type="text" id="netIncome" placeholder="$4,000">
-                </div>
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Frecuencia de Pago</label>
-                    <select id="incomeFrequency">
-                        <option value="">Seleccionar</option>
-                        <option value="Semanal">Semanal</option>
-                        <option value="Quincenal">Quincenal</option>
-                        <option value="Mensual">Mensual</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Enganche Estimado</label>
-                    <input type="text" id="estimatedDownPayment" placeholder="$2,500">
-                </div>
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Enganche Estimado</label>
+                <input type="text" id="estimatedDownPayment" placeholder="$2,500">
             </div>
             
             <div class="consent-box">
@@ -432,6 +523,132 @@
     <script>
         // ===== CONFIGURACIÓN =====
         const CRM_URL = 'https://crm.carplusautosalesgroup.com';
+        let employmentCount = 1;
+        const maxEmployments = 4;
+        
+        // ===== MULTIPLE EMPLOYMENTS =====
+        function addEmployment() {
+            if (employmentCount >= maxEmployments) {
+                alert('Máximo 4 empleos permitidos');
+                return;
+            }
+            
+            employmentCount++;
+            const container = document.getElementById('employmentsContainer');
+            
+            const employmentBlock = document.createElement('div');
+            employmentBlock.className = 'employment-block additional';
+            employmentBlock.id = `employment${employmentCount}`;
+            employmentBlock.innerHTML = `
+                <div class="employment-header">
+                    <span class="employment-title">Empleo ${employmentCount}</span>
+                    <button type="button" class="remove-employment-btn" onclick="removeEmployment(${employmentCount})">Eliminar</button>
+                </div>
+                
+                <div class="form-group">
+                    <label>Tipo de Empleo</label>
+                    <select id="employmentType${employmentCount}">
+                        <option value="">Seleccionar</option>
+                        <option value="Empleado">Empleado</option>
+                        <option value="Self-Employed">Self-Employed</option>
+                        <option value="1099">1099</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nombre del Empleador</label>
+                        <input type="text" id="employerName${employmentCount}" placeholder="ABC Company">
+                    </div>
+                    <div class="form-group">
+                        <label>Teléfono del Empleador</label>
+                        <input type="tel" id="employerPhoneNumber${employmentCount}" placeholder="(555) 555-5555">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Tiempo con este Empleador</label>
+                    <div class="time-inputs">
+                        <input type="number" id="timeWithEmployerYears${employmentCount}" placeholder="Años" min="0" max="99">
+                        <input type="number" id="timeWithEmployerMonths${employmentCount}" placeholder="Meses" min="0" max="11">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tipo de Ingreso</label>
+                        <select id="incomeType${employmentCount}">
+                            <option value="">Seleccionar</option>
+                            <option value="Empleado">Empleado</option>
+                            <option value="Self-Employed">Self-Employed</option>
+                            <option value="1099">1099</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Ingreso Neto</label>
+                        <input type="text" id="netIncome${employmentCount}" placeholder="$4,000">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Frecuencia de Pago</label>
+                    <select id="incomeFrequency${employmentCount}">
+                        <option value="">Seleccionar</option>
+                        <option value="Semanal">Semanal</option>
+                        <option value="Quincenal">Quincenal</option>
+                        <option value="Mensual">Mensual</option>
+                    </select>
+                </div>
+            `;
+            
+            container.appendChild(employmentBlock);
+            updateAddButton();
+        }
+        
+        function removeEmployment(num) {
+            const block = document.getElementById(`employment${num}`);
+            if (block) {
+                block.remove();
+                employmentCount--;
+                // Re-number remaining blocks
+                renumberEmployments();
+                updateAddButton();
+            }
+        }
+        
+        function renumberEmployments() {
+            const blocks = document.querySelectorAll('.employment-block.additional');
+            blocks.forEach((block, index) => {
+                const newNum = index + 2; // Start from 2 since employment 1 is primary
+                block.id = `employment${newNum}`;
+                block.querySelector('.employment-title').textContent = `Empleo ${newNum}`;
+                block.querySelector('.remove-employment-btn').setAttribute('onclick', `removeEmployment(${newNum})`);
+                
+                // Update all input IDs
+                const inputs = block.querySelectorAll('input, select');
+                inputs.forEach(input => {
+                    const oldId = input.id;
+                    const baseName = oldId.replace(/\d+$/, '');
+                    input.id = `${baseName}${newNum}`;
+                });
+            });
+            employmentCount = blocks.length + 1;
+        }
+        
+        function updateAddButton() {
+            const btn = document.getElementById('addEmploymentBtn');
+            if (employmentCount >= maxEmployments) {
+                btn.disabled = true;
+                btn.textContent = 'Máximo de empleos alcanzado';
+            } else {
+                btn.disabled = false;
+                btn.textContent = '+ Agregar otro empleo';
+            }
+        }
         
         // ===== MODAL =====
         function closeModal() {
@@ -532,12 +749,37 @@
                 console.log('timeWithEmployerYears:', timeWithEmployerYears);
                 console.log('timeWithEmployerMonths:', timeWithEmployerMonths);
                 
-                // Campos de empleo
+                // Campos de empleo principal
+                formData.append('employmentType', document.getElementById('employmentType').value || '');
                 formData.append('employerName', document.getElementById('employerName').value || '');
                 formData.append('employerPhoneNumber', document.getElementById('employerPhoneNumber').value || '');
                 formData.append('incomeType', document.getElementById('incomeType').value || '');
                 formData.append('netIncome', document.getElementById('netIncome').value || '');
                 formData.append('incomeFrequency', document.getElementById('incomeFrequency').value || '');
+                
+                // Empleos adicionales (2, 3, 4)
+                for (let i = 2; i <= 4; i++) {
+                    const empType = document.getElementById(`employmentType${i}`);
+                    const empName = document.getElementById(`employerName${i}`);
+                    const empPhone = document.getElementById(`employerPhoneNumber${i}`);
+                    const empYears = document.getElementById(`timeWithEmployerYears${i}`);
+                    const empMonths = document.getElementById(`timeWithEmployerMonths${i}`);
+                    const empIncType = document.getElementById(`incomeType${i}`);
+                    const empNetInc = document.getElementById(`netIncome${i}`);
+                    const empFreq = document.getElementById(`incomeFrequency${i}`);
+                    
+                    if (empName && empName.value) {
+                        formData.append(`employmentType${i}`, empType ? empType.value : '');
+                        formData.append(`employerName${i}`, empName.value);
+                        formData.append(`employerPhoneNumber${i}`, empPhone ? empPhone.value : '');
+                        formData.append(`timeWithEmployerYears${i}`, empYears ? empYears.value : '');
+                        formData.append(`timeWithEmployerMonths${i}`, empMonths ? empMonths.value : '');
+                        formData.append(`incomeType${i}`, empIncType ? empIncType.value : '');
+                        formData.append(`netIncome${i}`, empNetInc ? empNetInc.value : '');
+                        formData.append(`incomeFrequency${i}`, empFreq ? empFreq.value : '');
+                    }
+                }
+                
                 formData.append('estimatedDownPayment', document.getElementById('estimatedDownPayment').value || '');
                 
                 // Consentimiento

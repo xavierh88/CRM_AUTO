@@ -439,21 +439,23 @@ export default function ClientsPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{t('clients.title')}</h1>
           <p className="text-slate-500 mt-1 text-sm">{clients.length} total clients</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap w-full sm:w-auto">
           {isAdmin && (
             <Button 
               variant="outline" 
               onClick={handleExportExcel}
               data-testid="export-clients-btn"
+              className="flex-1 sm:flex-none text-xs sm:text-sm"
             >
-              <FileSpreadsheet className="w-4 h-4 mr-2" />
-              Exportar Excel
+              <FileSpreadsheet className="w-4 h-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Exportar Excel</span>
+              <span className="sm:hidden">Excel</span>
             </Button>
           )}
           <Dialog open={showAddClient} onOpenChange={setShowAddClient}>
             <DialogTrigger asChild>
-              <Button className="bg-slate-900 hover:bg-slate-800" data-testid="add-client-btn">
-                <Plus className="w-4 h-4 mr-2" />
+              <Button className="bg-slate-900 hover:bg-slate-800 flex-1 sm:flex-none text-xs sm:text-sm" data-testid="add-client-btn">
+                <Plus className="w-4 h-4 mr-1 sm:mr-2" />
                 {t('clients.addNew')}
               </Button>
             </DialogTrigger>
@@ -868,7 +870,7 @@ export default function ClientsPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1 sm:gap-4 flex-wrap sm:flex-nowrap">
                       {client.last_record_date && (
                         <div className="text-right hidden sm:block">
                           <p className="text-xs text-slate-400">{t('clients.lastContact')}</p>
@@ -878,6 +880,7 @@ export default function ClientsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8 sm:h-10 sm:w-10"
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedClient(client);
@@ -890,13 +893,13 @@ export default function ClientsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8 sm:h-10 sm:w-10 text-purple-500 hover:text-purple-700 hover:bg-purple-50"
                           onClick={(e) => {
                             e.stopPropagation();
                             openPrequalifyInfo(client);
                           }}
                           data-testid={`client-prequalify-btn-${client.id}`}
                           title="Ver Precalificación"
-                          className="text-purple-500 hover:text-purple-700 hover:bg-purple-50"
                         >
                           <ClipboardList className="w-4 h-4" />
                         </Button>
@@ -904,26 +907,26 @@ export default function ClientsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
                         onClick={(e) => {
                           e.stopPropagation();
                           setInboxClient(client);
                         }}
                         data-testid={`client-inbox-btn-${client.id}`}
                         title="SMS Inbox"
-                        className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
                       >
                         <MessageSquare className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8 sm:h-10 sm:w-10 text-amber-500 hover:text-amber-700 hover:bg-amber-50"
                         onClick={(e) => {
                           e.stopPropagation();
                           openClientNotes(client);
                         }}
                         data-testid={`client-notes-btn-${client.id}`}
                         title="Notas / Reseñas"
-                        className="text-amber-500 hover:text-amber-700 hover:bg-amber-50"
                       >
                         <Bell className="w-4 h-4" />
                       </Button>
@@ -931,11 +934,11 @@ export default function ClientsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8 sm:h-10 sm:w-10 text-red-400 hover:text-red-600 hover:bg-red-50"
                           onClick={(e) => {
                             e.stopPropagation();
                             deleteClient(client.id);
                           }}
-                          className="text-red-400 hover:text-red-600 hover:bg-red-50"
                           data-testid={`delete-client-btn-${client.id}`}
                           title="Delete client"
                         >
@@ -1197,17 +1200,39 @@ export default function ClientsPage() {
                   </div>
                 </div>
 
-                {/* Employment Info */}
+                {/* Employment Info - Multiple Employments Support */}
                 <div className="p-3 bg-emerald-50 rounded-lg">
                   <h4 className="font-medium text-emerald-700 mb-2">Empleo e Ingresos</h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div><span className="text-emerald-600">Empleador:</span> {prequalifyData.prequalify.employerName || 'N/A'}</div>
-                    <div><span className="text-emerald-600">Tel Empleador:</span> {prequalifyData.prequalify.employerPhoneNumber || 'N/A'}</div>
-                    <div><span className="text-emerald-600">Tiempo:</span> {prequalifyData.prequalify.timeWithEmployerYears || 0} años, {prequalifyData.prequalify.timeWithEmployerMonths || 0} meses</div>
-                    <div><span className="text-emerald-600">Tipo Ingreso:</span> {prequalifyData.prequalify.incomeType || 'N/A'}</div>
-                    <div><span className="text-emerald-600">Ingreso Neto:</span> {prequalifyData.prequalify.netIncome || 'N/A'}</div>
-                    <div><span className="text-emerald-600">Frecuencia:</span> {prequalifyData.prequalify.incomeFrequency || 'N/A'}</div>
-                  </div>
+                  
+                  {/* Check if there are multiple employments */}
+                  {prequalifyData.prequalify.employments && prequalifyData.prequalify.employments.length > 0 ? (
+                    <div className="space-y-3">
+                      {prequalifyData.prequalify.employments.map((emp, index) => (
+                        <div key={index} className={`p-2 rounded ${index === 0 ? 'bg-emerald-100' : 'bg-white border border-emerald-200'}`}>
+                          <div className="text-xs font-semibold text-emerald-700 mb-1">
+                            Empleo {index + 1} {emp.employmentType && `(${emp.employmentType})`}
+                          </div>
+                          <div className="grid grid-cols-2 gap-1 text-sm">
+                            <div><span className="text-emerald-600">Empleador:</span> {emp.employerName || 'N/A'}</div>
+                            <div><span className="text-emerald-600">Tel:</span> {emp.employerPhoneNumber || 'N/A'}</div>
+                            <div><span className="text-emerald-600">Tiempo:</span> {emp.timeWithEmployerYears || 0}a, {emp.timeWithEmployerMonths || 0}m</div>
+                            <div><span className="text-emerald-600">Ingreso:</span> {emp.netIncome || 'N/A'} / {emp.incomeFrequency || 'N/A'}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    /* Legacy single employment display */
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div><span className="text-emerald-600">Empleador:</span> {prequalifyData.prequalify.employerName || 'N/A'}</div>
+                      <div><span className="text-emerald-600">Tel Empleador:</span> {prequalifyData.prequalify.employerPhoneNumber || 'N/A'}</div>
+                      <div><span className="text-emerald-600">Tiempo:</span> {prequalifyData.prequalify.timeWithEmployerYears || 0} años, {prequalifyData.prequalify.timeWithEmployerMonths || 0} meses</div>
+                      <div><span className="text-emerald-600">Tipo Ingreso:</span> {prequalifyData.prequalify.incomeType || 'N/A'}</div>
+                      <div><span className="text-emerald-600">Ingreso Neto:</span> {prequalifyData.prequalify.netIncome || 'N/A'}</div>
+                      <div><span className="text-emerald-600">Frecuencia:</span> {prequalifyData.prequalify.incomeFrequency || 'N/A'}</div>
+                    </div>
+                  )}
+                  
                   <div className="mt-2 p-2 bg-white rounded border border-emerald-200">
                     <span className="text-emerald-700 font-medium">Down Payment Estimado: {prequalifyData.prequalify.estimatedDownPayment || 'N/A'}</span>
                   </div>

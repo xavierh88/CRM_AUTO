@@ -6417,6 +6417,17 @@ async def root():
 
 # ==================== PRE-QUALIFY SUBMISSIONS ====================
 
+# Employment model for multiple jobs support
+class Employment(BaseModel):
+    employmentType: Optional[str] = None  # Tipo de empleo
+    employerName: Optional[str] = None  # Company / Business Name
+    employerPhoneNumber: Optional[str] = None  # Employer Phone Number
+    timeWithEmployerYears: Optional[int] = None  # Time at Employment (years)
+    timeWithEmployerMonths: Optional[int] = None  # Time at Employment (months)
+    incomeType: Optional[str] = None  # Income type (Empleado, Self-Employed, etc.)
+    netIncome: Optional[str] = None  # Net Income Amount
+    incomeFrequency: Optional[str] = None  # Income Frequency
+
 class PreQualifySubmission(BaseModel):
     email: str
     firstName: str
@@ -6434,19 +6445,21 @@ class PreQualifySubmission(BaseModel):
     # Time at address - separated fields
     timeAtAddressYears: Optional[int] = None
     timeAtAddressMonths: Optional[int] = None
+    # Legacy single employment fields (for backward compatibility)
     employerName: Optional[str] = None
-    employerPhoneNumber: Optional[str] = None  # NEW: Employer phone number
-    # Time with employer - separated fields
+    employerPhoneNumber: Optional[str] = None
     timeWithEmployerYears: Optional[int] = None
     timeWithEmployerMonths: Optional[int] = None
     incomeType: Optional[str] = None
     netIncome: Optional[str] = None
     incomeFrequency: Optional[str] = None
+    # Multiple employments support (up to 4)
+    employments: Optional[List[Employment]] = None
     estimatedDownPayment: Optional[str] = None
     consentAccepted: bool = False
 
 class PreQualifyResponse(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="allow")  # Changed to allow for employments array
     id: str
     email: str
     firstName: str
@@ -6467,14 +6480,16 @@ class PreQualifyResponse(BaseModel):
     # Time at address - separated fields
     timeAtAddressYears: Optional[int] = None
     timeAtAddressMonths: Optional[int] = None
+    # Legacy single employment fields (for backward compatibility)
     employerName: Optional[str] = None
-    employerPhoneNumber: Optional[str] = None  # NEW: Employer phone number
-    # Time with employer - separated fields
+    employerPhoneNumber: Optional[str] = None
     timeWithEmployerYears: Optional[int] = None
     timeWithEmployerMonths: Optional[int] = None
     incomeType: Optional[str] = None
     netIncome: Optional[str] = None
     incomeFrequency: Optional[str] = None
+    # Multiple employments support
+    employments: Optional[List[Employment]] = None
     estimatedDownPayment: Optional[str] = None
     consentAccepted: bool = False
     language: Optional[str] = None
@@ -6701,8 +6716,10 @@ async def submit_prequalify_with_file(
     # Time at address - separated fields (accept as str for robustness)
     timeAtAddressYears: Optional[str] = Form(None),
     timeAtAddressMonths: Optional[str] = Form(None),
+    # Primary employment (backward compatible)
     employerName: Optional[str] = Form(None),
-    employerPhoneNumber: Optional[str] = Form(None),  # NEW: Employer phone number
+    employerPhoneNumber: Optional[str] = Form(None),
+    employmentType: Optional[str] = Form(None),
     # Time with employer - separated fields (support both naming conventions)
     timeWithEmployerYears: Optional[str] = Form(None),
     timeWithEmployerMonths: Optional[str] = Form(None),
@@ -6712,6 +6729,34 @@ async def submit_prequalify_with_file(
     incomeType: Optional[str] = Form(None),
     netIncome: Optional[str] = Form(None),
     incomeFrequency: Optional[str] = Form(None),
+    # Multiple employments support (up to 4 jobs)
+    # Employment 2
+    employmentType2: Optional[str] = Form(None),
+    employerName2: Optional[str] = Form(None),
+    employerPhoneNumber2: Optional[str] = Form(None),
+    timeWithEmployerYears2: Optional[str] = Form(None),
+    timeWithEmployerMonths2: Optional[str] = Form(None),
+    incomeType2: Optional[str] = Form(None),
+    netIncome2: Optional[str] = Form(None),
+    incomeFrequency2: Optional[str] = Form(None),
+    # Employment 3
+    employmentType3: Optional[str] = Form(None),
+    employerName3: Optional[str] = Form(None),
+    employerPhoneNumber3: Optional[str] = Form(None),
+    timeWithEmployerYears3: Optional[str] = Form(None),
+    timeWithEmployerMonths3: Optional[str] = Form(None),
+    incomeType3: Optional[str] = Form(None),
+    netIncome3: Optional[str] = Form(None),
+    incomeFrequency3: Optional[str] = Form(None),
+    # Employment 4
+    employmentType4: Optional[str] = Form(None),
+    employerName4: Optional[str] = Form(None),
+    employerPhoneNumber4: Optional[str] = Form(None),
+    timeWithEmployerYears4: Optional[str] = Form(None),
+    timeWithEmployerMonths4: Optional[str] = Form(None),
+    incomeType4: Optional[str] = Form(None),
+    netIncome4: Optional[str] = Form(None),
+    incomeFrequency4: Optional[str] = Form(None),
     # Support both down payment field naming conventions
     estimatedDownPayment: Optional[str] = Form(None),
     downPayment: Optional[str] = Form(None),  # Alternative from website
@@ -6884,6 +6929,61 @@ async def submit_prequalify_with_file(
             import traceback
             traceback.print_exc()
     
+    # Build employments array
+    employments = []
+    
+    # Employment 1 (primary)
+    if employerName or incomeType or netIncome:
+        employments.append({
+            "employmentType": employmentType or incomeType,
+            "employerName": employerName,
+            "employerPhoneNumber": employerPhoneNumber,
+            "timeWithEmployerYears": final_employmentYears,
+            "timeWithEmployerMonths": final_employmentMonths,
+            "incomeType": incomeType,
+            "netIncome": netIncome,
+            "incomeFrequency": incomeFrequency
+        })
+    
+    # Employment 2
+    if employerName2 or incomeType2 or netIncome2:
+        employments.append({
+            "employmentType": employmentType2,
+            "employerName": employerName2,
+            "employerPhoneNumber": employerPhoneNumber2,
+            "timeWithEmployerYears": int(timeWithEmployerYears2) if timeWithEmployerYears2 and timeWithEmployerYears2.strip().isdigit() else None,
+            "timeWithEmployerMonths": int(timeWithEmployerMonths2) if timeWithEmployerMonths2 and timeWithEmployerMonths2.strip().isdigit() else None,
+            "incomeType": incomeType2,
+            "netIncome": netIncome2,
+            "incomeFrequency": incomeFrequency2
+        })
+    
+    # Employment 3
+    if employerName3 or incomeType3 or netIncome3:
+        employments.append({
+            "employmentType": employmentType3,
+            "employerName": employerName3,
+            "employerPhoneNumber": employerPhoneNumber3,
+            "timeWithEmployerYears": int(timeWithEmployerYears3) if timeWithEmployerYears3 and timeWithEmployerYears3.strip().isdigit() else None,
+            "timeWithEmployerMonths": int(timeWithEmployerMonths3) if timeWithEmployerMonths3 and timeWithEmployerMonths3.strip().isdigit() else None,
+            "incomeType": incomeType3,
+            "netIncome": netIncome3,
+            "incomeFrequency": incomeFrequency3
+        })
+    
+    # Employment 4
+    if employerName4 or incomeType4 or netIncome4:
+        employments.append({
+            "employmentType": employmentType4,
+            "employerName": employerName4,
+            "employerPhoneNumber": employerPhoneNumber4,
+            "timeWithEmployerYears": int(timeWithEmployerYears4) if timeWithEmployerYears4 and timeWithEmployerYears4.strip().isdigit() else None,
+            "timeWithEmployerMonths": int(timeWithEmployerMonths4) if timeWithEmployerMonths4 and timeWithEmployerMonths4.strip().isdigit() else None,
+            "incomeType": incomeType4,
+            "netIncome": netIncome4,
+            "incomeFrequency": incomeFrequency4
+        })
+    
     doc = {
         "id": submission_id,
         "email": email,
@@ -6905,14 +7005,17 @@ async def submit_prequalify_with_file(
         # Time at address - use normalized int values
         "timeAtAddressYears": final_timeAtAddressYears,
         "timeAtAddressMonths": final_timeAtAddressMonths,
+        # Legacy single employment fields (for backward compatibility)
         "employerName": employerName,
-        "employerPhoneNumber": employerPhoneNumber,  # NEW: Employer phone number
-        # Time with employer - use normalized int values
+        "employerPhoneNumber": employerPhoneNumber,
+        "employmentType": employmentType,
         "timeWithEmployerYears": final_employmentYears,
         "timeWithEmployerMonths": final_employmentMonths,
         "incomeType": incomeType,
         "netIncome": netIncome,
         "incomeFrequency": incomeFrequency,
+        # Multiple employments array
+        "employments": employments if employments else None,
         "estimatedDownPayment": final_downPayment,  # Use normalized value
         "consentAccepted": consentAccepted,
         "smsConsent": smsConsent,  # SMS notification consent for Twilio A2P compliance

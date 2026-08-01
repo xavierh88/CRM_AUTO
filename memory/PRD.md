@@ -17,7 +17,7 @@ CRM completo para concesionario de autos con funcionalidades de gestión de clie
 
 ### Dashboard (Actualizado 2026-07-30)
 - Estadísticas generales del CRM
-- **NUEVO**: Estadísticas clickeables - al hacer click muestran lista detallada de datos
+- **Estadísticas clickeables** - al hacer click muestran lista detallada de datos
 - Filtros por período/mes
 - Gráficos de performance
 
@@ -28,17 +28,19 @@ CRM completo para concesionario de autos con funcionalidades de gestión de clie
 - Sistema de documentos (ID, Income, Residence)
 - Co-signers
 - Notas/comentarios con recordatorios
-- **NUEVO**: Botón de exportar a Excel (Nombre, Apellido, Email, Teléfono) - Solo Admin
-- **NUEVO**: Botón de información de precalificación - Muestra modal con datos de precalificación vinculada
+- **Botón de exportar a Excel** (Nombre, Apellido, Email, Teléfono) - Solo Admin
+- **Botón de información de precalificación** - Muestra modal con datos de precalificación vinculada
+- **Responsive mejorado** para móviles
 
-### Precalificaciones
+### Precalificaciones (Actualizado 2026-07-30)
 - Formulario público en /prequalify-FINAL.html
 - Matching automático con clientes existentes
 - Sincronización de datos a cliente
 - Creación de cliente desde precalificación
-- **NUEVO**: Campo Employer Phone Number guardado correctamente
-- **NUEVO**: Botón de eliminar con confirmación - elimina datos y documentos físicos
-- **NUEVO**: Optimización automática de documentos al subir (resize imágenes, conversión a JPEG optimizado)
+- **NUEVO: Múltiples empleos (hasta 4)** - Botón "+ Agregar otro empleo"
+- Campo Employer Phone Number guardado correctamente
+- Botón de eliminar con confirmación - elimina datos y documentos físicos
+- Optimización automática de documentos al subir
 
 ### Citas y Agenda
 - Agendamiento de citas con dealers
@@ -76,17 +78,33 @@ CRM completo para concesionario de autos con funcionalidades de gestión de clie
 - SMTP (Email)
 - Google Places API (autocompletado de direcciones)
 
-## Endpoints API Nuevos (2026-07-30)
+## Actualizaciones Recientes (2026-07-30)
 
-1. `GET /api/clients/{client_id}/prequalify` - Obtener precalificación vinculada a cliente
-2. `GET /api/clients/export/excel` - Exportar todos los clientes a Excel
-3. `DELETE /api/prequalify/submissions/{submission_id}` - Eliminar precalificación y documentos
-4. `GET /api/dashboard/stats/{stat_type}/details` - Obtener detalle de estadística clickeable
+### Múltiples Empleos
+- **Modelo de datos**: Nuevo modelo `Employment` y array `employments` en PreQualifySubmission
+- **Backend**: Endpoint `/api/prequalify/submit-with-file` actualizado para recibir hasta 4 empleos
+- **Frontend CRM**: PreQualifyPage.jsx y ClientsPage.jsx actualizados para mostrar múltiples empleos
+- **Formulario público**: prequalify-FINAL.html con botón "+ Agregar otro empleo"
+- Compatible con datos existentes (legacy single employment)
 
-## Modelos de Datos Actualizados
+### Responsive Móvil
+- Botones de acción con tamaños adaptativos (h-8 en móvil, h-10 en desktop)
+- Texto de botón "Excel" en móvil, "Exportar Excel" en desktop
+- Contenedores flex con wrap para mejor visualización
 
-### PreQualifySubmission / PreQualifyResponse
-- Agregado: `employerPhoneNumber: Optional[str]`
+## Archivos Modificados
+
+### Backend
+- `/app/backend/server.py`:
+  - Modelo `Employment` agregado
+  - Modelos `PreQualifySubmission` y `PreQualifyResponse` actualizados con array `employments`
+  - Endpoint `submit-with-file` actualizado con parámetros para Employment 2, 3, 4
+  - Construcción de array de empleos al guardar
+
+### Frontend
+- `/app/frontend/src/pages/PreQualifyPage.jsx`: Vista de múltiples empleos
+- `/app/frontend/src/pages/ClientsPage.jsx`: Modal de prequalify con empleos múltiples, responsive
+- `/app/frontend/public/prequalify-FINAL.html`: Formulario con múltiples empleos
 
 ## Credenciales de Prueba
 Ver `/app/memory/test_credentials.md`
@@ -105,11 +123,4 @@ Ver `/app/memory/test_credentials.md`
 - Tests E2E automatizados expandidos
 
 ## Fecha de Última Actualización
-2026-07-30 - Implementación de 7 mejoras solicitadas:
-1. Botón info precalificación en clientes
-2. Dashboard con estadísticas clickeables
-3. Exportar clientes a Excel
-4. Corrección campos dirección en precalificación
-5. Campo Employer Phone Number
-6. Eliminar precalificaciones con confirmación
-7. Optimización automática de documentos
+2026-07-30
