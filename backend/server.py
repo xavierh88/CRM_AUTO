@@ -6932,6 +6932,13 @@ async def submit_prequalify_with_file(
     # Build employments array
     employments = []
     
+    # Log received employment data for debugging
+    logger.info(f"=== EMPLOYMENT DATA RECEIVED ===")
+    logger.info(f"Employment 1: employerName={employerName}, incomeType={incomeType}, netIncome={netIncome}")
+    logger.info(f"Employment 2: employerName2={employerName2}, incomeType2={incomeType2}, netIncome2={netIncome2}")
+    logger.info(f"Employment 3: employerName3={employerName3}, incomeType3={incomeType3}, netIncome3={netIncome3}")
+    logger.info(f"Employment 4: employerName4={employerName4}, incomeType4={incomeType4}, netIncome4={netIncome4}")
+    
     # Employment 1 (primary)
     if employerName or incomeType or netIncome:
         employments.append({
@@ -6983,6 +6990,12 @@ async def submit_prequalify_with_file(
             "netIncome": netIncome4,
             "incomeFrequency": incomeFrequency4
         })
+    
+    # Log the built employments array
+    logger.info(f"=== EMPLOYMENTS ARRAY BUILT ===")
+    logger.info(f"Total employments: {len(employments)}")
+    for i, emp in enumerate(employments):
+        logger.info(f"Employment {i+1}: {emp}")
     
     doc = {
         "id": submission_id,
