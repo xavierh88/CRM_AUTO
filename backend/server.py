@@ -6757,6 +6757,9 @@ async def submit_prequalify_with_file(
     incomeType4: Optional[str] = Form(None),
     netIncome4: Optional[str] = Form(None),
     incomeFrequency4: Optional[str] = Form(None),
+    # JSON array of all employments (alternative format from website)
+    employments_json: Optional[str] = Form(None, alias="employments"),
+    totalEmployments: Optional[str] = Form(None),
     # Support both down payment field naming conventions
     estimatedDownPayment: Optional[str] = Form(None),
     downPayment: Optional[str] = Form(None),  # Alternative from website
@@ -6934,62 +6937,91 @@ async def submit_prequalify_with_file(
     
     # Log received employment data for debugging
     logger.info(f"=== EMPLOYMENT DATA RECEIVED ===")
+    logger.info(f"employments_json: {employments_json[:200] if employments_json else 'None'}...")
+    logger.info(f"totalEmployments: {totalEmployments}")
     logger.info(f"Employment 1: employerName={employerName}, incomeType={incomeType}, netIncome={netIncome}")
     logger.info(f"Employment 2: employerName2={employerName2}, incomeType2={incomeType2}, netIncome2={netIncome2}")
     logger.info(f"Employment 3: employerName3={employerName3}, incomeType3={incomeType3}, netIncome3={netIncome3}")
     logger.info(f"Employment 4: employerName4={employerName4}, incomeType4={incomeType4}, netIncome4={netIncome4}")
     
-    # Employment 1 (primary)
-    if employerName or incomeType or netIncome:
-        employments.append({
-            "employmentType": employmentType or incomeType,
-            "employerName": employerName,
-            "employerPhoneNumber": employerPhoneNumber,
-            "timeWithEmployerYears": final_employmentYears,
-            "timeWithEmployerMonths": final_employmentMonths,
-            "incomeType": incomeType,
-            "netIncome": netIncome,
-            "incomeFrequency": incomeFrequency
-        })
+    # OPTION 1: Try to parse JSON array first (preferred from website)
+    if employments_json and employments_json.strip() and employments_json.strip() != '[]':
+        try:
+            import json
+            parsed_employments = json.loads(employments_json)
+            if isinstance(parsed_employments, list) and len(parsed_employments) > 0:
+                for emp in parsed_employments:
+                    if isinstance(emp, dict) and (emp.get('employerName') or emp.get('incomeType') or emp.get('netIncome')):
+                        employments.append({
+                            "employmentType": emp.get('employmentType'),
+                            "employerName": emp.get('employerName'),
+                            "employerPhoneNumber": emp.get('employerPhoneNumber'),
+                            "timeWithEmployerYears": int(emp.get('timeWithEmployerYears')) if emp.get('timeWithEmployerYears') else None,
+                            "timeWithEmployerMonths": int(emp.get('timeWithEmployerMonths')) if emp.get('timeWithEmployerMonths') else None,
+                            "incomeType": emp.get('incomeType'),
+                            "netIncome": emp.get('netIncome'),
+                            "incomeFrequency": emp.get('incomeFrequency')
+                        })
+                logger.info(f"Parsed {len(employments)} employments from JSON array")
+        except (json.JSONDecodeError, TypeError, ValueError) as e:
+            logger.warning(f"Failed to parse employments JSON: {e}")
+            employments = []  # Reset and fall back to individual fields
     
-    # Employment 2
-    if employerName2 or incomeType2 or netIncome2:
-        employments.append({
-            "employmentType": employmentType2,
-            "employerName": employerName2,
-            "employerPhoneNumber": employerPhoneNumber2,
-            "timeWithEmployerYears": int(timeWithEmployerYears2) if timeWithEmployerYears2 and timeWithEmployerYears2.strip().isdigit() else None,
-            "timeWithEmployerMonths": int(timeWithEmployerMonths2) if timeWithEmployerMonths2 and timeWithEmployerMonths2.strip().isdigit() else None,
-            "incomeType": incomeType2,
-            "netIncome": netIncome2,
-            "incomeFrequency": incomeFrequency2
-        })
-    
-    # Employment 3
-    if employerName3 or incomeType3 or netIncome3:
-        employments.append({
-            "employmentType": employmentType3,
-            "employerName": employerName3,
-            "employerPhoneNumber": employerPhoneNumber3,
-            "timeWithEmployerYears": int(timeWithEmployerYears3) if timeWithEmployerYears3 and timeWithEmployerYears3.strip().isdigit() else None,
-            "timeWithEmployerMonths": int(timeWithEmployerMonths3) if timeWithEmployerMonths3 and timeWithEmployerMonths3.strip().isdigit() else None,
-            "incomeType": incomeType3,
-            "netIncome": netIncome3,
-            "incomeFrequency": incomeFrequency3
-        })
-    
-    # Employment 4
-    if employerName4 or incomeType4 or netIncome4:
-        employments.append({
-            "employmentType": employmentType4,
-            "employerName": employerName4,
-            "employerPhoneNumber": employerPhoneNumber4,
-            "timeWithEmployerYears": int(timeWithEmployerYears4) if timeWithEmployerYears4 and timeWithEmployerYears4.strip().isdigit() else None,
-            "timeWithEmployerMonths": int(timeWithEmployerMonths4) if timeWithEmployerMonths4 and timeWithEmployerMonths4.strip().isdigit() else None,
-            "incomeType": incomeType4,
-            "netIncome": netIncome4,
-            "incomeFrequency": incomeFrequency4
-        })
+    # OPTION 2: If JSON parsing failed or was empty, use individual fields
+    if len(employments) == 0:
+        logger.info("Using individual employment fields (fallback)")
+        
+        # Employment 1 (primary)
+        if employerName or incomeType or netIncome:
+            employments.append({
+                "employmentType": employmentType or incomeType,
+                "employerName": employerName,
+                "employerPhoneNumber": employerPhoneNumber,
+                "timeWithEmployerYears": final_employmentYears,
+                "timeWithEmployerMonths": final_employmentMonths,
+                "incomeType": incomeType,
+                "netIncome": netIncome,
+                "incomeFrequency": incomeFrequency
+            })
+        
+        # Employment 2
+        if employerName2 or incomeType2 or netIncome2:
+            employments.append({
+                "employmentType": employmentType2,
+                "employerName": employerName2,
+                "employerPhoneNumber": employerPhoneNumber2,
+                "timeWithEmployerYears": int(timeWithEmployerYears2) if timeWithEmployerYears2 and timeWithEmployerYears2.strip().isdigit() else None,
+                "timeWithEmployerMonths": int(timeWithEmployerMonths2) if timeWithEmployerMonths2 and timeWithEmployerMonths2.strip().isdigit() else None,
+                "incomeType": incomeType2,
+                "netIncome": netIncome2,
+                "incomeFrequency": incomeFrequency2
+            })
+        
+        # Employment 3
+        if employerName3 or incomeType3 or netIncome3:
+            employments.append({
+                "employmentType": employmentType3,
+                "employerName": employerName3,
+                "employerPhoneNumber": employerPhoneNumber3,
+                "timeWithEmployerYears": int(timeWithEmployerYears3) if timeWithEmployerYears3 and timeWithEmployerYears3.strip().isdigit() else None,
+                "timeWithEmployerMonths": int(timeWithEmployerMonths3) if timeWithEmployerMonths3 and timeWithEmployerMonths3.strip().isdigit() else None,
+                "incomeType": incomeType3,
+                "netIncome": netIncome3,
+                "incomeFrequency": incomeFrequency3
+            })
+        
+        # Employment 4
+        if employerName4 or incomeType4 or netIncome4:
+            employments.append({
+                "employmentType": employmentType4,
+                "employerName": employerName4,
+                "employerPhoneNumber": employerPhoneNumber4,
+                "timeWithEmployerYears": int(timeWithEmployerYears4) if timeWithEmployerYears4 and timeWithEmployerYears4.strip().isdigit() else None,
+                "timeWithEmployerMonths": int(timeWithEmployerMonths4) if timeWithEmployerMonths4 and timeWithEmployerMonths4.strip().isdigit() else None,
+                "incomeType": incomeType4,
+                "netIncome": netIncome4,
+                "incomeFrequency": incomeFrequency4
+            })
     
     # Log the built employments array
     logger.info(f"=== EMPLOYMENTS ARRAY BUILT ===")
