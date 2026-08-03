@@ -552,6 +552,16 @@ class ClientResponse(BaseModel):
     # Sold status
     is_sold: Optional[bool] = None
     sold_at: Optional[str] = None
+    # Employment fields from prequalification
+    employments: Optional[List[Dict[str, Any]]] = None
+    employer_name: Optional[str] = None
+    employer_phone: Optional[str] = None
+    employment_type: Optional[str] = None
+    income_type: Optional[str] = None
+    net_income: Optional[str] = None
+    income_frequency: Optional[str] = None
+    time_with_employer_years: Optional[Any] = None
+    time_with_employer_months: Optional[Any] = None
 
 class UserRecordCreate(BaseModel):
     client_id: str
@@ -7316,6 +7326,22 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
     
     logger.info(f"ID Type mapping: '{raw_id_type}' -> '{mapped_id_type}'")
     
+    # Transfer employments array from submission to client
+    submission_employments = submission.get("employments", [])
+    if not submission_employments:
+        # If no employments array, create one from legacy fields for backward compatibility
+        if submission.get("employerName") or submission.get("incomeType") or submission.get("netIncome"):
+            submission_employments = [{
+                "employmentType": submission.get("employmentType") or submission.get("incomeType"),
+                "employerName": submission.get("employerName"),
+                "employerPhoneNumber": submission.get("employerPhoneNumber"),
+                "timeWithEmployerYears": submission.get("timeWithEmployerYears"),
+                "timeWithEmployerMonths": submission.get("timeWithEmployerMonths"),
+                "incomeType": submission.get("incomeType"),
+                "netIncome": submission.get("netIncome"),
+                "incomeFrequency": submission.get("incomeFrequency")
+            }]
+    
     client_doc = {
         "id": client_id,
         "first_name": submission.get("firstName", ""),
@@ -7348,6 +7374,17 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
         "income_documents": [],
         "residence_proof_uploaded": False,
         "residence_documents": [],
+        # Employment data from prequalification
+        "employments": submission_employments,
+        # Legacy employment fields from first employment (for backward compatibility)
+        "employer_name": submission_employments[0].get("employerName") if submission_employments else submission.get("employerName"),
+        "employer_phone": submission_employments[0].get("employerPhoneNumber") if submission_employments else submission.get("employerPhoneNumber"),
+        "employment_type": submission_employments[0].get("employmentType") if submission_employments else submission.get("employmentType"),
+        "income_type": submission_employments[0].get("incomeType") if submission_employments else submission.get("incomeType"),
+        "net_income": submission_employments[0].get("netIncome") if submission_employments else submission.get("netIncome"),
+        "income_frequency": submission_employments[0].get("incomeFrequency") if submission_employments else submission.get("incomeFrequency"),
+        "time_with_employer_years": submission_employments[0].get("timeWithEmployerYears") if submission_employments else submission.get("timeWithEmployerYears"),
+        "time_with_employer_months": submission_employments[0].get("timeWithEmployerMonths") if submission_employments else submission.get("timeWithEmployerMonths"),
         "salesperson_id": current_user["id"],
         "salesperson_name": current_user.get("name") or current_user.get("email"),
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -7618,6 +7655,36 @@ async def sync_prequalify_to_client(submission_id: str, current_user: dict = Dep
         update_data["ssn_type"] = submission["ssnType"]
     if submission.get("ssn"):
         update_data["ssn"] = submission["ssn"]
+    
+    # Transfer employments array from submission to client
+    submission_employments = submission.get("employments", [])
+    if not submission_employments:
+        # If no employments array, create one from legacy fields for backward compatibility
+        if submission.get("employerName") or submission.get("incomeType") or submission.get("netIncome"):
+            submission_employments = [{
+                "employmentType": submission.get("employmentType") or submission.get("incomeType"),
+                "employerName": submission.get("employerName"),
+                "employerPhoneNumber": submission.get("employerPhoneNumber"),
+                "timeWithEmployerYears": submission.get("timeWithEmployerYears"),
+                "timeWithEmployerMonths": submission.get("timeWithEmployerMonths"),
+                "incomeType": submission.get("incomeType"),
+                "netIncome": submission.get("netIncome"),
+                "incomeFrequency": submission.get("incomeFrequency")
+            }]
+    
+    # Always update employments if available
+    if submission_employments:
+        update_data["employments"] = submission_employments
+        # Also update legacy employment fields from first employment
+        first_emp = submission_employments[0] if submission_employments else {}
+        update_data["employer_name"] = first_emp.get("employerName") or submission.get("employerName")
+        update_data["employer_phone"] = first_emp.get("employerPhoneNumber") or submission.get("employerPhoneNumber")
+        update_data["employment_type"] = first_emp.get("employmentType") or submission.get("employmentType")
+        update_data["income_type"] = first_emp.get("incomeType") or submission.get("incomeType")
+        update_data["net_income"] = first_emp.get("netIncome") or submission.get("netIncome")
+        update_data["income_frequency"] = first_emp.get("incomeFrequency") or submission.get("incomeFrequency")
+        update_data["time_with_employer_years"] = first_emp.get("timeWithEmployerYears") or submission.get("timeWithEmployerYears")
+        update_data["time_with_employer_months"] = first_emp.get("timeWithEmployerMonths") or submission.get("timeWithEmployerMonths")
     
     # Copy document file if exists
     if submission.get("id_file_url"):

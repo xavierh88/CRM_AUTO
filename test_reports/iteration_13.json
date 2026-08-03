@@ -1,0 +1,30 @@
+{
+  "summary": "End-to-end validation of the multiple-employments (up to 4) bug fix in prequalifications. Backend: 4/4 pytest cases pass (submit-with-file persists 2 employments, create-client transfers array to new client, sync-to-client transfers array to existing matched client, legacy single-employment submissions still work). Frontend: PreQualifyPage 'Detalle de Pre-Qualify' modal renders 'Empleo 1 (W2)' + 'Empleo 2 (1099)' with all employer names, phones, incomes. ClientsPage 'Informacion de Precalificacion' modal on converted client also renders both Empleo 1 and Empleo 2 cards with correct data.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "passed_tests": [
+    "POST /api/prequalify/submit-with-file with employments=JSON([e1,e2]) -> 200; GET /api/prequalify/submissions returns submission with employments array length=2, e2.employerName='SideGigLLC', e2.employerPhoneNumber='+13052222222', e2.netIncome='1200'",
+    "POST /api/prequalify/submissions/{id}/create-client -> 200; GET /api/clients/{new_id} returns employments array length=2, both employer names preserved; legacy employer_name mirrors first employment",
+    "POST /api/prequalify/submissions/{id}/sync-to-client (via matched_client_id, same phone) -> 200; client now has employments array length=2 with both jobs, legacy employer_name updated from first",
+    "Legacy prequalify without employments array (JSON /prequalify/submit with employerName only) -> convertible; client ends up with 1 employment built from legacy fields (backward compat)",
+    "UI: /prequalify page - clicking eye/Ver button on submission row opens 'Detalle de Pre-Qualify' modal showing 'Empleo 1 (W2)' + 'Empleo 2 (1099)' with UI_PrimaryCorp/+13051111111 and UI_SideGigLLC/+13052222222",
+    "UI: /clients page - clicking purple ClipboardList (data-testid=client-prequalify-btn-*) opens 'Informacion de Precalificacion' modal, showing Empleo 1 (W2) CLIENT_PrimaryX and Empleo 2 (1099) CLIENT_SideY"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_multiple_employments.py",
+    "/app/test_reports/pytest/pytest_multi_employments.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py L7329-7343 & L7659-7673: legacy-fallback path uses submission.get('employmentType') OR submission.get('incomeType') for both employmentType and incomeType keys - could conflate the two if a legacy record has only incomeType set. Minor because output field 'incomeType' is still populated correctly, just 'employmentType' would be misleading. Not blocking.",
+    "server.py L7676: `if submission_employments:` block in sync-to-client always overwrites legacy fields based on FIRST employment - correct behavior, but silently discards any pre-existing manual employer_name on the client. Documented behavior since endpoint is called 'sync/overwrite'."
+  ],
+  "updated_files": ["/app/backend/tests/test_multiple_employments.py (created)"],
+  "success_rate": {"backend": "100% (4/4)", "frontend": "100% (both modals verified)"},
+  "test_credentials": {"admin": "admin@carplus.com / Admin123!"},
+  "seed_data_creation": "Created TEST_UI / TESTCLIUI / TEST_EMP prefixed prequalify submissions + clients, all cleaned up via DELETE endpoints after each test.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Multiple-employments feature is now fully functional end-to-end. Backend endpoints /prequalify/submit-with-file, /prequalify/submissions/{id}/create-client and /prequalify/submissions/{id}/sync-to-client all correctly persist and transfer the employments array (verified 2 employments, backend model supports up to 4). Frontend PreQualifyPage.jsx L424-489 and ClientsPage.jsx L1207-1234 both render the employments array properly with a legacy fallback for single-employment records. Regression test file: /app/backend/tests/test_multiple_employments.py",
+  "rca of the issue": "N/A - main agent's fix (copying submission_employments into client_doc.employments and mirroring first employment into legacy fields in both create-client and sync-to-client endpoints) has been fully verified. No remaining defects for this feature."
+}
