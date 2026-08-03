@@ -78,9 +78,19 @@ CRM completo para concesionario de autos con funcionalidades de gestión de clie
 - SMTP (Email)
 - Google Places API (autocompletado de direcciones)
 
-## Actualizaciones Recientes (2026-07-30)
+## Actualizaciones Recientes
 
-### Múltiples Empleos
+### Bug Fix: Transferencia de Empleos a Clientes (2026-08-03)
+- **Problema**: El segundo empleo ingresado en precalificación no se visualizaba en CRM, y al crear/sincronizar cliente los empleos no se transferían
+- **Solución**: 
+  - Endpoint `create-client` ahora copia el array `employments` completo al cliente
+  - Endpoint `sync-to-client` ahora sincroniza el array `employments` al cliente existente
+  - Se mantienen campos legacy (employer_name, income_type, etc.) para compatibilidad
+- **Archivos modificados**: `/app/backend/server.py` (líneas 7319-7385, 7644-7680)
+- **Tests**: `/app/backend/tests/test_multiple_employments.py` (4 tests backend + validación UI)
+- **Estado**: ✅ Verificado por testing agent (100% backend, 100% frontend)
+
+### Múltiples Empleos (2026-07-30)
 - **Modelo de datos**: Nuevo modelo `Employment` y array `employments` en PreQualifySubmission
 - **Backend**: Endpoint `/api/prequalify/submit-with-file` actualizado para recibir hasta 4 empleos
 - **Frontend CRM**: PreQualifyPage.jsx y ClientsPage.jsx actualizados para mostrar múltiples empleos
@@ -97,12 +107,14 @@ CRM completo para concesionario de autos con funcionalidades de gestión de clie
 ### Backend
 - `/app/backend/server.py`:
   - Modelo `Employment` agregado
-  - Modelos `PreQualifySubmission` y `PreQualifyResponse` actualizados con array `employments`
+  - Modelos `PreQualifySubmission`, `PreQualifyResponse`, `ClientResponse` actualizados con array `employments`
   - Endpoint `submit-with-file` actualizado con parámetros para Employment 2, 3, 4
+  - Endpoint `create-client` transfiere array employments al cliente
+  - Endpoint `sync-to-client` sincroniza array employments al cliente existente
   - Construcción de array de empleos al guardar
 
 ### Frontend
-- `/app/frontend/src/pages/PreQualifyPage.jsx`: Vista de múltiples empleos
+- `/app/frontend/src/pages/PreQualifyPage.jsx`: Vista de múltiples empleos en detalle
 - `/app/frontend/src/pages/ClientsPage.jsx`: Modal de prequalify con empleos múltiples, responsive
 - `/app/frontend/public/prequalify-FINAL.html`: Formulario con múltiples empleos
 
@@ -117,10 +129,11 @@ Ver `/app/memory/test_credentials.md`
 ### Media Prioridad
 - Refactorización de server.py en routers modulares
 - División de ClientsPage.jsx en componentes más pequeños
+- Validación de flujo completo en producción VPS
 
 ### Baja Prioridad
 - Migración a object storage para documentos
 - Tests E2E automatizados expandidos
 
 ## Fecha de Última Actualización
-2026-07-30
+2026-08-03
