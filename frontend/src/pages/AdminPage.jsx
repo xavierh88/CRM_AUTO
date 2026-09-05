@@ -22,6 +22,18 @@ export default function AdminPage() {
   const [trashRecords, setTrashRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   
+  // Create User Modal state
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    password: '',
+    phone: '',
+    role: 'telemarketer',
+    is_active: true
+  });
+  const [creatingUser, setCreatingUser] = useState(false);
+  
   // Config lists state
   const [banks, setBanks] = useState([]);
   const [dealers, setDealers] = useState([]);
@@ -110,6 +122,39 @@ export default function AdminPage() {
       fetchData();
     } catch (error) {
       toast.error('Failed to update role');
+    }
+  };
+
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    if (!newUser.name || !newUser.email || !newUser.password) {
+      toast.error('Nombre, email y contraseña son requeridos');
+      return;
+    }
+    if (newUser.password.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    
+    setCreatingUser(true);
+    try {
+      await axios.post(`${API}/users/create`, newUser);
+      toast.success(`Usuario "${newUser.name}" creado exitosamente`);
+      setShowCreateUser(false);
+      setNewUser({
+        name: '',
+        email: '',
+        password: '',
+        phone: '',
+        role: 'telemarketer',
+        is_active: true
+      });
+      fetchData();
+    } catch (error) {
+      const msg = error.response?.data?.detail || 'Error al crear usuario';
+      toast.error(msg);
+    } finally {
+      setCreatingUser(false);
     }
   };
 
@@ -305,17 +350,125 @@ export default function AdminPage() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>{t('admin.users')} ({users.length})</span>
-                <div className="flex items-center gap-2 text-sm font-normal">
-                  <span className="flex items-center gap-1 text-emerald-600">
-                    <CheckCircle2 className="w-4 h-4" /> Active
-                  </span>
-                  <span className="flex items-center gap-1 text-slate-400">
-                    <XCircle className="w-4 h-4" /> Inactive
-                  </span>
+                <div className="flex items-center gap-4">
+                  <Button 
+                    onClick={() => setShowCreateUser(true)}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                    data-testid="create-user-btn"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Crear Usuario
+                  </Button>
+                  <div className="flex items-center gap-2 text-sm font-normal">
+                    <span className="flex items-center gap-1 text-emerald-600">
+                      <CheckCircle2 className="w-4 h-4" /> Active
+                    </span>
+                    <span className="flex items-center gap-1 text-slate-400">
+                      <XCircle className="w-4 h-4" /> Inactive
+                    </span>
+                  </div>
                 </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {/* Create User Modal */}
+              {showCreateUser && (
+                <div className="mb-6 p-4 border rounded-lg bg-slate-50">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <UserCog className="w-5 h-5 text-emerald-600" />
+                    Crear Nuevo Usuario
+                  </h3>
+                  <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="newUserName">Nombre *</Label>
+                      <Input
+                        id="newUserName"
+                        value={newUser.name}
+                        onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                        placeholder="Juan Pérez"
+                        required
+                        data-testid="new-user-name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="newUserEmail">Email *</Label>
+                      <Input
+                        id="newUserEmail"
+                        type="email"
+                        value={newUser.email}
+                        onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                        placeholder="juan@ejemplo.com"
+                        required
+                        data-testid="new-user-email"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="newUserPassword">Contraseña *</Label>
+                      <Input
+                        id="newUserPassword"
+                        type="password"
+                        value={newUser.password}
+                        onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                        placeholder="Mínimo 6 caracteres"
+                        required
+                        data-testid="new-user-password"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="newUserPhone">Teléfono</Label>
+                      <Input
+                        id="newUserPhone"
+                        value={newUser.phone}
+                        onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
+                        placeholder="(323) 555-1234"
+                        data-testid="new-user-phone"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="newUserRole">Rol</Label>
+                      <Select 
+                        value={newUser.role} 
+                        onValueChange={(value) => setNewUser({...newUser, role: value})}
+                      >
+                        <SelectTrigger data-testid="new-user-role">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="telemarketer">Telemarketer</SelectItem>
+                          <SelectItem value="bdc_manager">BDC Manager</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2 pt-6">
+                      <Switch
+                        checked={newUser.is_active}
+                        onCheckedChange={(checked) => setNewUser({...newUser, is_active: checked})}
+                        data-testid="new-user-active"
+                      />
+                      <Label>Usuario activo (puede iniciar sesión inmediatamente)</Label>
+                    </div>
+                    <div className="md:col-span-2 flex gap-2 justify-end">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => setShowCreateUser(false)}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button 
+                        type="submit" 
+                        disabled={creatingUser}
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                        data-testid="submit-create-user"
+                      >
+                        {creatingUser ? 'Creando...' : 'Crear Usuario'}
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              )}
+              
               <Table>
                 <TableHeader>
                   <TableRow>

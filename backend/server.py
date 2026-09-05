@@ -901,6 +901,51 @@ async def update_user_email(user_id: str, data: dict, current_user: dict = Depen
     
     return {"message": f"Email updated to {new_email}"}
 
+# Model for admin user creation
+class AdminUserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+    phone: Optional[str] = None
+    role: str = "telemarketer"
+    is_active: bool = True
+
+@api_router.post("/users/create", response_model=dict)
+async def admin_create_user(user_data: AdminUserCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new user directly - Admin only"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Check if email already exists
+    existing = await db.users.find_one({"email": user_data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Validate role
+    valid_roles = ["admin", "bdc_manager", "telemarketer", "salesperson"]
+    if user_data.role not in valid_roles:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}")
+    
+    user_doc = {
+        "id": str(uuid.uuid4()),
+        "email": user_data.email,
+        "password": hash_password(user_data.password),
+        "name": user_data.name,
+        "role": user_data.role,
+        "phone": user_data.phone,
+        "is_active": user_data.is_active,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": current_user["id"]
+    }
+    await db.users.insert_one(user_doc)
+    
+    logger.info(f"Admin {current_user['email']} created user: {user_data.email} with role {user_data.role}")
+    
+    return {
+        "message": f"Usuario '{user_data.name}' creado exitosamente",
+        "user": {k: v for k, v in user_doc.items() if k != "password" and k != "_id"}
+    }
+
 # ==================== CLIENTS ROUTES ====================
 
 def normalize_phone_number(phone: str) -> str:
@@ -4096,6 +4141,16 @@ async def send_email_notification(to_email: str, subject: str, html_content: str
     logger.warning("No email service configured - skipping email notification")
     return {"success": False, "error": "Email not configured"}
 
+# IMPORTANT: This route must be BEFORE /inbox/{client_id} to avoid shadowing
+@api_router.get("/inbox/unread-count")
+async def get_unread_count(current_user: dict = Depends(get_current_user)):
+    """Get total unread messages count for notification badge"""
+    count = await db.sms_conversations.count_documents({
+        "direction": "inbound",
+        "is_read": False
+    })
+    return {"unread_count": count}
+
 @api_router.get("/inbox/{client_id}")
 async def get_client_inbox(client_id: str, current_user: dict = Depends(get_current_user)):
     """Get all SMS messages for a client (conversation inbox)"""
@@ -4198,15 +4253,6 @@ async def mark_messages_read(client_id: str, current_user: dict = Depends(get_cu
         {"$set": {"read": True, "read_by": current_user["id"], "read_at": datetime.now(timezone.utc).isoformat()}}
     )
     return {"message": f"Marked {result.modified_count} messages as read"}
-
-@api_router.get("/inbox/unread-count")
-async def get_unread_count(current_user: dict = Depends(get_current_user)):
-    """Get total unread messages count for notification badge"""
-    count = await db.sms_conversations.count_documents({
-        "direction": "inbound",
-        "is_read": False
-    })
-    return {"unread_count": count}
 
 @api_router.get("/notifications")
 async def get_notifications(current_user: dict = Depends(get_current_user), limit: int = 20):

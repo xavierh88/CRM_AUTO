@@ -80,6 +80,18 @@ CRM completo para concesionario de autos con funcionalidades de gestión de clie
 
 ## Actualizaciones Recientes
 
+### Bug Fix: Creación de Usuarios por Admins (2026-09-05)
+- **Problema**: Los administradores no podían crear usuarios directamente, solo podían esperar que se registraran públicamente
+- **Solución**: 
+  - Nuevo endpoint `POST /api/users/create` para que admins creen usuarios directamente
+  - Formulario en AdminPage.jsx con campos: nombre, email, contraseña, teléfono, rol, estado activo
+  - El usuario creado puede tener cualquier rol (telemarketer, bdc_manager, admin)
+  - Opción de crear usuario ya activo (sin necesidad de activación posterior)
+- **Archivos modificados**: 
+  - `/app/backend/server.py` (nuevo endpoint y modelo AdminUserCreate)
+  - `/app/frontend/src/pages/AdminPage.jsx` (botón y formulario)
+- **Estado**: ✅ Verificado por testing
+
 ### Bug Fix: Transferencia de Empleos a Clientes (2026-08-03)
 - **Problema**: El segundo empleo ingresado en precalificación no se visualizaba en CRM, y al crear/sincronizar cliente los empleos no se transferían
 - **Solución**: 
