@@ -49,6 +49,18 @@ fi
 cat > "$PROMPT" <<'PROMPT_EOF'
 You are performing a controlled autonomous development session for Dealer AI OS V2.
 
+GIT OWNERSHIP / SANDBOX RULE:
+- You are running inside a workspace-write sandbox.
+- Do NOT attempt to write Git metadata.
+- Do NOT run git add, git commit, git checkout, git switch, git merge, git rebase, git reset, git stash, git push, or git tag.
+- You MAY use read-only Git commands such as git status, git diff, git log, and git show.
+- Modify application files directly in the workspace.
+- Run the required tests/builds and review your diffs.
+- Update .dealer-ai/NIGHTLY_REPORT.md with exact validation evidence.
+- Leaving verified workspace changes uncommitted is EXPECTED.
+- The external safety runner/owner is responsible for Git checkpoints.
+- Do NOT block merely because Git metadata is not writable.
+
 AUTHORITATIVE PROJECT DOCUMENTS
 
 Before making any change, read completely:
