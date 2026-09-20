@@ -159,3 +159,42 @@ Estas pueden quedar con adapter/mock claramente documentado:
 ## PROHIBICION ABSOLUTA
 Nunca declarar una funcion como PASS si no fue probada.
 
+
+## EXISTING TRACKED UPLOADS - QUARANTINED / DO NOT ACCESS
+
+The repository inherited files under:
+
+backend/uploads/
+
+Treat every existing file in that directory as potentially containing real
+customer-sensitive information.
+
+AUTONOMOUS AGENTS MUST NOT:
+- open these files;
+- read their contents;
+- parse them;
+- OCR them;
+- copy them;
+- rename them;
+- modify them;
+- delete them;
+- expose them in logs, prompts, reports, tests, fixtures, or output.
+
+File names and Git metadata may be inspected only when necessary for repository
+security analysis.
+
+Existing tracked upload cleanup is NOT authorized during autonomous development.
+
+Development and tests must create only synthetic/fictitious temporary documents
+outside the inherited tracked dataset.
+
+Agents ARE authorized to:
+- prevent new uploads from being committed;
+- improve application code so V2 does not depend on production upload paths;
+- implement authenticated/authorized document access;
+- add safe upload validation;
+- create tests using fictional data;
+- remove production path fallbacks from V2 source code.
+
+Historical document deletion or Git-history rewriting requires separate owner
+approval.

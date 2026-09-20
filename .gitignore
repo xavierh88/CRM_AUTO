@@ -514,3 +514,6 @@ credentials.json
 
 # Dealer AI autonomous runner runtime
 .dealer-ai/runtime/
+
+# Dealer AI V2 - never track customer uploaded documents
+backend/uploads/**
