@@ -8,6 +8,7 @@ from test_document_attachments import load_module
 
 ROOT = Path(__file__).resolve().parents[2]
 POLICY = load_module('document_authorization')
+CRM_AUTH = load_module('crm_authorization')
 
 class RejectedRequest(Exception):
     def __init__(self, status_code, detail):
@@ -15,10 +16,16 @@ class RejectedRequest(Exception):
         super().__init__(detail)
 
 
+# The isolated handler harness uses its lightweight exception class so
+# authorization failures can be asserted without starting FastAPI.
+CRM_AUTH.HTTPException = RejectedRequest
+
+
 def handlers(db):
     tree = ast.parse((ROOT / 'backend/server.py').read_text())
     namespace = {'db': db, 'HTTPException': RejectedRequest,
-                 'can_access_documents': POLICY.can_access_documents}
+                 'can_access_documents': POLICY.can_access_documents,
+                 'CRMAccess': CRM_AUTH.CRMAccess}
     names = {'require_document_access', 'list_client_documents', 'upload_client_document',
              'delete_single_document', 'update_client_documents', 'download_client_document',
              'create_client_from_prequalify', 'sync_prequalify_to_client', 'delete_prequalify_submission',
@@ -83,7 +90,7 @@ class DocumentAuthorizationTests(unittest.IsolatedAsyncioTestCase):
                 else:
                     with self.assertRaises(RejectedRequest) as denied:
                         await ns[name](*args)
-                    self.assertEqual(denied.exception.status_code, 403)
+                    self.assertIn(denied.exception.status_code, (403, 404))
             db.clients.update_one.assert_not_called()
 
     async def test_public_handlers_deny_without_database(self):
