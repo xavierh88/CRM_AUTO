@@ -516,4 +516,7 @@ credentials.json
 .dealer-ai/runtime/
 
 # Dealer AI V2 - never track customer uploaded documents
-backend/uploads/**
+# Ignore the entries themselves and every descendant, including hidden files.
+# Existing tracked uploads remain quarantined; these rules do not untrack them.
+/backend/uploads
+/uploads

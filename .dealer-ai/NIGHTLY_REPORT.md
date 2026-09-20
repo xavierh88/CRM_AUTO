@@ -1,5 +1,106 @@
 # Current session — 2026-09-20 (UTC)
 
+AUTONOMOUS_SESSION_COMPLETE — one bounded Phase 1 repository-protection unit.
+This is not completion of Phase 1 or the product.
+
+## Scope and files changed
+
+- Starting and ending commit: `71eb1576c59cb7393e3ce4e9579958e0bf2a4ad7`.
+- Branch: `dealer-ai-v2`; initial worktree clean.
+- Read all four authoritative project documents completely before edits.
+- Supplemental root `AGENTS.md` and `docs/CODEX-NAVIGATION-GUIDE.md` absent.
+- `.gitignore`: replace `backend/uploads/**` with anchored `/backend/uploads`
+  and `/uploads`. Ignore upload entries and descendants, including hidden files.
+  Root-level uploads are protected defensively; inspected server code currently
+  uses backend/uploads. No existing upload was opened or changed.
+- `tests/offline/test_upload_ignore.py`: standard-library offline regression
+  tests using read-only `git check-ignore --no-index --quiet` and fictional
+  path strings. No fixture documents created. Source-file negative controls
+  ensure these rules do not hide similarly named application files.
+- `.dealer-ai/NIGHTLY_REPORT.md`: current evidence; prior reports retained below.
+- Commits created: none, as explicitly required by the Git ownership rule.
+  Verified changes remain uncommitted for the external owner/safety runner.
+
+## Exact validation evidence
+
+| Validation | Result | Evidence |
+| --- | --- | --- |
+| TDD RED: `python3 tests/offline/test_upload_ignore.py` before ignore changes | Expected FAIL, exit 1 | 3 tests ran; 8 failing subtests: root uploads contents (6) and directory entries (2); source controls and backend descendants passed |
+| TDD GREEN: same command after ignore changes | PASS, exit 0 | 3 tests, 18 path cases; no failures or skips |
+| Static compilation: `python3 -m py_compile tests/offline/test_upload_ignore.py` | PASS, exit 0 | New test file compiles |
+| Whitespace: `git diff --check` | PASS, exit 0 | No errors |
+| Diff/source review | PASS for scoped change | Reviewed ignore-rule diff and full new test source; no application code or dependencies changed |
+| Branch/HEAD: `git status --short --branch` and `git rev-parse HEAD` | PASS | dealer-ai-v2; HEAD unchanged |
+
+Final verification repeats the offline tests, compilation, whitespace check,
+branch/HEAD check, and reviews the report and changed-file scope after writing.
+No application build, frontend suite, API/RBAC suite, dependency audit, E2E run,
+or coverage percentage is claimed. This unit changes repository ignore policy
+only; its applicable static validation is Python compilation and Git's actual
+ignore-rule evaluation. Legacy integration suites were not loaded because safe
+isolation from databases, environment files, and external providers is not yet
+established. No application server or database was started.
+
+## Security and architecture review
+
+- New-upload ignore behavior: PASS for the tested paths. Ignore rules are not
+  access control, do not prevent force-add, and do not remove tracked history.
+- Existing tracked uploads remain quarantined and untouched. No provenance
+  investigation, deletion, history rewrite, or Git metadata write attempted.
+- Previously reported static `/uploads` mount still exists at backend/server.py:84.
+  Production-path fallback literals remain at lines 1455, 2409, 2460 and 7317.
+  These were inspected as source text only; prohibited paths were never accessed.
+  These known findings remain unfinished; no deployed-exposure claim is made.
+- No new high-risk runtime condition was tested or exposed. The RED failures
+  represent the scoped repository-policy gap, not a live-data access test.
+- Preserve the actual Motor/MongoDB architecture; no schema change or migration.
+- No credentials, secrets, real customer documents, or production data read.
+  No external communication, provider activation, deployment, or push.
+- Applied TDD, verification-loop, and agent-self-evaluation. User prohibition
+  on Git metadata writes overrides generic skill checkpoint instructions.
+
+## Component status and remaining work
+
+| Area | Status | Session evidence / remaining work |
+| --- | --- | --- |
+| Build | PASS (scoped static compilation only) | Offline test compiles; full application build not run |
+| Security / Tests | PASS (upload-ignore unit only) | 3 offline tests; broader document/auth security remains unfinished |
+| Backend / Database / Authentication | BLOCKED (not validated this session) | Establish isolated execution before runtime validation |
+| Frontend / Mobile / Customer 360 / Pipeline / Appointments | BLOCKED (not validated this session) | No changes; corresponding build and behavior tests remain |
+| Jarvis / Developer Mode / Custom Fields / Custom Modules | BLOCKED (not validated this session) | Phase implementation remains |
+| Financial Panel / Demo Mode / Demo Tour / Demo Isolation | BLOCKED (not validated this session) | Phase implementation remains |
+| SMS Gateway / WhatsApp Adapter / Website Adapter | PENDING_EXTERNAL | No real provider activated; adapter behavior not tested |
+| Prequalify Adapter / Marketing API | PENDING_EXTERNAL | No real provider activated; adapter behavior not tested |
+
+No blocker prevented completion of this bounded unit. BLOCKED component entries
+mean unverified during this session, not that those existing features were tested
+and failed. The prior Git-write blocker is superseded by the owner's instruction
+to leave workspace changes uncommitted.
+
+Recommended next step: an isolated Phase 1 document-access unit, beginning with
+safe synthetic tests for authenticated/authorized document delivery and removal
+of production-path fallbacks. Preserve the upload quarantine and avoid importing
+the legacy server until database/provider side effects are safely isolated.
+Developer Mode, reauthentication, Schema Audit, and subsequent phases remain.
+
+## Self-evaluation
+
+| Axis | Score | Evidence / improvement |
+| --- | --- | --- |
+| Accuracy | 4/5 | Actual RED/GREEN and compile results; runtime security remains unverified |
+| Completeness | 4/5 | Bounded unit complete; full Phase 1 intentionally remains |
+| Clarity | 4/5 | Scoped PASS distinguished from broader untested components; historical reports add length |
+| Actionability | 4/5 | Runnable offline test and precise next unit; next unit still needs isolation design |
+| Conciseness | 4/5 | Small policy change and tests; mandatory component tracking lengthens report |
+
+Overall: 4.0/5. Priorities: establish isolated document-access tests, then remediate
+known delivery/path risks. Self-check: no full-product or runtime-security PASS
+is claimed; the remaining security work is explicit.
+
+---
+
+# Historical session — 2026-09-20 (UTC)
+
 AUTONOMOUS_SESSION_BLOCKED — required Git checkpoints unavailable.
 
 - Starting commit: `30435b24ec45e00c1684a2b1b05383cf421df537`.
