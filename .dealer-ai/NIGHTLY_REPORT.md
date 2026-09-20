@@ -1,5 +1,107 @@
 # Current session — 2026-09-20 (UTC)
 
+AUTONOMOUS_SESSION_COMPLETE — one bounded Phase 1 download-path unit.
+Phase 1 and product completion are not claimed.
+
+## Scope and checkpoint
+
+- Starting/ending commit: `74a7557ad3873437492a2aacb489cbc17abb944c`.
+- Branch: `dealer-ai-v2`; initial worktree clean.
+- Read all four authoritative documents completely before changes.
+- Root AGENTS.md and docs/CODEX-NAVIGATION-GUIDE.md are absent.
+- Commits created: none. Git ownership rule overrides checkpoint instructions;
+  verified workspace changes are intentionally uncommitted.
+- Files changed: backend/document_paths.py (new), backend/server.py,
+  tests/offline/test_document_paths.py (new), .dealer-ai/NIGHTLY_REPORT.md.
+
+## Implemented behavior and architecture
+
+The client download handler now uses a standalone standard-library resolver.
+Existing absolute paths under the upload root, relative paths, and /uploads/
+references resolve locally. Traversal, external absolute paths, symlinks, missing
+files, directories, invalid values and filesystem errors fail closed. Removed
+this handler's production/container and basename fallback searches and path logs.
+Invalid historical paths now produce missing-document behavior instead of
+selecting a same-named file. No data migration is performed.
+
+The helper avoids the services package initializer, which imports communications
+modules. Tests import only this standalone file and extract only the nested
+handler helper AST; no legacy server startup, dotenv, Motor, providers or database
+are loaded. Synthetic temporary files are created and cleaned inside tests/offline.
+Actual Motor/MongoDB architecture remains unchanged.
+
+## Exact validation evidence
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Initial new-test attempt: python3 tests/offline/test_document_paths.py | FAIL (setup, not RED evidence) | Four errors because proposed module did not yet exist |
+| TDD RED: same command after standalone interface stub | Expected FAIL, exit 1 | Four tests executed; three supported-reference subtests failed against return-None stub |
+| TDD GREEN: same command after implementation | PASS, exit 0 | Four tests passed |
+| Expanded regression: python3 -m unittest discover -s tests/offline -v | PASS | Nine tests passed; includes six path/helper tests and three prior ignore tests |
+| python3 -m py_compile backend/document_paths.py backend/server.py tests/offline/test_document_paths.py | PASS | Exit 0; no application import/startup |
+| git diff --check | PASS | Exit 0 |
+| .venv/bin/python -m coverage --version | FAIL (tool unavailable) | No module named coverage; no coverage percentage claimed |
+| Diff/source review | PASS for bounded change | Server diff and full new files reviewed; no unrelated application changes |
+
+Final verification repeats the nine offline tests, compilation, whitespace and
+branch/HEAD checks after this report is written. Full application build, frontend
+suite, API/RBAC, E2E and dependency audits were not run. Safe legacy runtime
+isolation is still required. Python compilation is the applicable scoped build
+check; it is not a full-application build claim. No packages were installed.
+
+## Security findings and limits
+
+No inherited upload content, credentials or real customer data accessed. No
+production access, communications, database connection, migration, deployment,
+Git metadata write or external integration activation occurred.
+
+The configured upload root must be administrator-controlled. Symlinks are
+rejected during resolution, but concurrent filesystem mutation between checking
+and opening is not prevented. This helper is not authorization. Existing static
+/uploads serving and other download/attachment/prequalification paths remain
+unfinished security work, including fallbacks in other handlers. No overall
+document-security PASS is claimed. No new high-risk runtime condition was
+exposed by these isolated tests; known source findings remain documented.
+
+## Component tracking
+
+| Area | Status | Evidence / remaining work |
+| --- | --- | --- |
+| Build | PASS (scoped compilation only) | Full application build unverified |
+| Backend / Security / Tests | PASS (resolver unit only) | Nine offline tests; broader runtime and document security unfinished |
+| Database / Authentication | BLOCKED (unverified this session) | No runtime connections or RBAC tests |
+| Frontend / Mobile / Customer 360 / Pipeline / Appointments | BLOCKED (unverified this session) | Unchanged; relevant tests/build remain |
+| Jarvis / Developer Mode / Custom Fields / Custom Modules | BLOCKED (unverified this session) | Subsequent implementation remains |
+| Financial Panel / Demo Mode / Demo Tour / Demo Isolation | BLOCKED (unverified this session) | Subsequent implementation and tests remain |
+| SMS Gateway / WhatsApp Adapter / Website Adapter | PENDING_EXTERNAL | No providers activated or tested |
+| Prequalify Adapter / Marketing API | PENDING_EXTERNAL | No providers activated or tested |
+
+No blocker prevented this bounded implementation. BLOCKED table entries indicate
+unverified areas, not failed existing features. Next: build isolated authorization
+and delivery tests, replace public static upload access, and extend confined
+resolution to remaining handlers before advancing to Developer Mode/Schema Audit.
+
+## Self-evaluation
+
+Applied TDD, verification-loop and agent-self-evaluation skills, subject to owner
+safety and Git restrictions.
+
+| Axis | Score | Evidence / improvement |
+| --- | --- | --- |
+| Accuracy | 4/5 | Actual nine-test results; full runtime and coverage unverified |
+| Completeness | 4/5 | Bounded resolver integrated; authorization/delivery still require a separate unit |
+| Clarity | 4/5 | Scoped results explicit; report history adds length |
+| Actionability | 4/5 | Offline command and changes ready for owner checkpoint; runtime isolation remains |
+| Conciseness | 4/5 | Small implementation; mandatory status tracking lengthens report |
+
+Overall 4.0/5. Improvements: establish safe route-level runtime tests, then
+complete authorization and file-open protections. Self-check: evidence supports
+only this unit, not full document security or product completion.
+
+---
+
+# Historical session — 2026-09-20 (UTC)
+
 AUTONOMOUS_SESSION_COMPLETE — one bounded Phase 1 repository-protection unit.
 This is not completion of Phase 1 or the product.
 
