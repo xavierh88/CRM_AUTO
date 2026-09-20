@@ -10,6 +10,11 @@ from pathlib import Path
 from document_authorization import can_access_documents, redact_documents
 from document_paths import resolve_document_path
 from document_attachments import collect_document_attachments
+from crm_authorization import CRMAccess, SCOPED_COLLECTIONS
+from runtime_security import jwt_secret, require_enabled_user, mock_delivery
+from public_tokens import resolve_appointment_token
+from upload_validation import validate_documents, upload_directory, bounded_read, validate_import
+from webhook_security import validate_twilio_webhook
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Dict, Any
 import uuid
@@ -39,7 +44,7 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # JWT Settings
-JWT_SECRET = os.environ.get('JWT_SECRET', 'dealercrm-secret-key-2024')
+JWT_SECRET = jwt_secret()
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
@@ -67,13 +72,8 @@ COMPANY_LOGO_URL = "https://carplusautosalesgroup.com/img/carplus.png"
 COMPANY_NAME = "CARPLUS AUTOSALE"
 COMPANY_TAGLINE = "Friendly Brokerage"
 
-# Initialize Twilio client
+# V2 development never initializes a live communications provider.
 twilio_client = None
-if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
-    try:
-        twilio_client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-    except Exception as e:
-        print(f"Warning: Could not initialize Twilio client: {e}")
 
 # Create the main app
 app = FastAPI(title="DealerCRM Pro API")
@@ -216,7 +216,7 @@ async def send_marketing_sms_job():
             
             # Generate appointment link
             token = generate_public_token(contact["id"], contact["id"], "marketing_appointment")
-            base_url = os.environ.get('FRONTEND_URL', 'https://work-1-hxroqbnbaygfdbdd.prod-runtime.all-hands.dev')
+            base_url = os.environ.get('FRONTEND_URL', '')
             appointment_link = f"{base_url}/c/appointment/{token}"
             
             # Format message
@@ -784,11 +784,13 @@ def create_token(user_id: str, email: str, role: str) -> str:
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
-        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM], options={"require": ["exp", "user_id"]})
+        if not isinstance(payload["user_id"], str) or not payload["user_id"]:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0, "password": 0})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
-        return user
+        return require_enabled_user(user)
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
@@ -823,9 +825,7 @@ async def login(credentials: UserLogin):
     if not user or not verify_password(credentials.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    # Check if user is active (admin accounts are always active)
-    if not user.get("is_active", False) and user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Account not activated. Please wait for admin approval.")
+    require_enabled_user(user)
     
     token = create_token(user["id"], user["email"], user["role"])
     return {"token": token, "user": {k: v for k, v in user.items() if k != "password"}}
@@ -850,7 +850,7 @@ async def activate_user(data: UserActivate, current_user: dict = Depends(get_cur
     
     result = await db.users.update_one(
         {"id": data.user_id},
-        {"$set": {"is_active": data.is_active}}
+        {"$set": {"is_active": data.is_active, "approved": data.is_active}}
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
@@ -979,16 +979,17 @@ def normalize_phone_number(phone: str) -> str:
 @api_router.post("/clients", response_model=dict)
 async def create_client(client: ClientCreate, current_user: dict = Depends(get_current_user)):
     # Normalize phone number to E.164 format
+    access = CRMAccess(db, current_user)
     normalized_phone = normalize_phone_number(client.phone)
     
     # Check for existing client by phone (check both original and normalized)
-    existing = await db.clients.find_one({
+    existing = await db.clients.find_one(await access.query("clients", {
         "$or": [
             {"phone": normalized_phone},
             {"phone": client.phone}
         ],
         "is_deleted": {"$ne": True}
-    })
+    }, "read"))
     
     if existing:
         # If client exists and belongs to someone else, return info to create a request
@@ -1035,51 +1036,16 @@ import re as regex_module
 
 @api_router.get("/clients", response_model=List[dict])
 async def get_clients(include_deleted: bool = False, search: Optional[str] = None, salesperson_id: Optional[str] = None, exclude_sold: bool = False, owner_filter: Optional[str] = None, sort_by: Optional[str] = None, from_notification: bool = False, current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
     query = {} if include_deleted and current_user["role"] == "admin" else {"is_deleted": {"$ne": True}}
     
-    # Get list of admin user IDs (to exclude their clients from non-admins)
-    admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
-    admin_ids = [u["id"] for u in admin_users]
-    
-    # SPECIAL CASE: If coming from notification with search, bypass ownership filters
-    # This allows users to see clients they have reminders for
-    if from_notification and search:
-        # No ownership filter - just search by phone/name
-        pass  # Don't add any created_by filter
-    elif current_user["role"] == "admin":
-        # Admin can see ALL clients or filter
-        if salesperson_id:
-            query["created_by"] = salesperson_id
-        elif owner_filter:
-            if owner_filter == 'mine':
-                query["created_by"] = current_user["id"]
-            elif owner_filter == 'others':
-                query["created_by"] = {"$ne": current_user["id"]}
-            # 'all' means no filter, show everything
-    elif current_user["role"] == "bdc_manager":
-        # BDC Manager can see all clients EXCEPT those created by admins
-        if salesperson_id:
-            query["created_by"] = salesperson_id
-        elif owner_filter:
-            if owner_filter == 'mine':
-                query["created_by"] = current_user["id"]
-            elif owner_filter == 'others':
-                query["created_by"] = {"$ne": current_user["id"], "$nin": admin_ids}
-            else:  # 'all' - show all except admin's clients
-                query["created_by"] = {"$nin": admin_ids}
-        else:
-            # Default: exclude admin's clients
-            query["created_by"] = {"$nin": admin_ids}
-    else:
-        # Telemarketers default to their own clients
-        # BUT: if there's a specific search AND owner_filter=all, allow searching all
-        if search and owner_filter == 'all':
-            # Allow searching ALL clients for notification purposes
-            pass  # No ownership filter
-        else:
-            # Normal behavior: only own clients
-            query["created_by"] = current_user["id"]
-    
+    if salesperson_id:
+        query["created_by"] = salesperson_id
+    if owner_filter == "mine":
+        query["created_by"] = current_user["id"]
+    elif owner_filter == "others":
+        query["created_by"] = {"$ne": current_user["id"]}
+
     # Exclude sold clients if requested (for main Clients page)
     if exclude_sold:
         query["is_sold"] = {"$ne": True}
@@ -1104,25 +1070,25 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
         # Default: most recently created first
         sort_field = [("created_at", -1)]
     
-    clients = await db.clients.find(query, {"_id": 0}).sort(sort_field).to_list(1000)
+    clients = await db.clients.find(await access.query("clients", query, "read"), {"_id": 0}).sort(sort_field).to_list(1000)
     
     now = datetime.now(timezone.utc)
     
     # For each client, get the last record date, sold count, and status color
     for client in clients:
         last_record = await db.user_records.find_one(
-            {"client_id": client["id"], "is_deleted": {"$ne": True}},
+            await access.query("user_records", {"client_id": client["id"], "is_deleted": {"$ne": True}}, "read"),
             {"_id": 0, "created_at": 1},
             sort=[("created_at", -1)]
         )
         client["last_record_date"] = last_record["created_at"] if last_record else None
         
         # Count sold records (record_status = 'completed' indicates a completed sale)
-        sold_count = await db.user_records.count_documents({
+        sold_count = await db.user_records.count_documents(await access.query("user_records", {
             "client_id": client["id"],
             "is_deleted": {"$ne": True},
             "record_status": "completed"
-        })
+        }, "read"))
         client["sold_count"] = sold_count
         
         # Calculate status color based on last interaction
@@ -1154,6 +1120,7 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
 @api_router.get("/clients/sold/list", response_model=List[dict])
 async def get_sold_clients(search: Optional[str] = None, salesperson_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     """Get clients that have been marked as sold"""
+    access = CRMAccess(db, current_user)
     query = {"is_deleted": {"$ne": True}, "is_sold": True}
     
     # Filter by owner - telemarketers can only see their own sold clients
@@ -1175,12 +1142,12 @@ async def get_sold_clients(search: Optional[str] = None, salesperson_id: Optiona
             {"phone": search_regex}
         ]
     
-    clients = await db.clients.find(query, {"_id": 0}).sort("sold_at", -1).to_list(1000)
+    clients = await db.clients.find(await access.query("clients", query, "read"), {"_id": 0}).sort("sold_at", -1).to_list(1000)
     
     # For each client, get the sold record info
     for client in clients:
         sold_record = await db.user_records.find_one(
-            {"client_id": client["id"], "is_deleted": {"$ne": True}, "record_status": "completed"},
+            await access.query("user_records", {"client_id": client["id"], "is_deleted": {"$ne": True}, "record_status": "completed"}, "read"),
             {"_id": 0, "finance_status": 1, "bank": 1, "auto": 1, "updated_at": 1}
         )
         if sold_record:
@@ -1190,7 +1157,10 @@ async def get_sold_clients(search: Optional[str] = None, salesperson_id: Optiona
 
 @api_router.get("/clients/{client_id}", response_model=ClientResponse)
 async def get_client(client_id: str, current_user: dict = Depends(get_current_user)):
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "read")
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -1203,6 +1173,9 @@ async def get_client(client_id: str, current_user: dict = Depends(get_current_us
 
 @api_router.put("/clients/{client_id}", response_model=ClientResponse)
 async def update_client(client_id: str, client: ClientCreate, current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
     update_data = client.model_dump(exclude_unset=True)
     update_data["last_contact"] = datetime.now(timezone.utc).isoformat()
     
@@ -1215,11 +1188,11 @@ async def update_client(client_id: str, client: ClientCreate, current_user: dict
     if "phone" in update_data and update_data["phone"]:
         update_data["phone"] = normalize_phone_number(update_data["phone"])
     
-    result = await db.clients.update_one({"id": client_id}, {"$set": update_data})
+    result = await db.clients.update_one(await access.query("clients", {"id": client_id}, "write"), {"$set": update_data})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    updated = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    updated = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0})
     
     # Hide sensitive fields from non-admin users
     if current_user["role"] != "admin":
@@ -1228,22 +1201,7 @@ async def update_client(client_id: str, client: ClientCreate, current_user: dict
     
     return await redact_documents(db, current_user, updated)
 
-@api_router.delete("/clients/{client_id}")
-async def delete_client(client_id: str, permanent: bool = False, current_user: dict = Depends(get_current_user)):
-    if permanent:
-        if current_user["role"] != "admin":
-            raise HTTPException(status_code=403, detail="Admin access required for permanent deletion")
-        await db.clients.delete_one({"id": client_id})
-    else:
-        await db.clients.update_one({"id": client_id}, {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat(), "deleted_by": current_user["id"]}})
-    return {"message": "Client deleted"}
 
-@api_router.post("/clients/{client_id}/restore")
-async def restore_client(client_id: str, current_user: dict = Depends(get_current_user)):
-    if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-    await db.clients.update_one({"id": client_id}, {"$set": {"is_deleted": False}, "$unset": {"deleted_at": "", "deleted_by": ""}})
-    return {"message": "Client restored"}
 
 async def require_document_access(client, current_user, action="read"):
     if not await can_access_documents(db, current_user, client, action):
@@ -1252,7 +1210,10 @@ async def require_document_access(client, current_user, action="read"):
 
 @api_router.put("/clients/{client_id}/documents")
 async def update_client_documents(client_id: str, id_uploaded: bool = None, income_proof_uploaded: bool = None, residence_proof_uploaded: bool = None, current_user: dict = Depends(get_current_user)):
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0})
     await require_document_access(client, current_user, "write")
     update_data = {}
     if id_uploaded is not None:
@@ -1269,9 +1230,9 @@ async def update_client_documents(client_id: str, id_uploaded: bool = None, inco
             update_data["residence_proof_file_url"] = None
     
     if update_data:
-        await db.clients.update_one({"id": client_id}, {"$set": update_data})
+        await db.clients.update_one(await access.query("clients", {"id": client_id}, "write"), {"$set": update_data})
     
-    updated = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    updated = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0})
     return updated
 
 # Document Upload/Download endpoints
@@ -1289,57 +1250,44 @@ async def upload_client_document(
     current_user: dict = Depends(get_current_user)
 ):
     """Upload multiple documents for a client (ID, income proof, or residence proof)"""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
     
     if doc_type not in ['id', 'income', 'residence']:
         raise HTTPException(status_code=400, detail="Invalid document type. Must be 'id', 'income', or 'residence'")
     
     # Verify client exists
-    client = await db.clients.find_one({"id": client_id})
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"))
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     await require_document_access(client, current_user, "write")
     
-    # Create client upload directory
-    client_upload_dir = UPLOAD_DIR / "clients" / client_id
+    # Validate the entire batch before creating directories or writing bytes.
+    validated = await validate_documents(files)
+    client_upload_dir = upload_directory(UPLOAD_DIR, client_id)
     client_upload_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Get existing documents list
     doc_field = f"{doc_type}_documents"
     existing_docs = client.get(doc_field, [])
-    
     uploaded_files = []
-    
-    for file in files:
-        try:
-            content = await file.read()
-            file_ext = file.filename.split('.')[-1].lower() if '.' in file.filename else 'pdf'
-            
-            # Create unique filename
-            file_id = uuid.uuid4().hex[:8]
-            filename = f"{doc_type}_{file_id}.{file_ext}"
-            file_path = client_upload_dir / filename
-            
-            # Save original file
-            with open(file_path, 'wb') as f:
-                f.write(content)
-            
-            # Add to documents list
-            doc_info = {
-                "id": file_id,
-                "filename": file.filename,
-                "path": str(file_path),
-                "type": file.content_type or f"application/{file_ext}",
-                "uploaded_at": datetime.now(timezone.utc).isoformat(),
+    written_paths = []
+    try:
+        for item in validated:
+            file_id = uuid.uuid4().hex
+            file_path = client_upload_dir / f"{doc_type}_{file_id}.{item['extension']}"
+            with file_path.open('xb') as destination:
+                written_paths.append(file_path)
+                destination.write(item['content'])
+            uploaded_files.append({
+                "id": file_id, "filename": item['filename'], "path": str(file_path),
+                "type": item['type'], "uploaded_at": datetime.now(timezone.utc).isoformat(),
                 "uploaded_by": current_user["id"]
-            }
-            uploaded_files.append(doc_info)
-        except Exception as e:
-            logger.error(f"Error uploading file {file.filename}: {e}")
-            continue
-    
-    if not uploaded_files:
-        raise HTTPException(status_code=400, detail="No se pudo subir ningún archivo")
-    
+            })
+    except OSError:
+        for path in written_paths:
+            path.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail="Unable to store document batch")
+
     # Update client with new documents
     all_docs = existing_docs + uploaded_files
     
@@ -1350,7 +1298,7 @@ async def upload_client_document(
     else:
         update_data[f"{doc_type}_proof_uploaded"] = True
     
-    await db.clients.update_one({"id": client_id}, {"$set": update_data})
+    await db.clients.update_one(await access.query("clients", {"id": client_id}, "write"), {"$set": update_data})
     
     return {
         "message": f"{len(uploaded_files)} documento(s) subido(s) correctamente",
@@ -1365,10 +1313,13 @@ async def list_client_documents(
     current_user: dict = Depends(get_current_user)
 ):
     """List all documents of a specific type for a client"""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "read")
     if doc_type not in ['id', 'income', 'residence']:
         raise HTTPException(status_code=400, detail="Invalid document type")
     
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     await require_document_access(client, current_user, "read")
@@ -1401,10 +1352,13 @@ async def delete_single_document(
     current_user: dict = Depends(get_current_user)
 ):
     """Delete a single document from a client"""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
     if doc_type not in ['id', 'income', 'residence']:
         raise HTTPException(status_code=400, detail="Invalid document type")
     
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     await require_document_access(client, current_user, "delete")
@@ -1434,7 +1388,7 @@ async def delete_single_document(
         uploaded_field = f"{doc_type}_uploaded" if doc_type == 'id' else f"{doc_type}_proof_uploaded"
         update_data[uploaded_field] = False
     
-    await db.clients.update_one({"id": client_id}, {"$set": update_data})
+    await db.clients.update_one(await access.query("clients", {"id": client_id}, "write"), {"$set": update_data})
     
     return {"message": "Documento eliminado", "remaining": len(new_docs)}
 
@@ -1446,13 +1400,16 @@ async def download_client_document(
     current_user: dict = Depends(get_current_user)
 ):
     """Download a client document - single file or combined PDF of all documents"""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "read")
     def find_file(path_str):
         return resolve_document_path(path_str, UPLOAD_DIR)
 
     if doc_type not in ['id', 'income', 'residence']:
         raise HTTPException(status_code=400, detail="Invalid document type")
     
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     await require_document_access(client, current_user, "read")
@@ -1580,17 +1537,21 @@ async def download_client_document(
 
 @api_router.post("/user-records", response_model=dict)
 async def create_user_record(record: UserRecordCreate, current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    await access.require("clients", record.client_id, "write")
+    if record.previous_record_id:
+        await access.same_client("user_records", record.previous_record_id, record.client_id)
     now = datetime.now(timezone.utc).isoformat()
     
     # Check if this is the first record for this client
-    existing_records_count = await db.user_records.count_documents({"client_id": record.client_id, "is_deleted": {"$ne": True}})
+    existing_records_count = await db.user_records.count_documents(await access.query("user_records", {"client_id": record.client_id, "is_deleted": {"$ne": True}}, "read"))
     is_first_record = existing_records_count == 0
     
     # Calculate opportunity number
     opportunity_number = 1
     if record.previous_record_id:
         # This is a "New Opportunity" - count previous opportunities
-        prev_record = await db.user_records.find_one({"id": record.previous_record_id})
+        prev_record = await db.user_records.find_one(await access.query("user_records", {"id": record.previous_record_id}, "read"))
         if prev_record:
             opportunity_number = prev_record.get("opportunity_number", 1) + 1
     
@@ -1609,12 +1570,12 @@ async def create_user_record(record: UserRecordCreate, current_user: dict = Depe
     await db.user_records.insert_one(record_doc)
     
     # Update client last_record_date
-    await db.clients.update_one({"id": record.client_id}, {"$set": {"last_record_date": now}})
+    await db.clients.update_one(await access.query("clients", {"id": record.client_id}, "write"), {"$set": {"last_record_date": now}})
     
     # Send automatic SMS if this is the first record for the client
     sms_sent = False
     if is_first_record and twilio_client:
-        client = await db.clients.find_one({"id": record.client_id}, {"_id": 0})
+        client = await db.clients.find_one(await access.query("clients", {"id": record.client_id}, "read"), {"_id": 0})
         if client and client.get("phone"):
             client_name = f"{client['first_name']} {client['last_name']}"
             message = f"Hola {client_name}, gracias por visitarnos. Le mantendremos informado sobre su proceso de compra. Si tiene preguntas, no dude en contactarnos. - DealerCRM"
@@ -1640,7 +1601,7 @@ async def create_user_record(record: UserRecordCreate, current_user: dict = Depe
             
             if result["success"]:
                 sms_sent = True
-                await db.user_records.update_one({"id": record_doc["id"]}, {"$set": {"first_sms_sent": True}})
+                await db.user_records.update_one(await access.query("user_records", {"id": record_doc["id"]}, "write"), {"$set": {"first_sms_sent": True}})
                 logger.info(f"Automatic welcome SMS sent to {client['phone']} for first record")
     
     del record_doc["_id"]
@@ -1649,15 +1610,21 @@ async def create_user_record(record: UserRecordCreate, current_user: dict = Depe
 
 @api_router.get("/user-records", response_model=List[dict])
 async def get_user_records(client_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "read")
     query = {"is_deleted": {"$ne": True}}
     if client_id:
         query["client_id"] = client_id
-    records = await db.user_records.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    records = await db.user_records.find(await access.query("user_records", query, "read"), {"_id": 0}).sort("created_at", -1).to_list(1000)
     return records
 
 @api_router.get("/user-records/{record_id}", response_model=UserRecordResponse)
 async def get_user_record(record_id: str, current_user: dict = Depends(get_current_user)):
-    record = await db.user_records.find_one({"id": record_id}, {"_id": 0})
+    access = CRMAccess(db, current_user)
+    if record_id:
+        await access.require("user_records", record_id, "read")
+    record = await db.user_records.find_one(await access.query("user_records", {"id": record_id}, "read"), {"_id": 0})
     if not record:
         raise HTTPException(status_code=404, detail="User record not found")
     return record
@@ -1665,6 +1632,15 @@ async def get_user_record(record_id: str, current_user: dict = Depends(get_curre
 @api_router.put("/user-records/{record_id}", response_model=UserRecordResponse)
 async def update_user_record(record_id: str, record_data: dict, current_user: dict = Depends(get_current_user)):
     # Clean the data - convert empty strings to None for numeric fields
+    access = CRMAccess(db, current_user)
+    if record_id:
+        await access.require("user_records", record_id, "write")
+    original = await access.require("user_records", record_id, "write")
+    allowed_fields = set(UserRecordCreate.model_fields) - {"previous_record_id", "collaborator_id", "collaborator_name"}
+    if set(record_data) - allowed_fields:
+        raise HTTPException(status_code=400, detail="Unsupported record fields")
+    if record_data.get("client_id") != original.get("client_id"):
+        raise HTTPException(status_code=400, detail="Record client cannot be changed")
     numeric_fields = ['sale_month', 'sale_day', 'sale_year', 'employment_time_years', 
                       'employment_time_months', 'commission_percentage', 'commission_value']
     
@@ -1689,7 +1665,7 @@ async def update_user_record(record_id: str, record_data: dict, current_user: di
     if not client_id:
         raise HTTPException(status_code=400, detail="client_id is required")
     
-    result = await db.user_records.update_one({"id": record_id}, {"$set": cleaned_data})
+    result = await db.user_records.update_one(await access.query("user_records", {"id": record_id}, "write"), {"$set": cleaned_data})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User record not found")
     
@@ -1702,20 +1678,20 @@ async def update_user_record(record_id: str, record_data: dict, current_user: di
         client_update["sold_at"] = datetime.now(timezone.utc).isoformat()
     elif "record_status" in cleaned_data and cleaned_data.get("record_status") != "completed":
         # Check if client has any OTHER completed records before removing is_sold
-        other_completed = await db.user_records.count_documents({
+        other_completed = await db.user_records.count_documents(await access.query("user_records", {
             "client_id": client_id,
             "id": {"$ne": record_id},  # Exclude current record being updated
             "record_status": "completed",
             "is_deleted": {"$ne": True}
-        })
+        }, "read"))
         if other_completed == 0:
             # No other completed records, remove sold status
             client_update["is_sold"] = False
             client_update["sold_at"] = None
     
-    await db.clients.update_one({"id": client_id}, {"$set": client_update})
+    await db.clients.update_one(await access.query("clients", {"id": client_id}, "write"), {"$set": client_update})
     
-    updated = await db.user_records.find_one({"id": record_id}, {"_id": 0})
+    updated = await db.user_records.find_one(await access.query("user_records", {"id": record_id}, "read"), {"_id": 0})
     
     # Clean boolean fields that might have empty strings
     bool_fields = ['has_id', 'ssn', 'has_poi', 'has_por', 'self_employed', 'has_trade', 
@@ -1730,12 +1706,15 @@ async def update_user_record(record_id: str, record_data: dict, current_user: di
 
 @api_router.delete("/user-records/{record_id}")
 async def delete_user_record(record_id: str, permanent: bool = False, current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    if record_id:
+        await access.require("user_records", record_id, "write")
     if permanent:
         if current_user["role"] != "admin":
             raise HTTPException(status_code=403, detail="Admin access required")
-        await db.user_records.delete_one({"id": record_id})
+        await db.user_records.delete_one(await access.query("user_records", {"id": record_id}, "write"))
     else:
-        await db.user_records.update_one({"id": record_id}, {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat()}})
+        await db.user_records.update_one(await access.query("user_records", {"id": record_id}, "write"), {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat()}})
     return {"message": "User record deleted"}
 
 # ==================== RECORD COMMENTS/NOTES ====================
@@ -1743,13 +1722,16 @@ async def delete_user_record(record_id: str, permanent: bool = False, current_us
 @api_router.get("/user-records/{record_id}/comments")
 async def get_record_comments(record_id: str, current_user: dict = Depends(get_current_user)):
     """Get all comments for a user record"""
+    access = CRMAccess(db, current_user)
+    if record_id:
+        await access.require("user_records", record_id, "read")
     # Build query - if not admin, exclude admin_only comments
     query = {"record_id": record_id}
     if current_user["role"] != "admin":
         query["admin_only"] = {"$ne": True}
     
     comments = await db.record_comments.find(
-        query,
+        await access.query("record_comments", query, "read"),
         {"_id": 0}
     ).sort("created_at", -1).to_list(100)
     return comments
@@ -1759,11 +1741,14 @@ async def add_record_comment(record_id: str, comment: str = Form(...), reminder_
     """Add a comment to a user record, optionally with a reminder.
     If reminder is less than 24 hours away, create notification immediately.
     """
+    access = CRMAccess(db, current_user)
+    if record_id:
+        await access.require("user_records", record_id, "write")
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
     
     # Get the record to find the client and phone
-    record = await db.user_records.find_one({"id": record_id}, {"_id": 0, "client_id": 1, "phone": 1, "client_name": 1})
+    record = await db.user_records.find_one(await access.query("user_records", {"id": record_id}, "read"), {"_id": 0, "client_id": 1, "phone": 1, "client_name": 1})
     client_id = record.get("client_id") if record else None
     record_phone = record.get("phone", "") if record else ""
     record_client_name = record.get("client_name", "") if record else ""
@@ -1801,7 +1786,7 @@ async def add_record_comment(record_id: str, comment: str = Form(...), reminder_
     if send_notification_now:
         try:
             # Get client info for the notification - try from clients collection first, then from record
-            client = await db.clients.find_one({"id": client_id}, {"_id": 0, "first_name": 1, "last_name": 1, "phone": 1}) if client_id else None
+            client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0, "first_name": 1, "last_name": 1, "phone": 1}) if client_id else None
             
             if client:
                 client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}"
@@ -1838,14 +1823,17 @@ async def add_record_comment(record_id: str, comment: str = Form(...), reminder_
 @api_router.delete("/user-records/{record_id}/comments/{comment_id}")
 async def delete_record_comment(record_id: str, comment_id: str, current_user: dict = Depends(get_current_user)):
     """Delete a comment (only admin can delete)"""
+    access = CRMAccess(db, current_user)
+    if record_id:
+        await access.require("user_records", record_id, "write")
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Only admin can delete comments")
     
-    comment = await db.record_comments.find_one({"id": comment_id, "record_id": record_id})
+    comment = await db.record_comments.find_one(await access.query("record_comments", {"id": comment_id, "record_id": record_id}, "read"))
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
     
-    await db.record_comments.delete_one({"id": comment_id})
+    await db.record_comments.delete_one(await access.query("record_comments", {"id": comment_id}, "write"))
     return {"message": "Comment deleted"}
 
 # ==================== CLIENT COMMENTS/NOTES ROUTES ====================
@@ -1853,8 +1841,11 @@ async def delete_record_comment(record_id: str, comment_id: str, current_user: d
 @api_router.get("/clients/{client_id}/comments")
 async def get_client_comments(client_id: str, current_user: dict = Depends(get_current_user)):
     """Get all comments/notes for a client"""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "read")
     comments = await db.client_comments.find(
-        {"client_id": client_id},
+        await access.query("client_comments", {"client_id": client_id}, "read"),
         {"_id": 0}
     ).sort("created_at", -1).to_list(100)
     return comments
@@ -1864,6 +1855,9 @@ async def add_client_comment(client_id: str, comment: str = Form(...), reminder_
     """Add a comment/note to a client, optionally with a reminder.
     If reminder is less than 24 hours away, create notification immediately.
     """
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
     
@@ -1900,7 +1894,7 @@ async def add_client_comment(client_id: str, comment: str = Form(...), reminder_
     if send_notification_now:
         try:
             # Get client info for the notification
-            client = await db.clients.find_one({"id": client_id}, {"_id": 0, "first_name": 1, "last_name": 1, "phone": 1})
+            client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0, "first_name": 1, "last_name": 1, "phone": 1})
             client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}" if client else "Cliente"
             client_phone = client.get("phone", "") if client else ""
             
@@ -1931,14 +1925,17 @@ async def add_client_comment(client_id: str, comment: str = Form(...), reminder_
 @api_router.delete("/clients/{client_id}/comments/{comment_id}")
 async def delete_client_comment(client_id: str, comment_id: str, current_user: dict = Depends(get_current_user)):
     """Delete a client comment (only admin can delete)"""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Only admin can delete comments")
     
-    comment = await db.client_comments.find_one({"id": comment_id, "client_id": client_id})
+    comment = await db.client_comments.find_one(await access.query("client_comments", {"id": comment_id, "client_id": client_id}, "read"))
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
     
-    await db.client_comments.delete_one({"id": comment_id})
+    await db.client_comments.delete_one(await access.query("client_comments", {"id": comment_id}, "write"))
     return {"message": "Comment deleted"}
 
 # ==================== SALESPERSONS LIST & EMAIL REPORT ====================
@@ -1977,14 +1974,20 @@ class EmailReportRequest(BaseModel):
 @api_router.post("/send-record-report")
 async def send_record_report(request: EmailReportRequest, current_user: dict = Depends(get_current_user)):
     """Send record report via email to specified addresses"""
+    access = CRMAccess(db, current_user)
+    await access.require("clients", request.client_id)
+    await access.same_client("user_records", request.record_id, request.client_id, "read")
+    if request.include_documents or request.attach_documents:
+        await require_document_access(await access.require("clients", request.client_id), current_user)
+    return mock_delivery("email")
     
     # Get record data
-    record = await db.user_records.find_one({"id": request.record_id}, {"_id": 0})
+    record = await db.user_records.find_one(await access.query("user_records", {"id": request.record_id}, "read"), {"_id": 0})
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
     
     # Get client data
-    client = await db.clients.find_one({"id": request.client_id}, {"_id": 0})
+    client = await db.clients.find_one(await access.query("clients", {"id": request.client_id}, "read"), {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     if request.include_documents or request.attach_documents:
@@ -1992,19 +1995,19 @@ async def send_record_report(request: EmailReportRequest, current_user: dict = D
     
     # Get co-signers for this client
     cosigner_relations = await db.cosigner_relations.find(
-        {"buyer_client_id": request.client_id, "is_deleted": {"$ne": True}},
+        await access.query("cosigner_relations", {"buyer_client_id": request.client_id, "is_deleted": {"$ne": True}}, "read"),
         {"_id": 0}
     ).to_list(10)
     
     cosigners_data = []
     for relation in cosigner_relations:
-        cosigner = await db.clients.find_one({"id": relation.get("cosigner_client_id")}, {"_id": 0})
+        cosigner = await db.clients.find_one(await access.query("clients", {"id": relation.get("cosigner_client_id")}, "read"), {"_id": 0})
         if cosigner:
             if request.include_documents or request.attach_documents:
                 await require_document_access(cosigner, current_user)
             # Get co-signer's records
             cosigner_records = await db.user_records.find(
-                {"client_id": cosigner.get("id"), "is_deleted": {"$ne": True}},
+                await access.query("user_records", {"client_id": cosigner.get("id"), "is_deleted": {"$ne": True}}, "read"),
                 {"_id": 0}
             ).sort("created_at", -1).to_list(5)
             cosigners_data.append({
@@ -2382,13 +2385,17 @@ async def send_collaborator_notification(
     current_user: dict = Depends(get_current_user)
 ):
     """Send notification to collaborator about record changes"""
+    access = CRMAccess(db, current_user)
+    if record_id:
+        await access.require("user_records", record_id, "write")
+    return mock_delivery("email")
     
-    record = await db.user_records.find_one({"id": record_id}, {"_id": 0})
+    record = await db.user_records.find_one(await access.query("user_records", {"id": record_id}, "read"), {"_id": 0})
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
     
     # Get client info
-    client = await db.clients.find_one({"id": record.get("client_id")}, {"_id": 0})
+    client = await db.clients.find_one(await access.query("clients", {"id": record.get("client_id")}, "read"), {"_id": 0})
     client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}" if client else "Cliente"
     
     # Determine who to notify (the other person)
@@ -2468,6 +2475,9 @@ async def send_collaborator_notification(
 
 @api_router.post("/appointments", response_model=AppointmentResponse)
 async def create_appointment(appt: AppointmentCreate, current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    await access.require("clients", appt.client_id, "write")
+    await access.same_client("user_records", appt.user_record_id, appt.client_id)
     now = datetime.now(timezone.utc).isoformat()
     status = "agendado" if appt.date and appt.time else "sin_configurar"
     
@@ -2498,7 +2508,7 @@ async def create_appointment(appt: AppointmentCreate, current_user: dict = Depen
     appt_doc.pop("_id", None)
     
     # Get client name for notification
-    client = await db.clients.find_one({"id": appt.client_id}, {"_id": 0, "first_name": 1, "last_name": 1})
+    client = await db.clients.find_one(await access.query("clients", {"id": appt.client_id}, "read"), {"_id": 0, "first_name": 1, "last_name": 1})
     client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}" if client else "Cliente"
     
     # Notify all admins about the new appointment
@@ -2529,6 +2539,9 @@ async def get_appointments(
     status: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "read")
     query = {}
     if salesperson_id:
         query["salesperson_id"] = salesperson_id
@@ -2537,13 +2550,14 @@ async def get_appointments(
     if status:
         query["status"] = status
     
-    appointments = await db.appointments.find(query, {"_id": 0}).sort("date", 1).to_list(1000)
+    appointments = await db.appointments.find(await access.query("appointments", query, "read"), {"_id": 0}).sort("date", 1).to_list(1000)
     return appointments
 
 @api_router.get("/appointments/agenda", response_model=List[dict])
 async def get_agenda(current_user: dict = Depends(get_current_user)):
     """Get appointments for the agenda view with client info.
     Admins see ALL appointments, others see only their own."""
+    access = CRMAccess(db, current_user)
     
     # Build match query based on role
     if current_user["role"] == "admin":
@@ -2583,7 +2597,7 @@ async def get_agenda(current_user: dict = Depends(get_current_user)):
         }},
         {"$sort": {"date": 1, "time": 1}}
     ]
-    appointments = await db.appointments.aggregate(pipeline).to_list(1000)
+    appointments = await db.appointments.aggregate([{"$match": await access.scope("appointments")}] + pipeline).to_list(1000)
     
     # Also get reminders (from client_comments and record_comments)
     reminder_match = {"reminder_at": {"$ne": None}}
@@ -2597,15 +2611,15 @@ async def get_agenda(current_user: dict = Depends(get_current_user)):
         reminder_match["user_id"] = current_user["id"]
     
     # Get client comment reminders
-    client_reminders = await db.client_comments.find(reminder_match, {"_id": 0}).to_list(500)
+    client_reminders = await db.client_comments.find(await access.query("client_comments", reminder_match, "read"), {"_id": 0}).to_list(500)
     
     # Get record comment reminders
-    record_reminders = await db.record_comments.find(reminder_match, {"_id": 0}).to_list(500)
+    record_reminders = await db.record_comments.find(await access.query("record_comments", reminder_match, "read"), {"_id": 0}).to_list(500)
     
     # Transform reminders to agenda format
     for reminder in client_reminders + record_reminders:
         client_id = reminder.get("client_id")
-        client = await db.clients.find_one({"id": client_id}, {"_id": 0, "first_name": 1, "last_name": 1, "phone": 1}) if client_id else None
+        client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0, "first_name": 1, "last_name": 1, "phone": 1}) if client_id else None
         
         # Parse reminder date
         reminder_at = reminder.get("reminder_at", "")
@@ -2638,10 +2652,13 @@ async def get_agenda(current_user: dict = Depends(get_current_user)):
 
 @api_router.put("/appointments/{appt_id}", response_model=AppointmentResponse)
 async def update_appointment(appt_id: str, appt: AppointmentUpdate, current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    if appt_id:
+        await access.require("appointments", appt_id, "write")
     update_data = appt.model_dump(exclude_unset=True, exclude_none=True)
     
     # Determine status
-    existing = await db.appointments.find_one({"id": appt_id})
+    existing = await db.appointments.find_one(await access.query("appointments", {"id": appt_id}, "read"))
     if not existing:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
@@ -2650,22 +2667,28 @@ async def update_appointment(appt_id: str, appt: AppointmentUpdate, current_user
     elif appt.date and appt.time:
         update_data["status"] = "agendado"
     
-    await db.appointments.update_one({"id": appt_id}, {"$set": update_data})
-    updated = await db.appointments.find_one({"id": appt_id}, {"_id": 0})
+    await db.appointments.update_one(await access.query("appointments", {"id": appt_id}, "write"), {"$set": update_data})
+    updated = await db.appointments.find_one(await access.query("appointments", {"id": appt_id}, "read"), {"_id": 0})
     return updated
 
 @api_router.put("/appointments/{appt_id}/status")
 async def update_appointment_status(appt_id: str, status: str, current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    if appt_id:
+        await access.require("appointments", appt_id, "write")
     valid_statuses = ["agendado", "sin_configurar", "cambio_hora", "tres_semanas", "no_show", "cumplido"]
     if status not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
     
-    await db.appointments.update_one({"id": appt_id}, {"$set": {"status": status}})
+    await db.appointments.update_one(await access.query("appointments", {"id": appt_id}, "write"), {"$set": {"status": status}})
     return {"message": "Status updated"}
 
 @api_router.delete("/appointments/{appt_id}")
 async def delete_appointment(appt_id: str, current_user: dict = Depends(get_current_user)):
-    await db.appointments.delete_one({"id": appt_id})
+    access = CRMAccess(db, current_user)
+    if appt_id:
+        await access.require("appointments", appt_id, "write")
+    await db.appointments.delete_one(await access.query("appointments", {"id": appt_id}, "write"))
     return {"message": "Appointment deleted"}
 
 # ==================== CO-SIGNER ROUTES ====================
@@ -2673,17 +2696,20 @@ async def delete_appointment(appt_id: str, current_user: dict = Depends(get_curr
 @api_router.post("/cosigners", response_model=CoSignerRelationResponse)
 async def create_cosigner_relation(relation: CoSignerRelationCreate, current_user: dict = Depends(get_current_user)):
     # Check if both clients exist
-    buyer = await db.clients.find_one({"id": relation.buyer_client_id})
-    cosigner = await db.clients.find_one({"id": relation.cosigner_client_id})
+    access = CRMAccess(db, current_user)
+    await access.require("clients", relation.buyer_client_id, "write")
+    await access.require("clients", relation.cosigner_client_id, "write")
+    buyer = await db.clients.find_one(await access.query("clients", {"id": relation.buyer_client_id}, "read"))
+    cosigner = await db.clients.find_one(await access.query("clients", {"id": relation.cosigner_client_id}, "read"))
     
     if not buyer or not cosigner:
         raise HTTPException(status_code=404, detail="Client not found")
     
     # Check if relation already exists
-    existing = await db.cosigner_relations.find_one({
+    existing = await db.cosigner_relations.find_one(await access.query("cosigner_relations", {
         "buyer_client_id": relation.buyer_client_id,
         "cosigner_client_id": relation.cosigner_client_id
-    })
+    }, "read"))
     if existing:
         raise HTTPException(status_code=400, detail="Relation already exists")
     
@@ -2700,6 +2726,9 @@ async def create_cosigner_relation(relation: CoSignerRelationCreate, current_use
 @api_router.get("/cosigners/{buyer_client_id}", response_model=List[dict])
 async def get_cosigners(buyer_client_id: str, current_user: dict = Depends(get_current_user)):
     """Get all co-signers for a buyer with their client info"""
+    access = CRMAccess(db, current_user)
+    if buyer_client_id:
+        await access.require("clients", buyer_client_id, "read")
     pipeline = [
         {"$match": {"buyer_client_id": buyer_client_id}},
         {"$lookup": {
@@ -2711,7 +2740,7 @@ async def get_cosigners(buyer_client_id: str, current_user: dict = Depends(get_c
         {"$unwind": {"path": "$cosigner", "preserveNullAndEmptyArrays": True}},
         {"$project": {"_id": 0, "cosigner._id": 0}}
     ]
-    relations = await db.cosigner_relations.aggregate(pipeline).to_list(100)
+    relations = await db.cosigner_relations.aggregate([{"$match": await access.scope("cosigner_relations")}] + pipeline).to_list(100)
     for relation in relations:
         if isinstance(relation.get("cosigner"), dict):
             relation["cosigner"] = await redact_documents(db, current_user, relation["cosigner"])
@@ -2719,13 +2748,17 @@ async def get_cosigners(buyer_client_id: str, current_user: dict = Depends(get_c
 
 @api_router.delete("/cosigners/{relation_id}")
 async def delete_cosigner_relation(relation_id: str, current_user: dict = Depends(get_current_user)):
-    await db.cosigner_relations.delete_one({"id": relation_id})
+    access = CRMAccess(db, current_user)
+    if relation_id:
+        await access.require("cosigner_relations", relation_id, "write")
+    await db.cosigner_relations.delete_one(await access.query("cosigner_relations", {"id": relation_id}, "write"))
     return {"message": "Co-signer relation removed"}
 
 @api_router.get("/clients/search/phone/{phone}")
 async def search_client_by_phone(phone: str, current_user: dict = Depends(get_current_user)):
     """Search for a client by phone number (for adding existing co-signer)"""
-    client = await db.clients.find_one({"phone": {"$regex": phone}, "is_deleted": {"$ne": True}}, {"_id": 0})
+    access = CRMAccess(db, current_user)
+    client = await db.clients.find_one(await access.query("clients", {"phone": {"$regex": re.escape(phone)}, "is_deleted": {"$ne": True}}, "read"), {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     return await redact_documents(db, current_user, client)
@@ -2739,6 +2772,7 @@ async def get_dashboard_stats(
     month: str = None  # Optional specific month in format "YYYY-MM"
 ):
     # Get list of admin user IDs (to exclude their data from non-admins)
+    access = CRMAccess(db, current_user)
     admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
     admin_ids = [u["id"] for u in admin_users]
     
@@ -2784,13 +2818,13 @@ async def get_dashboard_stats(
         clients_query["created_at"] = date_filter
     
     # Total clients (filtered by period and owner)
-    total_clients = await db.clients.count_documents(clients_query)
+    total_clients = await db.clients.count_documents(await access.query("clients", clients_query, "read"))
     
     # Total clients overall (for reference) - also filtered by owner
     clients_all_query = {"is_deleted": {"$ne": True}}
     if clients_owner_filter:
         clients_all_query.update(clients_owner_filter)
-    total_clients_all = await db.clients.count_documents(clients_all_query)
+    total_clients_all = await db.clients.count_documents(await access.query("clients", clients_all_query, "read"))
     
     # New clients this month (always current month for comparison) - also filtered by owner
     first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -2800,7 +2834,7 @@ async def get_dashboard_stats(
     }
     if clients_owner_filter:
         new_clients_query.update(clients_owner_filter)
-    new_clients_month = await db.clients.count_documents(new_clients_query)
+    new_clients_month = await db.clients.count_documents(await access.query("clients", new_clients_query, "read"))
     
     # Appointments query with date filter
     appt_query = {**base_query}
@@ -2808,7 +2842,7 @@ async def get_dashboard_stats(
         appt_query["created_at"] = date_filter
     
     # Appointments by status
-    appt_stats = await db.appointments.aggregate([
+    appt_stats = await db.appointments.aggregate([{"$match": await access.scope("appointments")}] + [
         {"$match": appt_query},
         {"$group": {"_id": "$status", "count": {"$sum": 1}}}
     ]).to_list(100)
@@ -2821,15 +2855,15 @@ async def get_dashboard_stats(
     if clients_owner_filter:
         docs_query_complete.update(clients_owner_filter)
         docs_query_pending.update(clients_owner_filter)
-    docs_complete = await db.clients.count_documents(docs_query_complete)
-    docs_pending = await db.clients.count_documents(docs_query_pending)
+    docs_complete = await db.clients.count_documents(await access.query("clients", docs_query_complete, "read"))
+    docs_pending = await db.clients.count_documents(await access.query("clients", docs_query_pending, "read"))
     
     # Sales count - now based on is_sold in clients collection (consistent with Sold page)
     # Filtered by owner
     sales_client_query = {"is_sold": True, "is_deleted": {"$ne": True}}
     if clients_owner_filter:
         sales_client_query.update(clients_owner_filter)
-    sales_count = await db.clients.count_documents(sales_client_query)
+    sales_count = await db.clients.count_documents(await access.query("clients", sales_client_query, "read"))
     
     # Sales this month - check sold_at field if exists, otherwise count all sold
     # First try to count clients with sold_at in this month - filtered by owner
@@ -2840,27 +2874,27 @@ async def get_dashboard_stats(
     }
     if clients_owner_filter:
         sales_month_query.update(clients_owner_filter)
-    sales_month = await db.clients.count_documents(sales_month_query)
+    sales_month = await db.clients.count_documents(await access.query("clients", sales_month_query, "read"))
     
     # If no sold_at dates exist, use sales_count as fallback (for backwards compatibility)
     if sales_month == 0 and sales_count > 0:
         # Check if any client has sold_at field
-        has_sold_at = await db.clients.count_documents({"is_sold": True, "sold_at": {"$exists": True}})
+        has_sold_at = await db.clients.count_documents(await access.query("clients", {"is_sold": True, "sold_at": {"$exists": True}}, "read"))
         if has_sold_at == 0:
             # No sold_at dates tracked yet, show all sales as this month's
             sales_month = sales_count
     
     # Today's appointments
     today = now.strftime("%Y-%m-%d")
-    today_appointments = await db.appointments.count_documents({"date": today, **base_query})
+    today_appointments = await db.appointments.count_documents(await access.query("appointments", {"date": today, **base_query}, "read"))
     
     # This week's appointments
     week_start = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
     week_end = (now + timedelta(days=6-now.weekday())).strftime("%Y-%m-%d")
-    week_appointments = await db.appointments.count_documents({
+    week_appointments = await db.appointments.count_documents(await access.query("appointments", {
         "date": {"$gte": week_start, "$lte": week_end},
         **base_query
-    })
+    }, "read"))
     
     # Total records with date filter
     records_query = {"is_deleted": {"$ne": True}}
@@ -2868,16 +2902,16 @@ async def get_dashboard_stats(
         records_query.update(base_query)
     if date_filter:
         records_query["created_at"] = date_filter
-    total_records = await db.user_records.count_documents(records_query)
+    total_records = await db.user_records.count_documents(await access.query("user_records", records_query, "read"))
     
     # Co-signers count
-    total_cosigners = await db.cosigner_relations.count_documents({})
+    total_cosigners = await db.cosigner_relations.count_documents(await access.query("cosigner_relations", {}, "read"))
     
     # Sold clients count (clients with is_sold = true) - filtered by owner
     sold_clients_query = {"is_sold": True, "is_deleted": {"$ne": True}}
     if clients_owner_filter:
         sold_clients_query.update(clients_owner_filter)
-    sold_clients = await db.clients.count_documents(sold_clients_query)
+    sold_clients = await db.clients.count_documents(await access.query("clients", sold_clients_query, "read"))
     
     # Recent activity - clients contacted in last 7 days - filtered by owner
     week_ago = (now - timedelta(days=7)).isoformat()
@@ -2887,13 +2921,13 @@ async def get_dashboard_stats(
     }
     if clients_owner_filter:
         active_clients_query.update(clients_owner_filter)
-    active_clients = await db.clients.count_documents(active_clients_query)
+    active_clients = await db.clients.count_documents(await access.query("clients", active_clients_query, "read"))
     
     # Finance type breakdown with date filter
     finance_match = {"finance_status": {"$in": ["financiado", "lease"]}, "is_deleted": {"$ne": True}}
     if date_filter:
         finance_match["created_at"] = date_filter
-    finance_stats = await db.user_records.aggregate([
+    finance_stats = await db.user_records.aggregate([{"$match": await access.scope("user_records")}] + [
         {"$match": finance_match},
         {"$group": {"_id": "$finance_status", "count": {"$sum": 1}}}
     ]).to_list(10)
@@ -2901,7 +2935,7 @@ async def get_dashboard_stats(
     
     # Monthly sales trend (last 6 months or based on period)
     trend_start = now - timedelta(days=180)
-    monthly_sales = await db.user_records.aggregate([
+    monthly_sales = await db.user_records.aggregate([{"$match": await access.scope("user_records")}] + [
         {
             "$match": {
                 "finance_status": {"$in": ["financiado", "lease"]},
@@ -2919,7 +2953,7 @@ async def get_dashboard_stats(
     ]).to_list(12)
     
     # Get available months for filter dropdown
-    available_months = await db.user_records.aggregate([
+    available_months = await db.user_records.aggregate([{"$match": await access.scope("user_records")}] + [
         {"$match": {"is_deleted": {"$ne": True}}},
         {"$group": {"_id": {"$substr": ["$created_at", 0, 7]}}},
         {"$sort": {"_id": -1}},
@@ -2933,7 +2967,7 @@ async def get_dashboard_stats(
     
     # Get all records with down payment info
     records_with_dp = await db.user_records.find(
-        dp_match,
+        await access.query("user_records", dp_match, "read"),
         {"down_payment_cash": 1, "down_payment_card": 1, "trade_estimated_value": 1, "_id": 0}
     ).to_list(None)
     
@@ -3004,6 +3038,7 @@ async def get_dashboard_stat_details(
     month: str = None
 ):
     """Get detailed list of items for a dashboard statistic (clickable stats)"""
+    access = CRMAccess(db, current_user)
     # Get admin IDs for role filtering
     admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
     admin_ids = [u["id"] for u in admin_users]
@@ -3047,7 +3082,7 @@ async def get_dashboard_stat_details(
             query["created_at"] = date_filter
         
         clients = await db.clients.find(
-            query,
+            await access.query("clients", query, "read"),
             {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1, "email": 1, "created_at": 1}
         ).sort("created_at", -1).to_list(500)
         result["items"] = clients
@@ -3060,7 +3095,7 @@ async def get_dashboard_stat_details(
             query.update(clients_owner_filter)
         
         clients = await db.clients.find(
-            query,
+            await access.query("clients", query, "read"),
             {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1, "email": 1, "created_at": 1}
         ).sort("created_at", -1).to_list(500)
         result["items"] = clients
@@ -3072,7 +3107,7 @@ async def get_dashboard_stat_details(
             query.update(clients_owner_filter)
         
         clients = await db.clients.find(
-            query,
+            await access.query("clients", query, "read"),
             {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1, "email": 1, "sold_at": 1}
         ).sort("sold_at", -1).to_list(500)
         result["items"] = clients
@@ -3085,7 +3120,7 @@ async def get_dashboard_stat_details(
             query.update(clients_owner_filter)
         
         clients = await db.clients.find(
-            query,
+            await access.query("clients", query, "read"),
             {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1, "email": 1, "sold_at": 1}
         ).sort("sold_at", -1).to_list(500)
         result["items"] = clients
@@ -3098,13 +3133,13 @@ async def get_dashboard_stat_details(
             query.update(records_filter)
         
         appointments = await db.appointments.find(
-            query,
+            await access.query("appointments", query, "read"),
             {"_id": 0, "id": 1, "client_id": 1, "date": 1, "time": 1, "status": 1, "dealer": 1}
         ).to_list(500)
         
         # Enrich with client names
         for appt in appointments:
-            client = await db.clients.find_one({"id": appt.get("client_id")}, {"_id": 0, "first_name": 1, "last_name": 1})
+            client = await db.clients.find_one(await access.query("clients", {"id": appt.get("client_id")}, "read"), {"_id": 0, "first_name": 1, "last_name": 1})
             if client:
                 appt["client_name"] = f"{client.get('first_name', '')} {client.get('last_name', '')}"
         
@@ -3119,12 +3154,12 @@ async def get_dashboard_stat_details(
             query.update(records_filter)
         
         appointments = await db.appointments.find(
-            query,
+            await access.query("appointments", query, "read"),
             {"_id": 0, "id": 1, "client_id": 1, "date": 1, "time": 1, "status": 1, "dealer": 1}
         ).sort("date", 1).to_list(500)
         
         for appt in appointments:
-            client = await db.clients.find_one({"id": appt.get("client_id")}, {"_id": 0, "first_name": 1, "last_name": 1})
+            client = await db.clients.find_one(await access.query("clients", {"id": appt.get("client_id")}, "read"), {"_id": 0, "first_name": 1, "last_name": 1})
             if client:
                 appt["client_name"] = f"{client.get('first_name', '')} {client.get('last_name', '')}"
         
@@ -3139,12 +3174,12 @@ async def get_dashboard_stat_details(
             query["created_at"] = date_filter
         
         records = await db.user_records.find(
-            query,
+            await access.query("user_records", query, "read"),
             {"_id": 0, "id": 1, "client_id": 1, "record_status": 1, "created_at": 1}
         ).sort("created_at", -1).to_list(500)
         
         for rec in records:
-            client = await db.clients.find_one({"id": rec.get("client_id")}, {"_id": 0, "first_name": 1, "last_name": 1})
+            client = await db.clients.find_one(await access.query("clients", {"id": rec.get("client_id")}, "read"), {"_id": 0, "first_name": 1, "last_name": 1})
             if client:
                 rec["client_name"] = f"{client.get('first_name', '')} {client.get('last_name', '')}"
         
@@ -3153,14 +3188,14 @@ async def get_dashboard_stat_details(
     
     elif stat_type == "total_cosigners":
         cosigner_relations = await db.cosigner_relations.find(
-            {},
+            await access.query("cosigner_relations", {}, "read"),
             {"_id": 0, "buyer_client_id": 1, "cosigner_client_id": 1}
         ).to_list(500)
         
         items = []
         for rel in cosigner_relations:
-            buyer = await db.clients.find_one({"id": rel.get("buyer_client_id")}, {"_id": 0, "first_name": 1, "last_name": 1})
-            cosigner = await db.clients.find_one({"id": rel.get("cosigner_client_id")}, {"_id": 0, "first_name": 1, "last_name": 1})
+            buyer = await db.clients.find_one(await access.query("clients", {"id": rel.get("buyer_client_id")}, "read"), {"_id": 0, "first_name": 1, "last_name": 1})
+            cosigner = await db.clients.find_one(await access.query("clients", {"id": rel.get("cosigner_client_id")}, "read"), {"_id": 0, "first_name": 1, "last_name": 1})
             items.append({
                 "buyer_name": f"{buyer.get('first_name', '')} {buyer.get('last_name', '')}" if buyer else "N/A",
                 "cosigner_name": f"{cosigner.get('first_name', '')} {cosigner.get('last_name', '')}" if cosigner else "N/A",
@@ -3178,7 +3213,7 @@ async def get_dashboard_stat_details(
             query.update(clients_owner_filter)
         
         clients = await db.clients.find(
-            query,
+            await access.query("clients", query, "read"),
             {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1, "email": 1, "last_contact": 1}
         ).sort("last_contact", -1).to_list(500)
         result["items"] = clients
@@ -3190,7 +3225,7 @@ async def get_dashboard_stat_details(
             query.update(clients_owner_filter)
         
         clients = await db.clients.find(
-            query,
+            await access.query("clients", query, "read"),
             {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1, "email": 1}
         ).to_list(500)
         result["items"] = clients
@@ -3202,7 +3237,7 @@ async def get_dashboard_stat_details(
             query.update(clients_owner_filter)
         
         clients = await db.clients.find(
-            query,
+            await access.query("clients", query, "read"),
             {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "phone": 1, "email": 1, "id_uploaded": 1, "income_proof_uploaded": 1}
         ).to_list(500)
         result["items"] = clients
@@ -3220,6 +3255,7 @@ async def get_salesperson_performance(
     month: str = None  # Optional specific month in format "YYYY-MM"
 ):
     # Admin and BDC Manager can see salesperson performance
+    access = CRMAccess(db, current_user)
     if current_user["role"] not in ["admin", "bdc", "bdc_manager"]:
         raise HTTPException(status_code=403, detail="Admin or BDC Manager access required")
     
@@ -3303,59 +3339,32 @@ async def get_salesperson_performance(
         {"$sort": {"total_records": -1}}  # Sort by total records descending
     ]
     
-    performance = await db.user_records.aggregate(pipeline).to_list(100)
+    performance = await db.user_records.aggregate([{"$match": await access.scope("user_records")}] + pipeline).to_list(100)
     return performance
 
 # ==================== TRASH ROUTES (ADMIN) ====================
 
 @api_router.get("/trash/clients", response_model=List[ClientResponse])
 async def get_trash_clients(current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
-    clients = await db.clients.find({"is_deleted": True}, {"_id": 0}).to_list(1000)
+    clients = await db.clients.find(await access.query("clients", {"is_deleted": True}, "read"), {"_id": 0}).to_list(1000)
     return [await redact_documents(db, current_user, client) for client in clients]
 
 @api_router.get("/trash/user-records", response_model=List[UserRecordResponse])
 async def get_trash_user_records(current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
-    records = await db.user_records.find({"is_deleted": True}, {"_id": 0}).to_list(1000)
+    records = await db.user_records.find(await access.query("user_records", {"is_deleted": True}, "read"), {"_id": 0}).to_list(1000)
     return records
 
 # ==================== SMS ROUTES (TWILIO) ====================
 
 async def send_sms_twilio(to_phone: str, message: str) -> dict:
-    """Send SMS using Twilio with A2P 10DLC Messaging Service. Returns status dict."""
-    if not twilio_client:
-        logger.warning("Twilio client not configured - SMS not sent")
-        return {"success": False, "error": "Twilio not configured"}
-    
-    try:
-        # Ensure phone number is in E.164 format
-        if not to_phone.startswith('+'):
-            to_phone = '+1' + to_phone.replace('-', '').replace(' ', '').replace('(', '').replace(')', '')
-        
-        # Use Messaging Service SID for A2P 10DLC compliance (required)
-        # Falls back to phone number if Messaging Service not configured
-        if TWILIO_MESSAGING_SERVICE_SID:
-            message_obj = twilio_client.messages.create(
-                body=message,
-                messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
-                to=to_phone
-            )
-            logger.info(f"SMS sent via Messaging Service to {to_phone}: SID={message_obj.sid}")
-        else:
-            message_obj = twilio_client.messages.create(
-                body=message,
-                from_=TWILIO_PHONE_NUMBER,
-                to=to_phone
-            )
-            logger.info(f"SMS sent via phone number to {to_phone}: SID={message_obj.sid}")
-        
-        return {"success": True, "sid": message_obj.sid, "status": message_obj.status}
-    except Exception as e:
-        logger.error(f"Failed to send SMS to {to_phone}: {str(e)}")
-        return {"success": False, "error": str(e)}
+    """V2 development communication boundary: no external delivery."""
+    return mock_delivery("sms")
 
 @api_router.post("/sms/test")
 async def test_sms(phone: str, message: str = "Prueba de SMS desde CARPLUS CRM", current_user: dict = Depends(get_current_user)):
@@ -3379,11 +3388,17 @@ async def send_documents_email(client_id: str, current_user: dict = Depends(get_
 @api_router.post("/sms/send-appointment-link")
 async def send_appointment_sms(client_id: str, appointment_id: str, current_user: dict = Depends(get_current_user)):
     """Send SMS with appointment scheduling/management link"""
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
+    if appointment_id:
+        await access.require("appointments", appointment_id, "write")
+    await access.same_client("appointments", appointment_id, client_id)
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    appointment = await db.appointments.find_one({"id": appointment_id}, {"_id": 0})
+    appointment = await db.appointments.find_one(await access.query("appointments", {"id": appointment_id}, "read"), {"_id": 0})
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
@@ -3391,10 +3406,10 @@ async def send_appointment_sms(client_id: str, appointment_id: str, current_user
     token = await create_public_link(client_id, appointment_id, "appointment")
     
     # Update appointment with the token
-    await db.appointments.update_one({"id": appointment_id}, {"$set": {"public_token": token}})
+    await db.appointments.update_one(await access.query("appointments", {"id": appointment_id}, "write"), {"$set": {"public_token": token}})
     
     # Get base URL from environment or use default
-    base_url = os.environ.get('FRONTEND_URL', 'https://work-1-hxroqbnbaygfdbdd.prod-runtime.all-hands.dev')
+    base_url = os.environ.get('FRONTEND_URL', '')
     appointment_link = f"{base_url}/c/appointment/{token}"
     
     # Create the message
@@ -3439,7 +3454,7 @@ async def send_appointment_sms(client_id: str, appointment_id: str, current_user
     
     # Update appointment link_sent_at
     await db.appointments.update_one(
-        {"id": appointment_id}, 
+        await access.query("appointments", {"id": appointment_id}, "write"),
         {"$set": {
             "link_sent_at": datetime.now(timezone.utc).isoformat(),
             "last_sms_sent": datetime.now(timezone.utc).isoformat()
@@ -3454,18 +3469,25 @@ async def send_appointment_sms(client_id: str, appointment_id: str, current_user
 @api_router.post("/email/send-appointment-link")
 async def send_appointment_email(client_id: str, appointment_id: str, current_user: dict = Depends(get_current_user)):
     """Send Email with appointment management link - Alternative to SMS"""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
+    if appointment_id:
+        await access.require("appointments", appointment_id, "write")
+    await access.same_client("appointments", appointment_id, client_id)
+    return mock_delivery("email")
     import smtplib
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
     
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
     if not client.get("email"):
         raise HTTPException(status_code=400, detail="El cliente no tiene email registrado")
     
-    appointment = await db.appointments.find_one({"id": appointment_id}, {"_id": 0})
+    appointment = await db.appointments.find_one(await access.query("appointments", {"id": appointment_id}, "read"), {"_id": 0})
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
@@ -3473,10 +3495,10 @@ async def send_appointment_email(client_id: str, appointment_id: str, current_us
     token = await create_public_link(client_id, appointment_id, "appointment")
     
     # Update appointment with the token
-    await db.appointments.update_one({"id": appointment_id}, {"$set": {"public_token": token}})
+    await db.appointments.update_one(await access.query("appointments", {"id": appointment_id}, "write"), {"$set": {"public_token": token}})
     
     # Get base URL
-    base_url = os.environ.get('FRONTEND_URL', 'https://work-1-hxroqbnbaygfdbdd.prod-runtime.all-hands.dev')
+    base_url = os.environ.get('FRONTEND_URL', '')
     appointment_link = f"{base_url}/c/appointment/{token}"
     
     # Build email content
@@ -3586,7 +3608,7 @@ Si tiene preguntas, contacte a su vendedor.</p>
         
         # Update appointment link_sent_at
         await db.appointments.update_one(
-            {"id": appointment_id}, 
+            await access.query("appointments", {"id": appointment_id}, "write"),
             {"$set": {
                 "link_sent_at": datetime.now(timezone.utc).isoformat(),
                 "last_email_sent": datetime.now(timezone.utc).isoformat()
@@ -3614,11 +3636,17 @@ Si tiene preguntas, contacte a su vendedor.</p>
 @api_router.post("/sms/send-reminder")
 async def send_reminder_sms(client_id: str, record_id: str, current_user: dict = Depends(get_current_user)):
     """Send weekly reminder SMS for pending records"""
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
+    if record_id:
+        await access.require("user_records", record_id, "write")
+    await access.same_client("user_records", record_id, client_id)
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    record = await db.user_records.find_one({"id": record_id}, {"_id": 0})
+    record = await db.user_records.find_one(await access.query("user_records", {"id": record_id}, "read"), {"_id": 0})
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
     
@@ -3651,7 +3679,7 @@ async def send_reminder_sms(client_id: str, record_id: str, current_user: dict =
     
     # Update record with last reminder date
     await db.user_records.update_one(
-        {"id": record_id},
+        await access.query("user_records", {"id": record_id}, "write"),
         {"$set": {"last_reminder_sent": datetime.now(timezone.utc).isoformat()}}
     )
     
@@ -3663,6 +3691,7 @@ async def send_reminder_sms(client_id: str, record_id: str, current_user: dict =
 @api_router.post("/sms/process-weekly-reminders")
 async def process_weekly_reminders(current_user: dict = Depends(get_current_user)):
     """Process and send weekly reminders for all pending records (admin only or scheduled task)"""
+    access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
@@ -3686,7 +3715,7 @@ async def process_weekly_reminders(current_user: dict = Depends(get_current_user
         ]
     }
     
-    records = await db.user_records.find(query, {"_id": 0}).to_list(500)
+    records = await db.user_records.find(await access.query("user_records", query, "read"), {"_id": 0}).to_list(500)
     
     sent_count = 0
     skipped_count = 0
@@ -3694,7 +3723,7 @@ async def process_weekly_reminders(current_user: dict = Depends(get_current_user
     
     for record in records:
         try:
-            client = await db.clients.find_one({"id": record["client_id"], "is_deleted": {"$ne": True}}, {"_id": 0})
+            client = await db.clients.find_one(await access.query("clients", {"id": record["client_id"], "is_deleted": {"$ne": True}}, "read"), {"_id": 0})
             if not client or not client.get("phone"):
                 skipped_count += 1
                 continue
@@ -3724,7 +3753,7 @@ async def process_weekly_reminders(current_user: dict = Depends(get_current_user
             if result["success"]:
                 sent_count += 1
                 await db.user_records.update_one(
-                    {"id": record["id"]},
+                    await access.query("user_records", {"id": record["id"]}, "write"),
                     {"$set": {"last_reminder_sent": now.isoformat()}}
                 )
             else:
@@ -3745,11 +3774,14 @@ async def process_weekly_reminders(current_user: dict = Depends(get_current_user
 @api_router.get("/sms/logs")
 async def get_sms_logs(client_id: Optional[str] = None, limit: int = 50, current_user: dict = Depends(get_current_user)):
     """Get SMS logs for auditing"""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "read")
     query = {}
     if client_id:
         query["client_id"] = client_id
     
-    logs = await db.sms_logs.find(query, {"_id": 0}).sort("sent_at", -1).limit(limit).to_list(limit)
+    logs = await db.sms_logs.find(await access.query("sms_logs", query, "read"), {"_id": 0}).sort("sent_at", -1).limit(limit).to_list(limit)
     return logs
 
 # ==================== SMS INBOX & CONVERSATIONS ====================
@@ -3775,91 +3807,40 @@ def is_valid_email(email: str) -> bool:
     return True
 
 async def send_email_notification(to_email: str, subject: str, html_content: str) -> dict:
-    """
-    Send email notification using SMTP (FREE) or Resend (paid).
-    Supports Gmail, Outlook, Yahoo, etc.
-    """
-    # Validate email before sending
-    if not is_valid_email(to_email):
-        logger.warning(f"Invalid email address, skipping: {to_email}")
-        return {"success": False, "error": f"Invalid email: {to_email}"}
-    
-    # Try SMTP first (FREE)
-    if SMTP_USER and SMTP_PASSWORD:
-        try:
-            def send_smtp_email():
-                msg = MIMEMultipart('alternative')
-                msg['Subject'] = subject
-                msg['From'] = f"{SMTP_FROM_NAME} <{SMTP_USER}>"
-                msg['To'] = to_email
-                
-                # Create HTML part
-                html_part = MIMEText(html_content, 'html')
-                msg.attach(html_part)
-                
-                # Connect and send
-                with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-                    server.starttls()
-                    server.login(SMTP_USER, SMTP_PASSWORD)
-                    server.sendmail(SMTP_USER, to_email, msg.as_string())
-                
-                return True
-            
-            # Run in thread to not block async
-            result = await asyncio.to_thread(send_smtp_email)
-            logger.info(f"Email notification sent via SMTP to {to_email}")
-            return {"success": True, "method": "smtp"}
-            
-        except Exception as e:
-            logger.error(f"Failed to send email via SMTP: {str(e)}")
-            # Fall through to try Resend if configured
-    
-    # Try Resend as fallback (paid)
-    if RESEND_API_KEY:
-        try:
-            params = {
-                "from": SENDER_EMAIL,
-                "to": [to_email],
-                "subject": subject,
-                "html": html_content
-            }
-            email = await asyncio.to_thread(resend.Emails.send, params)
-            logger.info(f"Email notification sent via Resend to {to_email}")
-            return {"success": True, "email_id": email.get("id"), "method": "resend"}
-        except Exception as e:
-            logger.error(f"Failed to send email via Resend: {str(e)}")
-            return {"success": False, "error": str(e)}
-    
-    logger.warning("No email service configured - skipping email notification")
-    return {"success": False, "error": "Email not configured"}
+    """V2 development communication boundary: no external delivery."""
+    return mock_delivery("email")
 
 # IMPORTANT: This route must be BEFORE /inbox/{client_id} to avoid shadowing
 @api_router.get("/inbox/unread-count")
 async def get_unread_count(current_user: dict = Depends(get_current_user)):
     """Get total unread messages count for notification badge"""
-    count = await db.sms_conversations.count_documents({
+    access = CRMAccess(db, current_user)
+    count = await db.sms_conversations.count_documents(await access.query("sms_conversations", {
         "direction": "inbound",
         "is_read": False
-    })
+    }, "read"))
     return {"unread_count": count}
 
 @api_router.get("/inbox/{client_id}")
 async def get_client_inbox(client_id: str, current_user: dict = Depends(get_current_user)):
     """Get all SMS messages for a client (conversation inbox)"""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "read")
     # Get client info
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
     # Get all messages for this client (both sent and received)
     messages = await db.sms_conversations.find(
-        {"client_id": client_id},
+        await access.query("sms_conversations", {"client_id": client_id}, "read"),
         {"_id": 0}
     ).sort("timestamp", 1).to_list(500)
     
     # Also get SMS logs for historical messages
     sms_logs = await db.sms_logs.find(
-        {"client_id": client_id},
+        await access.query("sms_logs", {"client_id": client_id}, "read"),
         {"_id": 0}
     ).sort("sent_at", 1).to_list(500)
     
@@ -3883,11 +3864,11 @@ async def get_client_inbox(client_id: str, current_user: dict = Depends(get_curr
     messages.sort(key=lambda x: x.get("timestamp", ""))
     
     # Get unread count
-    unread_count = await db.sms_conversations.count_documents({
+    unread_count = await db.sms_conversations.count_documents(await access.query("sms_conversations", {
         "client_id": client_id,
         "direction": "inbound",
         "is_read": False
-    })
+    }, "read"))
     
     return {
         "client": client,
@@ -3898,8 +3879,11 @@ async def get_client_inbox(client_id: str, current_user: dict = Depends(get_curr
 @api_router.post("/inbox/{client_id}/send")
 async def send_inbox_message(client_id: str, message: str = Form(...), current_user: dict = Depends(get_current_user)):
     """Send a message from the inbox to a client"""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
     # Get client info
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -3928,7 +3912,7 @@ async def send_inbox_message(client_id: str, message: str = Form(...), current_u
     
     # Update client's last activity
     await db.clients.update_one(
-        {"id": client_id},
+        await access.query("clients", {"id": client_id}, "write"),
         {"$set": {"last_sms_activity": now, "last_active_user_id": current_user["id"]}}
     )
     
@@ -3940,8 +3924,11 @@ async def send_inbox_message(client_id: str, message: str = Form(...), current_u
 @api_router.post("/inbox/{client_id}/mark-read")
 async def mark_messages_read(client_id: str, current_user: dict = Depends(get_current_user)):
     """Mark all inbound messages for a client as read"""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
     result = await db.sms_conversations.update_many(
-        {"client_id": client_id, "direction": "inbound", "is_read": False},
+        await access.query("sms_conversations", {"client_id": client_id, "direction": "inbound", "is_read": False}, "write"),
         {"$set": {"read": True, "read_by": current_user["id"], "read_at": datetime.now(timezone.utc).isoformat()}}
     )
     return {"message": f"Marked {result.modified_count} messages as read"}
@@ -3982,15 +3969,15 @@ async def twilio_sms_webhook(request: Request):
     Webhook endpoint to receive incoming SMS messages from Twilio.
     Configure this URL in your Twilio console: https://your-domain.com/webhook/twilio/sms
     """
+    form_data = await validate_twilio_webhook(request)
     try:
-        form_data = await request.form()
         
         from_number = form_data.get("From", "")
         to_number = form_data.get("To", "")
         body = form_data.get("Body", "")
         message_sid = form_data.get("MessageSid", "")
         
-        logger.info(f"Received SMS from {from_number}: {body[:50]}...")
+        logger.info("Validated inbound SMS webhook")
         
         now = datetime.now(timezone.utc)
         
@@ -4036,7 +4023,11 @@ async def twilio_sms_webhook(request: Request):
                 "status": "received",
                 "is_read": False
             }
-            await db.sms_conversations.insert_one(conversation_msg)
+            result = await db.sms_conversations.update_one(
+                {"_id": "twilio:" + message_sid},
+                {"$setOnInsert": {**conversation_msg, "id": "twilio:" + message_sid}}, upsert=True)
+            if not result.upserted_id:
+                return Response(content='<Response/>', media_type='application/xml')
             
             # Update client's last activity
             await db.clients.update_one(
@@ -4110,7 +4101,7 @@ async def twilio_sms_webhook(request: Request):
                         email_html
                     ))
             
-            logger.info(f"Processed incoming SMS from {from_number} for client {client['id']}")
+            logger.info("Processed inbound SMS webhook")
         else:
             # Unknown sender - log it anyway
             unknown_msg = {
@@ -4124,22 +4115,27 @@ async def twilio_sms_webhook(request: Request):
                 "status": "received_unknown",
                 "is_read": False
             }
-            await db.sms_conversations.insert_one(unknown_msg)
-            logger.warning(f"Received SMS from unknown number: {from_number}")
+            await db.sms_conversations.update_one(
+                {"_id": "twilio:" + message_sid},
+                {"$setOnInsert": {**unknown_msg, "id": "twilio:" + message_sid}}, upsert=True)
+            logger.info("Processed unmatched inbound SMS webhook")
         
         # Return TwiML response (empty response = don't auto-reply)
-        return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
+        return Response(content='<Response/>', media_type='application/xml')
         
     except Exception as e:
-        logger.error(f"Error processing Twilio webhook: {str(e)}")
-        return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
+        logger.error("Inbound SMS webhook processing failed")
+        raise HTTPException(status_code=500, detail="Webhook processing failed")
 
 # ==================== CLIENT COLLABORATION ====================
 
 @api_router.post("/clients/{client_id}/request-collaboration")
 async def request_collaboration(client_id: str, current_user: dict = Depends(get_current_user)):
     """Request to collaborate on a client with the original salesperson"""
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -4218,6 +4214,7 @@ async def get_collaboration_requests(current_user: dict = Depends(get_current_us
 @api_router.post("/collaboration-requests/{request_id}/respond")
 async def respond_to_collaboration(request_id: str, accept: bool, current_user: dict = Depends(get_current_user)):
     """Accept or reject a collaboration request"""
+    access = CRMAccess(db, current_user)
     collab_request = await db.collaboration_requests.find_one({"id": request_id}, {"_id": 0})
     if not collab_request:
         raise HTTPException(status_code=404, detail="Collaboration request not found")
@@ -4230,7 +4227,7 @@ async def respond_to_collaboration(request_id: str, accept: bool, current_user: 
     if accept:
         # Add requester to client's collaboration list
         await db.clients.update_one(
-            {"id": collab_request["client_id"]},
+            await access.query("clients", {"id": collab_request["client_id"]}, "write"),
             {"$addToSet": {"collaboration_users": collab_request["requester_id"]}}
         )
         
@@ -4284,8 +4281,10 @@ async def check_import_duplicates(file: UploadFile = File(...), current_user: di
     Check for duplicate contacts before importing.
     Returns list of duplicates with their status (72h rule, active, etc.)
     """
+    access = CRMAccess(db, current_user)
+    validated_content = await validate_import(file)
     try:
-        content = await file.read()
+        content = validated_content
         
         if file.filename.endswith('.csv'):
             df = pd.read_csv(io.BytesIO(content))
@@ -4318,12 +4317,12 @@ async def check_import_duplicates(file: UploadFile = File(...), current_user: di
                 continue
             
             # Check if client exists
-            existing_client = await db.clients.find_one({
+            existing_client = await db.clients.find_one(await access.query("clients", {
                 "$or": [
                     {"phone": {"$regex": phone_clean[-10:] + "$"}},
                     {"phone": phone_raw}
                 ]
-            }, {"_id": 0})
+            }, "read"), {"_id": 0})
             
             if existing_client:
                 # Get last activity info
@@ -4391,7 +4390,10 @@ async def check_import_duplicates(file: UploadFile = File(...), current_user: di
 @api_router.post("/import-contacts/take-over/{client_id}")
 async def take_over_client(client_id: str, current_user: dict = Depends(get_current_user)):
     """Take over an inactive client (72h+ without activity)"""
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -4408,7 +4410,7 @@ async def take_over_client(client_id: str, current_user: dict = Depends(get_curr
     
     # Update client ownership
     await db.clients.update_one(
-        {"id": client_id},
+        await access.query("clients", {"id": client_id}, "write"),
         {"$set": {
             "last_active_user_id": current_user["id"],
             "taken_over_at": now.isoformat(),
@@ -4425,11 +4427,15 @@ import base64
 
 def generate_public_token(client_id: str, record_id: str, token_type: str) -> str:
     """Generate a unique token for public client links"""
-    raw = f"{client_id}:{record_id}:{token_type}:{secrets.token_hex(8)}"
-    return base64.urlsafe_b64encode(raw.encode()).decode()
+    return secrets.token_urlsafe(32)
 
 async def create_public_link(client_id: str, record_id: str, link_type: str) -> str:
     """Create and store a public link token"""
+    if link_type != "appointment":
+        raise HTTPException(status_code=403, detail="Public document access is disabled")
+    appointment = await db.appointments.find_one({"id": record_id, "client_id": client_id, "is_deleted": {"$ne": True}})
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
     token = generate_public_token(client_id, record_id, link_type)
     
     link_doc = {
@@ -4439,7 +4445,7 @@ async def create_public_link(client_id: str, record_id: str, link_type: str) -> 
         "record_id": record_id,
         "link_type": link_type,  # 'documents' or 'appointment'
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
         "used": False
     }
     await db.public_links.insert_one(link_doc)
@@ -4452,14 +4458,17 @@ async def generate_document_link(client_id: str, record_id: str, current_user: d
 @api_router.post("/generate-appointment-link/{appointment_id}")
 async def generate_appointment_link(appointment_id: str, current_user: dict = Depends(get_current_user)):
     """Generate a public link for client to manage appointment"""
-    appointment = await db.appointments.find_one({"id": appointment_id}, {"_id": 0})
+    access = CRMAccess(db, current_user)
+    if appointment_id:
+        await access.require("appointments", appointment_id, "write")
+    appointment = await db.appointments.find_one(await access.query("appointments", {"id": appointment_id}, "read"), {"_id": 0})
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
     token = await create_public_link(appointment.get("client_id", ""), appointment_id, "appointment")
     
     # Update appointment with the token
-    await db.appointments.update_one({"id": appointment_id}, {"$set": {"public_token": token}})
+    await db.appointments.update_one(await access.query("appointments", {"id": appointment_id}, "write"), {"$set": {"public_token": token}})
     
     return {"token": token, "link": f"/c/appointment/{token}"}
 
@@ -4488,20 +4497,10 @@ async def upload_public_documents(
 @api_router.get("/public/appointment/{token}")
 async def get_public_appointment_info(token: str):
     """Get appointment info for client management (public, no auth)"""
-    link = await db.public_links.find_one({"token": token, "link_type": "appointment"}, {"_id": 0})
-    if not link:
-        # Also try to find by appointment's public_token
-        appointment = await db.appointments.find_one({"public_token": token}, {"_id": 0})
-        if not appointment:
-            raise HTTPException(status_code=404, detail="Link inválido o expirado")
-        client_id = appointment.get("client_id")
-    else:
-        appointment = await db.appointments.find_one({"id": link["record_id"]}, {"_id": 0})
-        client_id = link["client_id"]
-    
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Cita no encontrada")
-    
+    appointment = await resolve_appointment_token(db, token)
+    appointment_id = appointment["id"]
+    client_id = appointment["client_id"]
+
     client = await db.clients.find_one({"id": client_id}, {"_id": 0})
     
     # Get dealers list for rescheduling
@@ -4519,7 +4518,8 @@ async def get_public_appointment_info(token: str):
             dealer_address = dealer_doc["address"]
     
     # Add dealer_address to appointment for display
-    appointment_with_address = {**appointment, "dealer_address": dealer_address}
+    appointment_with_address = {key: appointment.get(key) for key in ("date", "time", "dealer", "status", "language", "preferred_language")}
+    appointment_with_address["dealer_address"] = dealer_address
     
     return {
         "appointment": appointment_with_address,
@@ -4538,18 +4538,10 @@ class RescheduleRequest(BaseModel):
 @api_router.put("/public/appointment/{token}/reschedule")
 async def reschedule_public_appointment(token: str, data: RescheduleRequest):
     """Reschedule appointment (public, no auth)"""
-    link = await db.public_links.find_one({"token": token, "link_type": "appointment"}, {"_id": 0})
-    appointment_id = link["record_id"] if link else None
-    
-    if not appointment_id:
-        # Try by public_token
-        appointment = await db.appointments.find_one({"public_token": token}, {"_id": 0})
-        if appointment:
-            appointment_id = appointment["id"]
-    
-    if not appointment_id:
-        raise HTTPException(status_code=404, detail="Cita no encontrada")
-    
+    appointment = await resolve_appointment_token(db, token)
+    appointment_id = appointment["id"]
+    client_id = appointment["client_id"]
+
     update_data = {
         "date": data.date,
         "time": data.time,
@@ -4565,17 +4557,10 @@ async def reschedule_public_appointment(token: str, data: RescheduleRequest):
 @api_router.put("/public/appointment/{token}/cancel")
 async def cancel_public_appointment(token: str):
     """Cancel appointment (public, no auth)"""
-    link = await db.public_links.find_one({"token": token, "link_type": "appointment"}, {"_id": 0})
-    appointment_id = link["record_id"] if link else None
-    
-    if not appointment_id:
-        appointment = await db.appointments.find_one({"public_token": token}, {"_id": 0})
-        if appointment:
-            appointment_id = appointment["id"]
-    
-    if not appointment_id:
-        raise HTTPException(status_code=404, detail="Cita no encontrada")
-    
+    appointment = await resolve_appointment_token(db, token)
+    appointment_id = appointment["id"]
+    client_id = appointment["client_id"]
+
     await db.appointments.update_one(
         {"id": appointment_id},
         {"$set": {"status": "cancelado", "cancelled_at": datetime.now(timezone.utc).isoformat()}}
@@ -4585,17 +4570,10 @@ async def cancel_public_appointment(token: str):
 @api_router.put("/public/appointment/{token}/confirm")
 async def confirm_public_appointment(token: str):
     """Confirm appointment (public, no auth)"""
-    link = await db.public_links.find_one({"token": token, "link_type": "appointment"}, {"_id": 0})
-    appointment_id = link["record_id"] if link else None
-    
-    if not appointment_id:
-        appointment = await db.appointments.find_one({"public_token": token}, {"_id": 0})
-        if appointment:
-            appointment_id = appointment["id"]
-    
-    if not appointment_id:
-        raise HTTPException(status_code=404, detail="Cita no encontrada")
-    
+    appointment = await resolve_appointment_token(db, token)
+    appointment_id = appointment["id"]
+    client_id = appointment["client_id"]
+
     await db.appointments.update_one(
         {"id": appointment_id},
         {"$set": {"status": "confirmado", "confirmed_at": datetime.now(timezone.utc).isoformat()}}
@@ -4614,18 +4592,10 @@ async def update_language_preference(token: str, data: LanguagePreferenceRequest
     if data.language not in ['en', 'es']:
         raise HTTPException(status_code=400, detail="Invalid language. Must be 'en' or 'es'")
     
-    link = await db.public_links.find_one({"token": token, "link_type": "appointment"}, {"_id": 0})
-    appointment_id = link["record_id"] if link else None
-    
-    if not appointment_id:
-        appointment = await db.appointments.find_one({"public_token": token}, {"_id": 0})
-        if appointment:
-            appointment_id = appointment["id"]
-    
-    if not appointment_id:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-    
-    # Update appointment with language preference
+    appointment = await resolve_appointment_token(db, token)
+    appointment_id = appointment["id"]
+    client_id = appointment["client_id"]
+
     await db.appointments.update_one(
         {"id": appointment_id},
         {"$set": {"preferred_language": data.language, "language_updated_at": datetime.now(timezone.utc).isoformat()}}
@@ -4636,27 +4606,10 @@ async def update_language_preference(token: str, data: LanguagePreferenceRequest
 @api_router.put("/public/appointment/{token}/late")
 async def notify_late_arrival(token: str, data: LateArrivalRequest):
     """Notify that client will arrive late and send SMS to salesperson (public, no auth)"""
-    link = await db.public_links.find_one({"token": token, "link_type": "appointment"}, {"_id": 0})
-    appointment_id = link["record_id"] if link else None
-    client_id = link["client_id"] if link else None
-    
-    if not appointment_id:
-        appointment = await db.appointments.find_one({"public_token": token}, {"_id": 0})
-        if appointment:
-            appointment_id = appointment["id"]
-            # Get client_id from record
-            record = await db.user_records.find_one({"id": appointment.get("record_id")}, {"_id": 0})
-            if record:
-                client_id = record.get("client_id")
-    
-    if not appointment_id:
-        raise HTTPException(status_code=404, detail="Cita no encontrada")
-    
-    # Get appointment details
-    appointment = await db.appointments.find_one({"id": appointment_id}, {"_id": 0})
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Cita no encontrada")
-    
+    appointment = await resolve_appointment_token(db, token)
+    appointment_id = appointment["id"]
+    client_id = appointment["client_id"]
+
     original_time = appointment.get("time", "N/A")
     
     # Get client info
@@ -4825,6 +4778,7 @@ class ImportedContact(BaseModel):
 @api_router.post("/import-contacts")
 async def import_contacts(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     """Import contacts from Excel or CSV file"""
+    access = CRMAccess(db, current_user)
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
     
@@ -4833,8 +4787,9 @@ async def import_contacts(file: UploadFile = File(...), current_user: dict = Dep
     if not (filename.endswith('.csv') or filename.endswith('.xlsx') or filename.endswith('.xls')):
         raise HTTPException(status_code=400, detail="Invalid file format. Please upload CSV or Excel file (.csv, .xlsx, .xls)")
     
+    validated_content = await validate_import(file)
     try:
-        contents = await file.read()
+        contents = validated_content
         
         # Read file based on type
         if filename.endswith('.csv'):
@@ -4871,7 +4826,7 @@ async def import_contacts(file: UploadFile = File(...), current_user: dict = Dep
                 continue
             
             # Check if phone already exists
-            existing = await db.imported_contacts.find_one({"phone": phone})
+            existing = await db.imported_contacts.find_one(await access.query("imported_contacts", {"phone": phone}, "read"))
             if existing:
                 skipped_count += 1
                 continue
@@ -4927,6 +4882,7 @@ async def get_imported_contacts(
     current_user: dict = Depends(get_current_user)
 ):
     """Get imported contacts"""
+    access = CRMAccess(db, current_user)
     query = {}
     
     # Non-admin users only see their own imports
@@ -4936,15 +4892,18 @@ async def get_imported_contacts(
     if status:
         query["status"] = status
     
-    contacts = await db.imported_contacts.find(query, {"_id": 0}).sort("imported_at", -1).skip(skip).limit(limit).to_list(limit)
-    total = await db.imported_contacts.count_documents(query)
+    contacts = await db.imported_contacts.find(await access.query("imported_contacts", query, "read"), {"_id": 0}).sort("imported_at", -1).skip(skip).limit(limit).to_list(limit)
+    total = await db.imported_contacts.count_documents(await access.query("imported_contacts", query, "read"))
     
     return {"contacts": contacts, "total": total}
 
 @api_router.post("/imported-contacts/{contact_id}/send-sms-now")
 async def send_marketing_sms_now(contact_id: str, current_user: dict = Depends(get_current_user)):
     """Send marketing SMS immediately to an imported contact"""
-    contact = await db.imported_contacts.find_one({"id": contact_id}, {"_id": 0})
+    access = CRMAccess(db, current_user)
+    if contact_id:
+        await access.require("imported_contacts", contact_id, "write")
+    contact = await db.imported_contacts.find_one(await access.query("imported_contacts", {"id": contact_id}, "read"), {"_id": 0})
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
     
@@ -4960,7 +4919,7 @@ async def send_marketing_sms_now(contact_id: str, current_user: dict = Depends(g
     # Generate appointment link for this contact
     # First create a temporary public link
     token = await create_public_link(contact_id, contact_id, "marketing_appointment")
-    base_url = os.environ.get('FRONTEND_URL', 'https://work-1-hxroqbnbaygfdbdd.prod-runtime.all-hands.dev')
+    base_url = os.environ.get('FRONTEND_URL', '')
     appointment_link = f"{base_url}/c/schedule/{token}"
     
     # Format message
@@ -4976,7 +4935,7 @@ async def send_marketing_sms_now(contact_id: str, current_user: dict = Depends(g
     
     # Update contact
     await db.imported_contacts.update_one(
-        {"id": contact_id},
+        await access.query("imported_contacts", {"id": contact_id}, "write"),
         {"$set": {
             "sms_sent": True,
             "sms_count": contact.get("sms_count", 0) + 1,
@@ -5009,8 +4968,11 @@ async def send_marketing_sms_now(contact_id: str, current_user: dict = Depends(g
 @api_router.put("/imported-contacts/{contact_id}/opt-out")
 async def toggle_contact_opt_out(contact_id: str, opt_out: bool, current_user: dict = Depends(get_current_user)):
     """Toggle opt-out status for a contact (disable/enable automatic SMS)"""
+    access = CRMAccess(db, current_user)
+    if contact_id:
+        await access.require("imported_contacts", contact_id, "write")
     result = await db.imported_contacts.update_one(
-        {"id": contact_id},
+        await access.query("imported_contacts", {"id": contact_id}, "write"),
         {"$set": {"opt_out": opt_out, "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
     
@@ -5022,7 +4984,10 @@ async def toggle_contact_opt_out(contact_id: str, opt_out: bool, current_user: d
 @api_router.delete("/imported-contacts/{contact_id}")
 async def delete_imported_contact(contact_id: str, current_user: dict = Depends(get_current_user)):
     """Delete an imported contact"""
-    contact = await db.imported_contacts.find_one({"id": contact_id}, {"_id": 0})
+    access = CRMAccess(db, current_user)
+    if contact_id:
+        await access.require("imported_contacts", contact_id, "write")
+    contact = await db.imported_contacts.find_one(await access.query("imported_contacts", {"id": contact_id}, "read"), {"_id": 0})
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
     
@@ -5030,15 +4995,18 @@ async def delete_imported_contact(contact_id: str, current_user: dict = Depends(
     if current_user["role"] != "admin" and contact.get("imported_by") != current_user["id"]:
         raise HTTPException(status_code=403, detail="Not authorized to delete this contact")
     
-    await db.imported_contacts.delete_one({"id": contact_id})
+    await db.imported_contacts.delete_one(await access.query("imported_contacts", {"id": contact_id}, "write"))
     return {"message": "Contact deleted"}
 
 # Also add opt_out field to clients
 @api_router.put("/clients/{client_id}/opt-out")
 async def toggle_client_opt_out(client_id: str, opt_out: bool, current_user: dict = Depends(get_current_user)):
     """Toggle opt-out status for a client (disable/enable automatic appointment SMS)"""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
     result = await db.clients.update_one(
-        {"id": client_id},
+        await access.query("clients", {"id": client_id}, "write"),
         {"$set": {"opt_out_sms": opt_out, "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
     
@@ -5165,25 +5133,28 @@ async def force_init_config_lists(current_user: dict = Depends(get_current_user)
 @api_router.delete("/clients/{client_id}")
 async def delete_client(client_id: str, permanent: bool = False, current_user: dict = Depends(get_current_user)):
     """Delete a client (soft delete by default, permanent if specified). Admin only."""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required to delete clients")
     
-    client = await db.clients.find_one({"id": client_id})
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"))
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
     if permanent:
         # Permanent delete
-        await db.clients.delete_one({"id": client_id})
+        await db.clients.delete_one(await access.query("clients", {"id": client_id}, "write"))
         # Also delete related records and appointments
-        await db.user_records.delete_many({"client_id": client_id})
-        await db.appointments.delete_many({"client_id": client_id})
-        await db.cosigner_relations.delete_many({"$or": [{"buyer_client_id": client_id}, {"cosigner_client_id": client_id}]})
+        await db.user_records.delete_many(await access.query("user_records", {"client_id": client_id}, "write"))
+        await db.appointments.delete_many(await access.query("appointments", {"client_id": client_id}, "write"))
+        await db.cosigner_relations.delete_many(await access.query("cosigner_relations", {"$or": [{"buyer_client_id": client_id}, {"cosigner_client_id": client_id}]}, "write"))
         return {"message": "Client permanently deleted"}
     else:
         # Soft delete
         await db.clients.update_one(
-            {"id": client_id},
+            await access.query("clients", {"id": client_id}, "write"),
             {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat()}}
         )
         return {"message": "Client moved to trash"}
@@ -5191,11 +5162,14 @@ async def delete_client(client_id: str, permanent: bool = False, current_user: d
 @api_router.post("/clients/{client_id}/restore")
 async def restore_client(client_id: str, current_user: dict = Depends(get_current_user)):
     """Restore a deleted client (admin only)"""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
     result = await db.clients.update_one(
-        {"id": client_id, "is_deleted": True},
+        await access.query("clients", {"id": client_id, "is_deleted": True}, "write"),
         {"$set": {"is_deleted": False}, "$unset": {"deleted_at": ""}}
     )
     if result.matched_count == 0:
@@ -5207,8 +5181,11 @@ async def restore_client(client_id: str, current_user: dict = Depends(get_curren
 @api_router.post("/client-requests")
 async def create_client_request(client_id: str, current_user: dict = Depends(get_current_user)):
     """Create a request to access another user's client"""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "write")
     # Get the client
-    client = await db.clients.find_one({"id": client_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id, "is_deleted": {"$ne": True}}, "read"), {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -5283,6 +5260,7 @@ async def get_client_requests(current_user: dict = Depends(get_current_user)):
 @api_router.put("/client-requests/{request_id}")
 async def respond_to_request(request_id: str, action: str, current_user: dict = Depends(get_current_user)):
     """Approve or reject a client request"""
+    access = CRMAccess(db, current_user)
     if action not in ["approved", "rejected"]:
         raise HTTPException(status_code=400, detail="Action must be 'approved' or 'rejected'")
     
@@ -5306,7 +5284,7 @@ async def respond_to_request(request_id: str, action: str, current_user: dict = 
     # If approved, transfer the client
     if action == "approved":
         await db.clients.update_one(
-            {"id": request.get("client_id")},
+            await access.query("clients", {"id": request.get("client_id")}, "write"),
             {"$set": {
                 "created_by": request.get("requester_id"),
                 "transferred_from": request.get("owner_id"),
@@ -5333,6 +5311,7 @@ async def respond_to_request(request_id: str, action: str, current_user: dict = 
 @api_router.get("/bdc/salesperson-performance")
 async def get_bdc_salesperson_performance(current_user: dict = Depends(get_current_user)):
     """Get performance metrics for all active telemarketers (BDC Manager and Admin only)"""
+    access = CRMAccess(db, current_user)
     if current_user["role"] not in ["admin", "bdc", "bdc_manager"]:
         raise HTTPException(status_code=403, detail="BDC Manager or Admin access required")
     
@@ -5356,70 +5335,70 @@ async def get_bdc_salesperson_performance(current_user: dict = Depends(get_curre
         sp_id = sp["id"]
         
         # Clients created
-        clients_today = await db.clients.count_documents({
+        clients_today = await db.clients.count_documents(await access.query("clients", {
             "created_by": sp_id,
             "is_deleted": {"$ne": True},
             "created_at": {"$gte": today.isoformat()}
-        })
-        clients_week = await db.clients.count_documents({
+        }, "read"))
+        clients_week = await db.clients.count_documents(await access.query("clients", {
             "created_by": sp_id,
             "is_deleted": {"$ne": True},
             "created_at": {"$gte": week_ago.isoformat()}
-        })
-        clients_month = await db.clients.count_documents({
+        }, "read"))
+        clients_month = await db.clients.count_documents(await access.query("clients", {
             "created_by": sp_id,
             "is_deleted": {"$ne": True},
             "created_at": {"$gte": month_ago.isoformat()}
-        })
-        clients_total = await db.clients.count_documents({
+        }, "read"))
+        clients_total = await db.clients.count_documents(await access.query("clients", {
             "created_by": sp_id,
             "is_deleted": {"$ne": True}
-        })
+        }, "read"))
         
         # Appointments created
-        appts_today = await db.appointments.count_documents({
+        appts_today = await db.appointments.count_documents(await access.query("appointments", {
             "salesperson_id": sp_id,
             "created_at": {"$gte": today.isoformat()}
-        })
-        appts_week = await db.appointments.count_documents({
+        }, "read"))
+        appts_week = await db.appointments.count_documents(await access.query("appointments", {
             "salesperson_id": sp_id,
             "created_at": {"$gte": week_ago.isoformat()}
-        })
-        appts_month = await db.appointments.count_documents({
+        }, "read"))
+        appts_month = await db.appointments.count_documents(await access.query("appointments", {
             "salesperson_id": sp_id,
             "created_at": {"$gte": month_ago.isoformat()}
-        })
+        }, "read"))
         
         # Sales (completed records)
-        sales_today = await db.user_records.count_documents({
+        sales_today = await db.user_records.count_documents(await access.query("user_records", {
             "salesperson_id": sp_id,
             "record_status": "completed",
             "is_deleted": {"$ne": True},
             "updated_at": {"$gte": today.isoformat()}
-        })
-        sales_week = await db.user_records.count_documents({
+        }, "read"))
+        sales_week = await db.user_records.count_documents(await access.query("user_records", {
             "salesperson_id": sp_id,
             "record_status": "completed",
             "is_deleted": {"$ne": True},
             "updated_at": {"$gte": week_ago.isoformat()}
-        })
-        sales_month = await db.user_records.count_documents({
+        }, "read"))
+        sales_month = await db.user_records.count_documents(await access.query("user_records", {
             "salesperson_id": sp_id,
             "record_status": "completed",
             "is_deleted": {"$ne": True},
             "updated_at": {"$gte": month_ago.isoformat()}
-        })
-        sales_total = await db.user_records.count_documents({
+        }, "read"))
+        sales_total = await db.user_records.count_documents(await access.query("user_records", {
             "salesperson_id": sp_id,
             "record_status": "completed",
             "is_deleted": {"$ne": True}
-        })
+        }, "read"))
         
         # Records total
-        records_total = await db.user_records.count_documents({
+        records_total = await db.user_records.count_documents(await access.query("user_records", {
             "salesperson_id": sp_id,
             "is_deleted": {"$ne": True}
-        })
+        }, "read"))
         
         performance.append({
             "id": sp_id,
@@ -5525,9 +5504,10 @@ async def restore_backup(
     if not file.filename.endswith('.json'):
         raise HTTPException(status_code=400, detail="El archivo debe ser .json")
     
+    validated_content = await bounded_read(file)
     try:
         # Read and parse JSON
-        content = await file.read()
+        content = validated_content
         backup_data = json_lib.loads(content.decode('utf-8'))
         
         # Validate backup structure
@@ -5736,13 +5716,14 @@ async def reset_id_types(current_user: dict = Depends(get_current_user)):
 @api_router.post("/admin/sync-sold-clients")
 async def sync_sold_clients(current_user: dict = Depends(get_current_user)):
     """Synchronize sold clients - mark clients as sold based on completed records (Admin only)"""
+    access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Solo administradores pueden sincronizar clientes vendidos")
     
     try:
         # Find all clients with completed records that aren't marked as sold
         completed_records = await db.user_records.find(
-            {"record_status": "completed", "is_deleted": {"$ne": True}},
+            await access.query("user_records", {"record_status": "completed", "is_deleted": {"$ne": True}}, "read"),
             {"_id": 0, "client_id": 1, "created_at": 1}
         ).to_list(1000)
         
@@ -5751,11 +5732,11 @@ async def sync_sold_clients(current_user: dict = Depends(get_current_user)):
             client_id = record["client_id"]
             
             # Check if client is already marked as sold
-            client = await db.clients.find_one({"id": client_id}, {"_id": 0, "is_sold": 1})
+            client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0, "is_sold": 1})
             if client and not client.get("is_sold", False):
                 # Mark client as sold
                 await db.clients.update_one(
-                    {"id": client_id},
+                    await access.query("clients", {"id": client_id}, "write"),
                     {"$set": {
                         "is_sold": True,
                         "sold_at": record["created_at"]
@@ -5778,13 +5759,14 @@ async def sync_sold_clients(current_user: dict = Depends(get_current_user)):
 @api_router.post("/admin/fix-sold-clients")
 async def fix_sold_clients(current_user: dict = Depends(get_current_user)):
     """Fix clients incorrectly marked as sold - remove is_sold flag from clients with no completed records (Admin only)"""
+    access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Solo administradores")
     
     try:
         # Find all clients marked as sold
         sold_clients = await db.clients.find(
-            {"is_sold": True, "is_deleted": {"$ne": True}},
+            await access.query("clients", {"is_sold": True, "is_deleted": {"$ne": True}}, "read"),
             {"_id": 0, "id": 1, "first_name": 1, "last_name": 1}
         ).to_list(1000)
         
@@ -5794,16 +5776,16 @@ async def fix_sold_clients(current_user: dict = Depends(get_current_user)):
         for client in sold_clients:
             client_id = client["id"]
             # Check if this client has any completed records
-            completed_count = await db.user_records.count_documents({
+            completed_count = await db.user_records.count_documents(await access.query("user_records", {
                 "client_id": client_id,
                 "record_status": "completed",
                 "is_deleted": {"$ne": True}
-            })
+            }, "read"))
             
             if completed_count == 0:
                 # No completed records, remove sold status
                 await db.clients.update_one(
-                    {"id": client_id},
+                    await access.query("clients", {"id": client_id}, "write"),
                     {"$set": {"is_sold": False, "sold_at": None}}
                 )
                 fixed_count += 1
@@ -5828,6 +5810,7 @@ async def fix_sold_clients(current_user: dict = Depends(get_current_user)):
 @api_router.get("/admin/debug-clients")
 async def debug_clients(current_user: dict = Depends(get_current_user)):
     """Debug endpoint to check client ownership (Admin only)"""
+    access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Solo administradores")
     
@@ -5839,7 +5822,7 @@ async def debug_clients(current_user: dict = Depends(get_current_user)):
     }
     
     # Count clients by created_by
-    all_clients = await db.clients.find({"is_deleted": {"$ne": True}}, {"_id": 0, "created_by": 1, "first_name": 1, "last_name": 1}).to_list(1000)
+    all_clients = await db.clients.find(await access.query("clients", {"is_deleted": {"$ne": True}}, "read"), {"_id": 0, "created_by": 1, "first_name": 1, "last_name": 1}).to_list(1000)
     
     my_clients = [c for c in all_clients if c.get("created_by") == current_user["id"]]
     other_clients = [c for c in all_clients if c.get("created_by") != current_user["id"]]
@@ -5882,6 +5865,7 @@ async def debug_clients(current_user: dict = Depends(get_current_user)):
 @api_router.get("/scheduler/status")
 async def get_scheduler_status(current_user: dict = Depends(get_current_user)):
     """Get the status of the SMS scheduler (admin only)"""
+    access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
@@ -5895,18 +5879,18 @@ async def get_scheduler_status(current_user: dict = Depends(get_current_user)):
         })
     
     # Get stats on pending contacts
-    pending_initial = await db.imported_contacts.count_documents({
+    pending_initial = await db.imported_contacts.count_documents(await access.query("imported_contacts", {
         "opt_out": False,
         "appointment_created": False,
         "sms_sent": False
-    })
+    }, "read"))
     
-    pending_reminder = await db.imported_contacts.count_documents({
+    pending_reminder = await db.imported_contacts.count_documents(await access.query("imported_contacts", {
         "opt_out": False,
         "appointment_created": False,
         "sms_sent": True,
         "sms_count": {"$lt": 5}
-    })
+    }, "read"))
     
     return {
         "scheduler_running": scheduler.running,
@@ -6698,6 +6682,7 @@ async def submit_prequalify_with_file(
 
 @api_router.get("/prequalify/submissions", response_model=List[PreQualifyResponse])
 async def get_prequalify_submissions(current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     submissions = await db.prequalify_submissions.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
@@ -6706,7 +6691,7 @@ async def get_prequalify_submissions(current_user: dict = Depends(get_current_us
             phone = sub.get("phone", "")
             if phone:
                 existing_client = await db.clients.find_one(
-                    {"phone": {"$regex": phone[-10:], "$options": "i"}, "is_deleted": {"$ne": True}},
+                    await access.query("clients", {"phone": {"$regex": phone[-10:], "$options": "i"}, "is_deleted": {"$ne": True}}, "read"),
                     {"_id": 0, "id": 1, "first_name": 1, "last_name": 1}
                 )
                 if existing_client:
@@ -6716,6 +6701,7 @@ async def get_prequalify_submissions(current_user: dict = Depends(get_current_us
 
 @api_router.get("/prequalify/submissions/{submission_id}")
 async def get_prequalify_submission(submission_id: str, current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     submission = await db.prequalify_submissions.find_one({"id": submission_id}, {"_id": 0})
@@ -6723,11 +6709,11 @@ async def get_prequalify_submission(submission_id: str, current_user: dict = Dep
         raise HTTPException(status_code=404, detail="Submission not found")
     comparison = None
     if submission.get("matched_client_id"):
-        client = await db.clients.find_one({"id": submission["matched_client_id"]}, {"_id": 0})
+        client = await db.clients.find_one(await access.query("clients", {"id": submission["matched_client_id"]}, "read"), {"_id": 0})
         if client:
             # Get the most recent record for this client
             latest_record = await db.user_records.find_one(
-                {"client_id": client["id"], "is_deleted": {"$ne": True}},
+                await access.query("user_records", {"client_id": client["id"], "is_deleted": {"$ne": True}}, "read"),
                 {"_id": 0, "id": 1},
                 sort=[("created_at", -1)]
             )
@@ -6746,6 +6732,7 @@ async def get_prequalify_submission(submission_id: str, current_user: dict = Dep
 
 @api_router.post("/prequalify/submissions/{submission_id}/create-client")
 async def create_client_from_prequalify(submission_id: str, current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     submission = await db.prequalify_submissions.find_one({"id": submission_id}, {"_id": 0})
@@ -6936,6 +6923,9 @@ Down Payment: {submission.get('estimatedDownPayment', 'N/A')}"""
 
 @api_router.post("/prequalify/submissions/{submission_id}/add-to-notes")
 async def add_prequalify_to_notes(submission_id: str, record_id: str, current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    if record_id:
+        await access.require("user_records", record_id, "write")
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     submission = await db.prequalify_submissions.find_one({"id": submission_id}, {"_id": 0})
@@ -6960,11 +6950,14 @@ async def add_prequalify_to_notes(submission_id: str, record_id: str, current_us
 @api_router.get("/clients/{client_id}/prequalify")
 async def get_client_prequalify(client_id: str, current_user: dict = Depends(get_current_user)):
     """Get prequalify submission linked to a client (Admin only)"""
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "read")
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
     # First get the client to find phone number
-    client = await db.clients.find_one({"id": client_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id, "is_deleted": {"$ne": True}}, "read"), {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -6990,12 +6983,13 @@ async def get_client_prequalify(client_id: str, current_user: dict = Depends(get
 @api_router.get("/clients/export/excel")
 async def export_clients_excel(current_user: dict = Depends(get_current_user)):
     """Export all clients to Excel (Name, LastName, Email, Phone only)"""
+    access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
     # Get all non-deleted clients
     clients = await db.clients.find(
-        {"is_deleted": {"$ne": True}},
+        await access.query("clients", {"is_deleted": {"$ne": True}}, "read"),
         {"_id": 0, "first_name": 1, "last_name": 1, "email": 1, "phone": 1}
     ).sort("created_at", -1).to_list(None)
     
@@ -7048,6 +7042,7 @@ async def delete_prequalify_submission(submission_id: str, current_user: dict = 
 @api_router.post("/prequalify/submissions/{submission_id}/sync-to-client")
 async def sync_prequalify_to_client(submission_id: str, current_user: dict = Depends(get_current_user)):
     """Overwrite existing client data with pre-qualification submission data (Admin only)"""
+    access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
@@ -7059,7 +7054,7 @@ async def sync_prequalify_to_client(submission_id: str, current_user: dict = Dep
         raise HTTPException(status_code=400, detail="No matched client found for this submission")
     
     client_id = submission["matched_client_id"]
-    client = await db.clients.find_one({"id": client_id})
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"))
     if not client:
         raise HTTPException(status_code=404, detail="Matched client not found")
     await require_document_access(client, current_user, "write")
@@ -7173,7 +7168,7 @@ async def sync_prequalify_to_client(submission_id: str, current_user: dict = Dep
         raise HTTPException(status_code=400, detail="No data to update")
     
     # Update the client
-    result = await db.clients.update_one({"id": client_id}, {"$set": update_data})
+    result = await db.clients.update_one(await access.query("clients", {"id": client_id}, "write"), {"$set": update_data})
     
     if result.modified_count == 0:
         raise HTTPException(status_code=500, detail="Failed to update client")
@@ -7205,22 +7200,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def create_default_admin():
-    """Create default admin account if it doesn't exist"""
-    existing_admin = await db.users.find_one({"email": "xadmin"})
-    if not existing_admin:
-        admin_doc = {
-            "id": str(uuid.uuid4()),
-            "email": "xadmin",
-            "password": hash_password("Cali2020"),
-            "name": "Administrator",
-            "role": "admin",
-            "phone": None,
-            "is_active": True,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
-        await db.users.insert_one(admin_doc)
-        logger.info("Default admin account created: xadmin")
-    
+    """Initialize non-sensitive defaults; account provisioning is explicit."""
     # Initialize default config lists if empty
     await initialize_default_config_lists()
 

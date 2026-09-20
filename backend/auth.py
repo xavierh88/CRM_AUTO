@@ -1,6 +1,7 @@
 """Authentication utilities and dependencies"""
 import jwt
 import bcrypt
+from runtime_security import require_enabled_user
 from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -28,7 +29,9 @@ def create_token(user_id: str, role: str) -> str:
 def verify_token(token: str) -> dict:
     """Verify and decode a JWT token"""
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM], options={"require": ["exp", "user_id"]})
+        if not isinstance(payload["user_id"], str) or not payload["user_id"]:
+            raise HTTPException(status_code=401, detail="Invalid token")
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
@@ -48,10 +51,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     
-    if not user.get("approved", True):
-        raise HTTPException(status_code=403, detail="Account pending approval")
-    
-    return user
+    return require_enabled_user(user)
 
 async def get_admin_user(current_user: dict = Depends(get_current_user)) -> dict:
     """FastAPI dependency to ensure the user is an admin"""

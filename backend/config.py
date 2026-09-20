@@ -6,6 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 import logging
+from runtime_security import jwt_secret
 
 # Load environment variables
 ROOT_DIR = Path(__file__).parent
@@ -17,7 +18,7 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # JWT Settings
-JWT_SECRET = os.environ.get('JWT_SECRET', 'dealercrm-secret-key-2024')
+JWT_SECRET = jwt_secret()
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
