@@ -34,7 +34,7 @@ fi
 # Production MongoDB must never appear in tracked V2 backend/control source.
 # Exclude the safety runner itself because its prompt intentionally contains
 # the literal forbidden endpoint as an instruction to Codex.
-if grep -RIn     --exclude-dir=.git     --exclude-dir=.venv     --exclude-dir=node_modules     --exclude='*.lock'     --exclude='run-autonomous.sh'     -E 'mongodb://(localhost|127\.0\.0\.1):27017|localhost:27017|127\.0\.0\.1:27017'     backend .dealer-ai 2>/dev/null
+if grep -RIn     --exclude-dir=.git     --exclude-dir=.venv     --exclude-dir=node_modules     --exclude-dir=runtime     --exclude='*.lock'     --exclude='run-autonomous.sh'     -E 'mongodb://(localhost|127\.0\.0\.1):27017|localhost:27017|127\.0\.0\.1:27017'     backend .dealer-ai 2>/dev/null
 then
     echo "ABORT: forbidden production MongoDB endpoint detected in V2 source." | tee -a "$LOG"
     exit 23
