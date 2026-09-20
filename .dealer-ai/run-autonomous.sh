@@ -215,7 +215,7 @@ PROMPT_EOF
 echo "Starting controlled Codex session..." | tee -a "$LOG"
 
 timeout --signal=TERM --kill-after=2m "$MAX_RUNTIME" \
-    codex exec \
+    /home/dealerai/.local/node_modules/.bin/codex exec \
     --sandbox workspace-write \
     "$(cat "$PROMPT")" \
     >> "$LOG" 2>&1
