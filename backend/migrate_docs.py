@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
 """Migration script to add documents to new array format"""
 import asyncio
+import os
 from motor.motor_asyncio import AsyncIOMotorClient
 
 async def migrate():
-    client = AsyncIOMotorClient('mongodb://localhost:27017')
-    db = client['carplus_db']
+    mongo_url = os.environ.get('MONGO_URL')
+    db_name = os.environ.get('DB_NAME')
+    if not mongo_url or not mongo_url.strip():
+        raise ValueError('MONGO_URL environment variable is required and must not be empty')
+    if not db_name or not db_name.strip():
+        raise ValueError('DB_NAME environment variable is required and must not be empty')
+
+    client = AsyncIOMotorClient(mongo_url)
+    db = client[db_name]
     
     count = 0
     cursor = db.clients.find({
