@@ -1,0 +1,113 @@
+# Dealer AI OS V2 - Nightly Safety Policy
+# Workspace: /opt/dealer-ai-v2/app
+# Production: FORBIDDEN
+
+# =========================================================
+# ABSOLUTE DENY - PRODUCTION
+# =========================================================
+
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = ".*(/var/www/carplus|cd[[:space:]]+/var/www|/var/www/).*"
+decision = "deny"
+priority = 999
+denyMessage = "Production filesystem is forbidden."
+
+# =========================================================
+# ABSOLUTE DENY - DESTRUCTIVE SYSTEM COMMANDS
+# =========================================================
+
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = ".*(rm[[:space:]]+-rf[[:space:]]+/|mkfs|fdisk|parted|shutdown|reboot|poweroff|halt).*"
+decision = "deny"
+priority = 999
+denyMessage = "Destructive system commands are forbidden."
+
+# =========================================================
+# ABSOLUTE DENY - PRIVILEGE ESCALATION / SYSTEM SERVICES
+# =========================================================
+
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = ".*(sudo|su[[:space:]]|systemctl|service[[:space:]]|nginx).*"
+decision = "deny"
+priority = 999
+denyMessage = "Privilege escalation and system service management are forbidden."
+
+# =========================================================
+# ABSOLUTE DENY - DOCKER
+# =========================================================
+
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = ".*(docker|docker-compose|docker[[:space:]]+compose).*"
+decision = "deny"
+priority = 999
+denyMessage = "Docker operations are forbidden during autonomous V2 development."
+
+# =========================================================
+# ABSOLUTE DENY - PRODUCTION BRANCH OPERATIONS
+# =========================================================
+
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = ".*git[[:space:]]+(checkout|switch|merge|rebase|push).*main.*"
+decision = "deny"
+priority = 999
+denyMessage = "Operations involving the main production branch are forbidden."
+
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = ".*git[[:space:]]+push.*"
+decision = "deny"
+priority = 999
+denyMessage = "Git push is forbidden during the autonomous run."
+
+# =========================================================
+# ABSOLUTE DENY - SECRETS / ENV
+# =========================================================
+
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = ".*(cat|less|more|head|tail|grep|sed)[[:space:]].*\\.env.*"
+decision = "deny"
+priority = 999
+denyMessage = "Reading environment secret files is forbidden."
+
+# =========================================================
+# ABSOLUTE DENY - DATABASE DESTRUCTION
+# =========================================================
+
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = ".*(dropDatabase|drop[[:space:]]+database|mongo.*--eval.*drop|mongosh.*drop).*"
+decision = "deny"
+priority = 999
+denyMessage = "Database destructive operations are forbidden."
+
+# =========================================================
+# SAFE DEVELOPMENT COMMANDS
+# =========================================================
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = ["git status", "git diff", "git log", "git branch --show-current"]
+decision = "allow"
+priority = 200
+modes = ["autoEdit"]
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = ["pytest", "python -m pytest", "python3 -m pytest"]
+decision = "allow"
+priority = 200
+modes = ["autoEdit"]
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = ["npm test", "npm run test", "npm run build", "yarn test", "yarn build"]
+decision = "allow"
+priority = 200
+modes = ["autoEdit"]
+
