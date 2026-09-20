@@ -7,7 +7,9 @@ import os
 import logging
 import shutil
 from pathlib import Path
+from document_authorization import can_access_documents, redact_documents
 from document_paths import resolve_document_path
+from document_attachments import collect_document_attachments
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Dict, Any
 import uuid
@@ -78,11 +80,7 @@ app = FastAPI(title="DealerCRM Pro API")
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer()
 
-# Mount static files for uploads
-from fastapi.staticfiles import StaticFiles
-uploads_path = Path(__file__).parent / "uploads"
-uploads_path.mkdir(exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
+# Client documents are served only by authenticated document handlers.
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -1151,7 +1149,7 @@ async def get_clients(include_deleted: bool = False, search: Optional[str] = Non
         else:
             client["status_color"] = "gray"
     
-    return clients
+    return [await redact_documents(db, current_user, client) for client in clients]
 
 @api_router.get("/clients/sold/list", response_model=List[dict])
 async def get_sold_clients(search: Optional[str] = None, salesperson_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
@@ -1188,7 +1186,7 @@ async def get_sold_clients(search: Optional[str] = None, salesperson_id: Optiona
         if sold_record:
             client["sold_record"] = sold_record
     
-    return clients
+    return [await redact_documents(db, current_user, client) for client in clients]
 
 @api_router.get("/clients/{client_id}", response_model=ClientResponse)
 async def get_client(client_id: str, current_user: dict = Depends(get_current_user)):
@@ -1201,7 +1199,7 @@ async def get_client(client_id: str, current_user: dict = Depends(get_current_us
         client.pop("id_number", None)
         client.pop("ssn", None)
     
-    return client
+    return await redact_documents(db, current_user, client)
 
 @api_router.put("/clients/{client_id}", response_model=ClientResponse)
 async def update_client(client_id: str, client: ClientCreate, current_user: dict = Depends(get_current_user)):
@@ -1228,7 +1226,7 @@ async def update_client(client_id: str, client: ClientCreate, current_user: dict
         updated.pop("id_number", None)
         updated.pop("ssn", None)
     
-    return updated
+    return await redact_documents(db, current_user, updated)
 
 @api_router.delete("/clients/{client_id}")
 async def delete_client(client_id: str, permanent: bool = False, current_user: dict = Depends(get_current_user)):
@@ -1247,8 +1245,15 @@ async def restore_client(client_id: str, current_user: dict = Depends(get_curren
     await db.clients.update_one({"id": client_id}, {"$set": {"is_deleted": False}, "$unset": {"deleted_at": "", "deleted_by": ""}})
     return {"message": "Client restored"}
 
+async def require_document_access(client, current_user, action="read"):
+    if not await can_access_documents(db, current_user, client, action):
+        raise HTTPException(status_code=403, detail="Document access denied")
+
+
 @api_router.put("/clients/{client_id}/documents")
 async def update_client_documents(client_id: str, id_uploaded: bool = None, income_proof_uploaded: bool = None, residence_proof_uploaded: bool = None, current_user: dict = Depends(get_current_user)):
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    await require_document_access(client, current_user, "write")
     update_data = {}
     if id_uploaded is not None:
         update_data["id_uploaded"] = id_uploaded
@@ -1292,6 +1297,7 @@ async def upload_client_document(
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await require_document_access(client, current_user, "write")
     
     # Create client upload directory
     client_upload_dir = UPLOAD_DIR / "clients" / client_id
@@ -1365,6 +1371,7 @@ async def list_client_documents(
     client = await db.clients.find_one({"id": client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await require_document_access(client, current_user, "read")
     
     doc_field = f"{doc_type}_documents"
     documents = client.get(doc_field, [])
@@ -1400,6 +1407,7 @@ async def delete_single_document(
     client = await db.clients.find_one({"id": client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await require_document_access(client, current_user, "delete")
     
     doc_field = f"{doc_type}_documents"
     documents = client.get(doc_field, [])
@@ -1414,8 +1422,8 @@ async def delete_single_document(
     for doc in documents:
         if doc.get("id") == doc_id:
             try:
-                file_path = Path(doc.get("path", ""))
-                if file_path.exists():
+                file_path = resolve_document_path(doc.get("path"), UPLOAD_DIR)
+                if file_path is not None:
                     file_path.unlink()
             except Exception as e:
                 logger.error(f"Error deleting file: {e}")
@@ -1438,12 +1446,6 @@ async def download_client_document(
     current_user: dict = Depends(get_current_user)
 ):
     """Download a client document - single file or combined PDF of all documents"""
-    from PIL import Image as PILImage
-    from pypdf import PdfReader, PdfWriter
-    from reportlab.lib.pagesizes import letter
-    from reportlab.pdfgen import canvas as pdf_canvas
-    import io
-    
     def find_file(path_str):
         return resolve_document_path(path_str, UPLOAD_DIR)
 
@@ -1453,7 +1455,14 @@ async def download_client_document(
     client = await db.clients.find_one({"id": client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await require_document_access(client, current_user, "read")
     
+    from PIL import Image as PILImage
+    from pypdf import PdfReader, PdfWriter
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas as pdf_canvas
+    import io
+
     # Check new multi-document structure first
     doc_field = f"{doc_type}_documents"
     documents = client.get(doc_field, [])
@@ -1543,24 +1552,10 @@ async def download_client_document(
     if not file_url:
         raise HTTPException(status_code=404, detail="Document not found")
     
-    # Handle different path formats
-    if file_url.startswith('/uploads/'):
-        file_path = UPLOAD_DIR / file_url.replace('/uploads/', '')
-    elif file_url.startswith('uploads/'):
-        file_path = UPLOAD_DIR / file_url.replace('uploads/', '')
-    elif file_url.startswith('/api/'):
-        filename = file_url.split('/')[-1]
-        file_path = UPLOAD_DIR / filename
-    else:
-        file_path = Path(file_url)
-    
-    if not file_path.exists():
-        filename = Path(file_url).name if '/' in str(file_url) else file_url
-        file_path = UPLOAD_DIR / filename
-        
-        if not file_path.exists():
-            raise HTTPException(status_code=404, detail=f"Document file not found")
-    
+    file_path = find_file(file_url)
+    if file_path is None:
+        raise HTTPException(status_code=404, detail="Document file not found")
+
     with open(file_path, 'rb') as f:
         content = f.read()
     
@@ -1992,6 +1987,8 @@ async def send_record_report(request: EmailReportRequest, current_user: dict = D
     client = await db.clients.find_one({"id": request.client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    if request.include_documents or request.attach_documents:
+        await require_document_access(client, current_user)
     
     # Get co-signers for this client
     cosigner_relations = await db.cosigner_relations.find(
@@ -2003,6 +2000,8 @@ async def send_record_report(request: EmailReportRequest, current_user: dict = D
     for relation in cosigner_relations:
         cosigner = await db.clients.find_one({"id": relation.get("cosigner_client_id")}, {"_id": 0})
         if cosigner:
+            if request.include_documents or request.attach_documents:
+                await require_document_access(cosigner, current_user)
             # Get co-signer's records
             cosigner_records = await db.user_records.find(
                 {"client_id": cosigner.get("id"), "is_deleted": {"$ne": True}},
@@ -2336,117 +2335,8 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
         # Collect document attachments if requested
         attachments = []
         if request.attach_documents:
-            uploads_dir = "/app/backend/uploads"
-            client_name = f"{client.get('first_name', 'Cliente')}_{client.get('last_name', '')}".replace(' ', '_')
-            
-            logger.info(f"Looking for documents to attach for client {client_name}")
-            
-            # NEW SYSTEM: Check for multiple documents in arrays (id_documents, income_documents, residence_documents)
-            doc_types = [
-                ('id_documents', 'ID'),
-                ('income_documents', 'Ingresos'),
-                ('residence_documents', 'Residencia')
-            ]
-            
-            for doc_field, doc_label in doc_types:
-                documents = client.get(doc_field, [])
-                logger.info(f"  {doc_field}: {len(documents) if documents else 0} documents")
-                if documents and isinstance(documents, list):
-                    for idx, doc in enumerate(documents, 1):
-                        # Check both 'path' and 'file_path' keys for compatibility
-                        file_path = doc.get('path', '') or doc.get('file_path', '')
-                        logger.info(f"    Doc {idx}: path={file_path}, exists={os.path.exists(file_path) if file_path else False}")
-                        if file_path and os.path.exists(file_path):
-                            ext = os.path.splitext(file_path)[1]
-                            suffix = f"_{idx}" if len(documents) > 1 else ""
-                            attachments.append({
-                                'path': file_path,
-                                'name': f"{client_name}_{doc_label}{suffix}{ext}"
-                            })
-            
-            # LEGACY SYSTEM: Also check old single-file fields for backwards compatibility
-            legacy_fields = [
-                ('id_file_url', 'ID'),
-                ('income_proof_file_url', 'Ingresos'),
-                ('residence_proof_file_url', 'Residencia')
-            ]
-            
-            for legacy_field, doc_label in legacy_fields:
-                if client.get(legacy_field):
-                    file_url = client[legacy_field]
-                    
-                    # Try multiple path strategies
-                    possible_paths = [
-                        file_url,  # Direct path as stored
-                        os.path.join(uploads_dir, os.path.basename(file_url)),  # Reconstruct from basename
-                        os.path.join("/var/www/carplus/backend/uploads", os.path.basename(file_url)),  # Production path
-                    ]
-                    
-                    file_path = None
-                    for p in possible_paths:
-                        if p and os.path.exists(p):
-                            file_path = p
-                            break
-                    
-                    logger.info(f"  Legacy {legacy_field}: url={file_url}, found_path={file_path}")
-                    
-                    if file_path:
-                        # Avoid duplicates - check if we already have this file
-                        already_attached = any(att['path'] == file_path for att in attachments)
-                        if not already_attached:
-                            attachments.append({
-                                'path': file_path,
-                                'name': f"{client_name}_{doc_label}{os.path.splitext(file_path)[1]}"
-                            })
-            
-            logger.info(f"Total attachments found: {len(attachments)}")
-            
-            # Also include co-signer documents if available
-            for idx, cosigner in enumerate(cosigners_data, 1):
-                cs_info = cosigner['info']
-                cs_name = f"CoSigner{idx}_{cs_info.get('first_name', '')}".replace(' ', '_')
-                
-                # NEW SYSTEM for co-signers
-                for doc_field, doc_label in doc_types:
-                    documents = cs_info.get(doc_field, [])
-                    if documents and isinstance(documents, list):
-                        for doc_idx, doc in enumerate(documents, 1):
-                            # Check both 'path' and 'file_path' keys for compatibility
-                            file_path = doc.get('path', '') or doc.get('file_path', '')
-                            if file_path and os.path.exists(file_path):
-                                ext = os.path.splitext(file_path)[1]
-                                suffix = f"_{doc_idx}" if len(documents) > 1 else ""
-                                attachments.append({
-                                    'path': file_path,
-                                    'name': f"{cs_name}_{doc_label}{suffix}{ext}"
-                                })
-                
-                # LEGACY SYSTEM for co-signers
-                for legacy_field, doc_label in legacy_fields:
-                    if cs_info.get(legacy_field):
-                        file_url = cs_info[legacy_field]
-                        
-                        # Try multiple path strategies
-                        possible_paths = [
-                            file_url,  # Direct path as stored
-                            os.path.join(uploads_dir, os.path.basename(file_url)),  # Reconstruct from basename
-                            os.path.join("/var/www/carplus/backend/uploads", os.path.basename(file_url)),  # Production path
-                        ]
-                        
-                        file_path = None
-                        for p in possible_paths:
-                            if p and os.path.exists(p):
-                                file_path = p
-                                break
-                        
-                        if file_path:
-                            already_attached = any(att['path'] == file_path for att in attachments)
-                            if not already_attached:
-                                attachments.append({
-                                    'path': file_path,
-                                    'name': f"{cs_name}_{doc_label}{os.path.splitext(file_path)[1]}"
-                                })
-        
+            attachments = collect_document_attachments(client, cosigners_data, UPLOAD_DIR)
+
         for recipient_email in request.emails:
             msg = MIMEMultipart('mixed')  # Changed to 'mixed' to support attachments
             msg['Subject'] = f"📋 Reporte de Cliente: {client.get('first_name', '')} {client.get('last_name', '')}"
@@ -2471,7 +2361,7 @@ body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
                     part.add_header('Content-Disposition', f'attachment; filename="{attachment["name"]}"')
                     msg.attach(part)
                 except Exception as att_error:
-                    print(f"Error attaching file {attachment['path']}: {str(att_error)}")
+                    logger.warning("Unable to read a selected document attachment")
             
             with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
                 server.login(smtp_email, smtp_password)
@@ -2822,6 +2712,9 @@ async def get_cosigners(buyer_client_id: str, current_user: dict = Depends(get_c
         {"$project": {"_id": 0, "cosigner._id": 0}}
     ]
     relations = await db.cosigner_relations.aggregate(pipeline).to_list(100)
+    for relation in relations:
+        if isinstance(relation.get("cosigner"), dict):
+            relation["cosigner"] = await redact_documents(db, current_user, relation["cosigner"])
     return relations
 
 @api_router.delete("/cosigners/{relation_id}")
@@ -2835,7 +2728,7 @@ async def search_client_by_phone(phone: str, current_user: dict = Depends(get_cu
     client = await db.clients.find_one({"phone": {"$regex": phone}, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
-    return client
+    return await redact_documents(db, current_user, client)
 
 # ==================== DASHBOARD ROUTES ====================
 
@@ -3420,7 +3313,7 @@ async def get_trash_clients(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     clients = await db.clients.find({"is_deleted": True}, {"_id": 0}).to_list(1000)
-    return clients
+    return [await redact_documents(db, current_user, client) for client in clients]
 
 @api_router.get("/trash/user-records", response_model=List[UserRecordResponse])
 async def get_trash_user_records(current_user: dict = Depends(get_current_user)):
@@ -3477,185 +3370,11 @@ async def test_sms(phone: str, message: str = "Prueba de SMS desde CARPLUS CRM",
 
 @api_router.post("/sms/send-documents-link")
 async def send_documents_sms(client_id: str, record_id: str, current_user: dict = Depends(get_current_user)):
-    """Send SMS with documents upload link"""
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
-    # Generate public link token
-    token = await create_public_link(client_id, record_id, "documents")
-    
-    # Get base URL from environment or use default
-    base_url = os.environ.get('FRONTEND_URL', 'https://work-1-hxroqbnbaygfdbdd.prod-runtime.all-hands.dev')
-    document_link = f"{base_url}/c/docs/{token}"
-    
-    # Create the message
-    client_name = f"{client['first_name']} {client['last_name']}"
-    message = f"Hola {client_name}, por favor suba sus documentos (ID y comprobante de ingresos) en: {document_link} - DealerCRM"
-    
-    # Send SMS via Twilio
-    result = await send_sms_twilio(client["phone"], message)
-    
-    # Log the SMS
-    sms_log = {
-        "id": str(uuid.uuid4()),
-        "client_id": client_id,
-        "record_id": record_id,
-        "phone": client["phone"],
-        "message_type": "documents",
-        "message": message,
-        "link": document_link,
-        "status": "sent" if result["success"] else "failed",
-        "twilio_sid": result.get("sid"),
-        "error": result.get("error"),
-        "sent_at": datetime.now(timezone.utc).isoformat(),
-        "sent_by": current_user["id"]
-    }
-    await db.sms_logs.insert_one(sms_log)
-    
-    if not result["success"]:
-        raise HTTPException(status_code=500, detail=f"Failed to send SMS: {result.get('error')}")
-    
-    return {"message": "Documents SMS sent successfully", "phone": client["phone"], "twilio_sid": result.get("sid"), "link": document_link}
+    raise HTTPException(status_code=403, detail="Public document access is disabled")
 
 @api_router.post("/email/send-documents-link")
 async def send_documents_email(client_id: str, current_user: dict = Depends(get_current_user)):
-    """Send Email with documents upload link - Alternative to SMS"""
-    import smtplib
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
-    
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
-    if not client.get("email"):
-        raise HTTPException(status_code=400, detail="El cliente no tiene email registrado")
-    
-    # Generate public link token (use client_id as record_id since we're sending from client info)
-    token = await create_public_link(client_id, client_id, "documents")
-    
-    # Get base URL from environment or use default
-    base_url = os.environ.get('FRONTEND_URL', os.environ.get('REACT_APP_BACKEND_URL', '').replace('/api', ''))
-    if not base_url:
-        base_url = 'https://work-1-hxroqbnbaygfdbdd.prod-runtime.all-hands.dev'
-    document_link = f"{base_url}/c/docs/{token}"
-    
-    # Create email content
-    client_name = f"{client['first_name']} {client['last_name']}"
-    salesperson_name = current_user.get('name', current_user.get('email', 'Su vendedor'))
-    
-    email_body = f"""
-<html>
-<head>
-<style>
-body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }}
-.container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-.header {{ background: #1e3a8a; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-.header img {{ max-width: 180px; height: auto; margin-bottom: 15px; }}
-.content {{ background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }}
-.button {{ display: inline-block; background: #dc2626; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 20px 0; }}
-.button:hover {{ background: #b91c1c; }}
-.documents-list {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }}
-.doc-item {{ padding: 10px 0; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; }}
-.doc-item:last-child {{ border-bottom: none; }}
-.doc-icon {{ margin-right: 10px; }}
-.footer {{ text-align: center; padding: 20px; color: #64748b; font-size: 12px; }}
-</style>
-</head>
-<body>
-<div class="container">
-<div class="header">
-<img src="{COMPANY_LOGO_URL}" alt="{COMPANY_NAME}">
-<h1 style="margin: 0;">📄 Suba sus Documentos</h1>
-<p style="margin: 10px 0 0 0; color: #dc2626;">{COMPANY_TAGLINE}</p>
-</div>
-<div class="content">
-<p>Hola <strong>{client_name}</strong>,</p>
-<p>{salesperson_name} le solicita que suba los siguientes documentos para continuar con su proceso:</p>
-
-<div class="documents-list">
-<div class="doc-item">
-<span class="doc-icon">🪪</span>
-<div>
-<strong>Identificación (ID)</strong><br>
-<span style="color: #64748b; font-size: 14px;">Licencia de conducir, Pasaporte, o ID estatal</span>
-</div>
-</div>
-<div class="doc-item">
-<span class="doc-icon">💵</span>
-<div>
-<strong>Comprobante de Ingresos</strong><br>
-<span style="color: #64748b; font-size: 14px;">Pay stub, declaración de impuestos, o carta de empleo</span>
-</div>
-</div>
-<div class="doc-item">
-<span class="doc-icon">🏠</span>
-<div>
-<strong>Comprobante de Residencia</strong><br>
-<span style="color: #64748b; font-size: 14px;">Factura de servicios, estado de cuenta bancario</span>
-</div>
-</div>
-</div>
-
-<p style="text-align: center;">
-<a href="{document_link}" class="button">Subir Documentos</a>
-</p>
-
-<p style="color: #64748b; font-size: 14px;">
-<strong>Nota:</strong> Puede subir múltiples archivos por cada documento. Se combinarán automáticamente en un solo PDF.
-</p>
-
-<p style="color: #64748b; font-size: 13px;">
-Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
-<a href="{document_link}" style="color: #1e3a8a; word-break: break-all;">{document_link}</a>
-</p>
-</div>
-<div class="footer">
-<p>Este mensaje fue enviado automáticamente por {COMPANY_NAME}.<br>
-Sus documentos están protegidos y solo serán utilizados para su proceso.</p>
-</div>
-</div>
-</body>
-</html>
-"""
-    
-    # Send email using SMTP
-    smtp_email = os.environ.get('SMTP_USER') or os.environ.get('SMTP_EMAIL')
-    smtp_password = os.environ.get('SMTP_PASSWORD')
-    
-    if not smtp_email or not smtp_password:
-        raise HTTPException(status_code=500, detail="Configuración de email no disponible. Contacte al administrador.")
-    
-    try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = f"📄 {client_name} - Por favor suba sus documentos"
-        msg['From'] = smtp_email
-        msg['To'] = client['email']
-        
-        html_part = MIMEText(email_body, 'html')
-        msg.attach(html_part)
-        
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login(smtp_email, smtp_password)
-            server.sendmail(smtp_email, client['email'], msg.as_string())
-        
-        # Log the email
-        email_log = {
-            "id": str(uuid.uuid4()),
-            "client_id": client_id,
-            "email": client['email'],
-            "message_type": "documents",
-            "link": document_link,
-            "status": "sent",
-            "sent_at": datetime.now(timezone.utc).isoformat(),
-            "sent_by": current_user["id"]
-        }
-        await db.email_logs.insert_one(email_log)
-        
-        return {"message": "Email enviado exitosamente", "email": client['email'], "link": document_link}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al enviar email: {str(e)}")
+    raise HTTPException(status_code=403, detail="Public document access is disabled")
 
 @api_router.post("/sms/send-appointment-link")
 async def send_appointment_sms(client_id: str, appointment_id: str, current_user: dict = Depends(get_current_user)):
@@ -4728,14 +4447,7 @@ async def create_public_link(client_id: str, record_id: str, link_type: str) -> 
 
 @api_router.post("/generate-document-link/{client_id}")
 async def generate_document_link(client_id: str, record_id: str, current_user: dict = Depends(get_current_user)):
-    """Generate a public link for client to upload documents"""
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
-    token = await create_public_link(client_id, record_id, "documents")
-    # The frontend URL would be: /c/docs/{token}
-    return {"token": token, "link": f"/c/docs/{token}"}
+    raise HTTPException(status_code=403, detail="Public document access is disabled")
 
 @api_router.post("/generate-appointment-link/{appointment_id}")
 async def generate_appointment_link(appointment_id: str, current_user: dict = Depends(get_current_user)):
@@ -4754,60 +4466,14 @@ async def generate_appointment_link(appointment_id: str, current_user: dict = De
 # Public endpoints (no auth required)
 @api_router.get("/public/documents/{token}")
 async def get_public_document_info(token: str):
-    """Get client info for document upload (public, no auth)"""
-    link = await db.public_links.find_one({"token": token, "link_type": "documents"}, {"_id": 0})
-    if not link:
-        raise HTTPException(status_code=404, detail="Invalid or expired link")
-    
-    # Check expiration
-    if datetime.fromisoformat(link["expires_at"].replace('Z', '+00:00')) < datetime.now(timezone.utc):
-        raise HTTPException(status_code=410, detail="This link has expired")
-    
-    client = await db.clients.find_one({"id": link["client_id"]}, {"_id": 0})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
-    # Check if documents already submitted and get language preference
-    record = await db.user_records.find_one({"id": link["record_id"]}, {"_id": 0})
-    documents_submitted = record.get("documents_submitted", False) if record else False
-    preferred_language = link.get("preferred_language") or (record.get("preferred_language") if record else None)
-    
-    # Check if client already has an ID document from pre-qualify
-    has_existing_id_document = client.get("id_uploaded", False)
-    existing_id_file_url = client.get("id_file_url") if has_existing_id_document else None
-    
-    return {
-        "first_name": client["first_name"],
-        "last_name": client["last_name"],
-        "documents_submitted": documents_submitted,
-        "preferred_language": preferred_language,
-        "has_existing_id_document": has_existing_id_document,
-        "existing_id_message": "Ya tiene un documento de ID previamente subido. Puede subir uno nuevo si lo desea." if has_existing_id_document else None
-    }
+    raise HTTPException(status_code=403, detail="Public document access is disabled")
 
 class DocumentLanguageRequest(BaseModel):
     language: str  # 'en' or 'es'
 
 @api_router.put("/public/documents/{token}/language")
 async def update_document_language_preference(token: str, data: DocumentLanguageRequest):
-    """Update client's language preference for documents (public, no auth)"""
-    if data.language not in ['en', 'es']:
-        raise HTTPException(status_code=400, detail="Invalid language. Must be 'en' or 'es'")
-    
-    link = await db.public_links.find_one({"token": token, "link_type": "documents"}, {"_id": 0})
-    if not link:
-        raise HTTPException(status_code=404, detail="Link not found")
-    
-    # Update record with language preference
-    await db.user_records.update_one(
-        {"id": link["record_id"]},
-        {"$set": {"preferred_language": data.language}}
-    )
-    
-    # Also update the link itself
-    await db.public_links.update_one({"token": token}, {"$set": {"preferred_language": data.language}})
-    
-    return {"message": f"Language preference updated to {data.language}"}
+    raise HTTPException(status_code=403, detail="Public document access is disabled")
 
 @api_router.post("/public/documents/{token}/upload")
 async def upload_public_documents(
@@ -4817,183 +4483,7 @@ async def upload_public_documents(
     residence_documents: List[UploadFile] = File(default=[]),
     language: str = Form(default="en")
 ):
-    """Handle document upload from client (public, no auth) - supports multiple files per type"""
-    from PIL import Image as PILImage
-    from pypdf import PdfReader, PdfWriter
-    from reportlab.lib.pagesizes import letter
-    from reportlab.pdfgen import canvas
-    import io
-    
-    link = await db.public_links.find_one({"token": token, "link_type": "documents"}, {"_id": 0})
-    if not link:
-        raise HTTPException(status_code=404, detail="Invalid link")
-    
-    client_id = link.get("client_id")
-    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
-    # Create uploads directory
-    upload_dir = Path(__file__).parent / "uploads" / "clients" / client_id
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    
-    async def combine_files_to_pdf(files: List[UploadFile], output_name: str) -> str:
-        """Combine multiple files (images/PDFs) into a single PDF"""
-        if not files:
-            return None
-        
-        pdf_writer = PdfWriter()
-        
-        for file in files:
-            content = await file.read()
-            await file.seek(0)  # Reset for potential reuse
-            
-            if file.content_type == 'application/pdf':
-                # Add PDF pages directly
-                try:
-                    pdf_reader = PdfReader(io.BytesIO(content))
-                    for page in pdf_reader.pages:
-                        pdf_writer.add_page(page)
-                except Exception as e:
-                    print(f"Error reading PDF {file.filename}: {e}")
-            elif file.content_type.startswith('image/'):
-                # Convert image to PDF page
-                try:
-                    img = PILImage.open(io.BytesIO(content))
-                    
-                    # Convert to RGB if necessary
-                    if img.mode in ('RGBA', 'LA', 'P'):
-                        background = PILImage.new('RGB', img.size, (255, 255, 255))
-                        if img.mode == 'P':
-                            img = img.convert('RGBA')
-                        background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
-                        img = background
-                    elif img.mode != 'RGB':
-                        img = img.convert('RGB')
-                    
-                    # Create PDF from image
-                    img_buffer = io.BytesIO()
-                    
-                    # Calculate size to fit on letter page with margins
-                    page_width, page_height = letter
-                    margin = 36  # 0.5 inch margin
-                    max_width = page_width - 2 * margin
-                    max_height = page_height - 2 * margin
-                    
-                    # Scale image to fit
-                    img_width, img_height = img.size
-                    scale = min(max_width / img_width, max_height / img_height, 1.0)
-                    new_width = int(img_width * scale)
-                    new_height = int(img_height * scale)
-                    
-                    if scale < 1.0:
-                        img = img.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
-                    
-                    # Save as temporary PDF
-                    img_pdf_buffer = io.BytesIO()
-                    c = canvas.Canvas(img_pdf_buffer, pagesize=letter)
-                    
-                    # Center on page
-                    x = (page_width - img.width) / 2
-                    y = (page_height - img.height) / 2
-                    
-                    # Save image to buffer
-                    img.save(img_buffer, format='JPEG', quality=85)
-                    img_buffer.seek(0)
-                    
-                    # Draw image on PDF
-                    from reportlab.lib.utils import ImageReader
-                    c.drawImage(ImageReader(img_buffer), x, y, width=img.width, height=img.height)
-                    c.save()
-                    
-                    img_pdf_buffer.seek(0)
-                    img_reader = PdfReader(img_pdf_buffer)
-                    for page in img_reader.pages:
-                        pdf_writer.add_page(page)
-                except Exception as e:
-                    print(f"Error processing image {file.filename}: {e}")
-        
-        if len(pdf_writer.pages) == 0:
-            return None
-        
-        # Save combined PDF
-        output_path = upload_dir / f"{output_name}.pdf"
-        with open(output_path, 'wb') as f:
-            pdf_writer.write(f)
-        
-        return str(output_path)
-    
-    update_data = {
-        "documents_submitted": True,
-        "documents_submitted_at": datetime.now(timezone.utc).isoformat(),
-        "preferred_language": language
-    }
-    
-    # Process ID documents
-    if id_documents and len(id_documents) > 0 and id_documents[0].filename:
-        id_path = await combine_files_to_pdf(id_documents, "id_document")
-        if id_path:
-            update_data["id_uploaded"] = True
-            update_data["id_file_url"] = id_path
-            # Also add to new documents array
-            update_data["id_documents"] = [{
-                "id": str(uuid.uuid4()),
-                "filename": "ID_Document",
-                "path": id_path,
-                "type": "application/pdf",
-                "uploaded_at": datetime.now(timezone.utc).isoformat(),
-                "uploaded_by": "client_public"
-            }]
-    
-    # Process Income documents
-    if income_documents and len(income_documents) > 0 and income_documents[0].filename:
-        income_path = await combine_files_to_pdf(income_documents, "income_proof")
-        if income_path:
-            update_data["income_proof_uploaded"] = True
-            update_data["income_proof_file_url"] = income_path
-            # Also add to new documents array
-            update_data["income_documents"] = [{
-                "id": str(uuid.uuid4()),
-                "filename": "Income_Proof",
-                "path": income_path,
-                "type": "application/pdf",
-                "uploaded_at": datetime.now(timezone.utc).isoformat(),
-                "uploaded_by": "client_public"
-            }]
-    
-    # Process Residence documents
-    if residence_documents and len(residence_documents) > 0 and residence_documents[0].filename:
-        residence_path = await combine_files_to_pdf(residence_documents, "residence_proof")
-        if residence_path:
-            update_data["residence_proof_uploaded"] = True
-            update_data["residence_proof_file_url"] = residence_path
-            # Also add to new documents array
-            update_data["residence_documents"] = [{
-                "id": str(uuid.uuid4()),
-                "filename": "Residence_Proof",
-                "path": residence_path,
-                "type": "application/pdf",
-                "uploaded_at": datetime.now(timezone.utc).isoformat(),
-                "uploaded_by": "client_public"
-            }]
-    
-    # Update client with document info
-    await db.clients.update_one({"id": client_id}, {"$set": update_data})
-    
-    # Also update record if exists
-    if link.get("record_id"):
-        await db.user_records.update_one(
-            {"id": link["record_id"]},
-            {"$set": {
-                "documents_submitted": True,
-                "documents_submitted_at": datetime.now(timezone.utc).isoformat()
-            }}
-        )
-    
-    # Mark link as used
-    await db.public_links.update_one({"token": token}, {"$set": {"used": True}})
-    
-    return {"message": "Documents received successfully"}
+    raise HTTPException(status_code=403, detail="Public document access is disabled")
 
 @api_router.get("/public/appointment/{token}")
 async def get_public_appointment_info(token: str):
@@ -6800,7 +6290,9 @@ async def submit_prequalify_with_file(
     id_files: List[UploadFile] = File(default=[]),
     idFile: Optional[UploadFile] = File(None)  # Alternative from website
 ):
-    """Submit pre-qualify form with optional ID document upload (supports multiple files)"""
+    """Submit pre-qualify data; anonymous document uploads are forbidden."""
+    if id_file or id_files or idFile:
+        raise HTTPException(status_code=403, detail="Public document uploads are disabled")
     from PyPDF2 import PdfMerger, PdfReader
     from PIL import Image
     from reportlab.lib.pagesizes import letter
@@ -7261,6 +6753,7 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
         raise HTTPException(status_code=404, detail="Submission not found")
     
     client_id = str(uuid.uuid4())
+    await require_document_access({"id": client_id, "created_by": current_user["id"]}, current_user, "write")
     full_address = f"{submission.get('address', '')} {submission.get('city', '')} {submission.get('state', '')} {submission.get('zipCode', '')}".strip()
     
     # Transfer ID document if exists
@@ -7270,56 +6763,17 @@ async def create_client_from_prequalify(submission_id: str, current_user: dict =
     
     if prequalify_id_file:
         try:
-            # Copy file to client's document location
-            upload_dir = Path(__file__).parent / "uploads"
-            
-            # Handle different path formats
-            if prequalify_id_file.startswith('/uploads/'):
-                filename = prequalify_id_file.replace('/uploads/', '')
-            elif prequalify_id_file.startswith('/app/backend/uploads/'):
-                filename = os.path.basename(prequalify_id_file)
-            elif prequalify_id_file.startswith('/var/www/carplus/backend/uploads/'):
-                filename = os.path.basename(prequalify_id_file)
-            else:
-                filename = os.path.basename(prequalify_id_file)
-            
-            # Try multiple possible paths
-            possible_paths = [
-                upload_dir / filename,
-                Path(prequalify_id_file),  # Direct path
-                Path("/var/www/carplus/backend/uploads") / filename,
-                Path("/app/backend/uploads") / filename,
-            ]
-            
-            old_path = None
-            for p in possible_paths:
-                if p.exists():
-                    old_path = p
-                    break
-            
-            logger.info(f"Looking for file, trying paths: {[str(p) for p in possible_paths]}")
-            
-            if old_path and old_path.exists():
-                file_extension = old_path.suffix
-                new_filename = f"{client_id}_id{file_extension}"
-                new_path = upload_dir / new_filename
-                
+            old_path = resolve_document_path(prequalify_id_file, UPLOAD_DIR)
+            if old_path is not None:
+                new_path = UPLOAD_DIR / f"{client_id}_id{old_path.suffix}"
                 shutil.copy2(old_path, new_path)
-                
-                id_file_url = str(new_path)  # Store full path
+                id_file_url = str(new_path)
                 id_uploaded = True
-                logger.info(f"Transferred ID document from pre-qualify to client: {id_file_url}")
             else:
-                # If file not found, just use the original URL
-                id_file_url = prequalify_id_file
-                id_uploaded = True
-                logger.warning(f"Pre-qualify ID file not found, using original URL: {prequalify_id_file}")
-        except Exception as e:
-            logger.error(f"Error transferring ID document: {str(e)}")
-            # Still set the URL even if copy fails
-            id_file_url = prequalify_id_file
-            id_uploaded = True
-    
+                logger.warning("Pre-qualify ID document unavailable in local storage")
+        except OSError:
+            logger.warning("Unable to transfer pre-qualify ID document")
+
     # Map ID type from pre-qualify to CRM format
     id_type_mapping = {
         # From website form
@@ -7574,29 +7028,12 @@ async def delete_prequalify_submission(submission_id: str, current_user: dict = 
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
     
-    # Delete associated file if exists
+    await require_document_access(submission, current_user, "delete")
     id_file_url = submission.get("id_file_url")
-    if id_file_url:
-        # Resolve file path
-        upload_dir = Path(__file__).parent / "uploads"
-        possible_paths = []
-        
-        if id_file_url.startswith('/uploads/'):
-            filename = id_file_url.replace('/uploads/', '')
-            possible_paths.append(upload_dir / filename)
-        else:
-            possible_paths.append(Path(id_file_url))
-            possible_paths.append(upload_dir / os.path.basename(id_file_url))
-        
-        for file_path in possible_paths:
-            try:
-                if file_path.exists():
-                    file_path.unlink()
-                    logger.info(f"Deleted prequalify document: {file_path}")
-                    break
-            except Exception as e:
-                logger.error(f"Error deleting file {file_path}: {e}")
-    
+    file_path = resolve_document_path(id_file_url, UPLOAD_DIR)
+    if file_path is not None:
+        file_path.unlink()
+
     # Delete from database
     result = await db.prequalify_submissions.delete_one({"id": submission_id})
     
@@ -7625,6 +7062,7 @@ async def sync_prequalify_to_client(submission_id: str, current_user: dict = Dep
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Matched client not found")
+    await require_document_access(client, current_user, "write")
     
     # Build update data from submission
     update_data = {}
