@@ -511,3 +511,6 @@ frontend/node_modules/.cache/default-development/13.pack_
 credentials.json
 *.key
 .credentials
+
+# Dealer AI autonomous runner runtime
+.dealer-ai/runtime/
