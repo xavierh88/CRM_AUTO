@@ -7,7 +7,7 @@ SAFE_BASE="4e5a293"
 RUNTIME="$WORKSPACE/.dealer-ai/runtime"
 LOG="$RUNTIME/autonomous.log"
 PROMPT="$RUNTIME/autonomous-prompt.txt"
-MAX_RUNTIME="6h"
+MAX_RUNTIME="8h"
 
 cd "$WORKSPACE" || exit 10
 mkdir -p "$RUNTIME"
@@ -159,6 +159,28 @@ STOP rather than guessing if:
 Do not mark anything PASS unless actually verified.
 
 REPORTING
+
+AUTONOMOUS CONTINUATION RULE - IMPORTANT:
+
+This is a long-running autonomous development session, not a single-task session.
+Completing one safe implementation unit is NOT sufficient reason to end the session.
+
+After each completed safe unit:
+1. Run the relevant tests and verification.
+2. Record evidence in NIGHTLY_REPORT.md.
+3. Inspect IMPLEMENTATION_PLAN.md and the controlling specifications.
+4. Select the next highest-priority SAFE unfinished unit.
+5. Continue implementing automatically.
+
+Repeat this cycle for as many safe sequential units as possible during the available runtime.
+Do NOT stop merely because one task, subtask, test set, or Phase 1 improvement is complete.
+Do NOT stop merely because Git metadata cannot be written from the Codex sandbox; leave verified workspace changes uncommitted for the external owner/safety checkpoint process.
+
+If one task is blocked but another independent safe task can proceed without bypassing the blocker, document the blocker and CONTINUE with that safe task.
+
+Stop early ONLY for a genuine safety/architecture blocker, required owner approval, prohibited production/credential/real-data/real-communication/real-credit/destructive/deployment action, conflict with controlling rules, or when no additional safe work remains.
+
+AUTONOMOUS_SESSION_COMPLETE means no additional safe planned work can reasonably be performed in this session. It does NOT mean only that the current unit finished.
 
 Maintain:
 
