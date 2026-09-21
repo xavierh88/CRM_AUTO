@@ -1,5 +1,6 @@
 """Fictional policy matrix and isolated handler tests, without server startup."""
 import ast
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -7,6 +8,7 @@ from unittest.mock import AsyncMock
 from test_document_attachments import load_module
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'backend'))
 POLICY = load_module('document_authorization')
 CRM_AUTH = load_module('crm_authorization')
 

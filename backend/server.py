@@ -11,7 +11,7 @@ from document_authorization import can_access_documents, redact_documents
 from document_paths import resolve_document_path
 from document_attachments import collect_document_attachments
 from crm_authorization import CRMAccess, SCOPED_COLLECTIONS
-from runtime_security import jwt_secret, require_enabled_user, mock_delivery
+from runtime_security import jwt_secret, mock_delivery
 from public_tokens import resolve_appointment_token
 from upload_validation import validate_documents, upload_directory, bounded_read, validate_import
 from webhook_security import validate_twilio_webhook
@@ -19,8 +19,8 @@ from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
-import jwt
-import bcrypt
+from authentication.foundation import hash_password as safe_hash_password, passkey_options
+from authentication.runtime import SessionAuth
 from twilio.rest import Client as TwilioClient
 import pandas as pd
 import io
@@ -768,33 +768,16 @@ class SMSLogCreate(BaseModel):
 # ==================== AUTH HELPERS ====================
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    try:
+        return safe_hash_password(password)
+    except ValueError:
+        raise HTTPException(422, 'Password must contain 1 to 72 valid UTF-8 bytes') from None
 
-def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
 
-def create_token(user_id: str, email: str, role: str) -> str:
-    payload = {
-        "user_id": user_id,
-        "email": email,
-        "role": role,
-        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+session_auth = SessionAuth(db, JWT_SECRET, hours=JWT_EXPIRATION_HOURS)
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    try:
-        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM], options={"require": ["exp", "user_id"]})
-        if not isinstance(payload["user_id"], str) or not payload["user_id"]:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0, "password": 0})
-        if not user:
-            raise HTTPException(status_code=401, detail="User not found")
-        return require_enabled_user(user)
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    return await session_auth.current_user(credentials.credentials)
 
 # ==================== AUTH ROUTES ====================
 
@@ -821,14 +804,22 @@ async def register(user: UserCreate):
 
 @api_router.post("/auth/login", response_model=dict)
 async def login(credentials: UserLogin):
-    user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
-    if not user or not verify_password(credentials.password, user["password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    require_enabled_user(user)
-    
-    token = create_token(user["id"], user["email"], user["role"])
-    return {"token": token, "user": {k: v for k, v in user.items() if k != "password"}}
+    return await session_auth.login(credentials.email, credentials.password)
+
+class Reauthentication(BaseModel):
+    password: str
+
+@api_router.post("/auth/logout")
+async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    return await session_auth.logout(credentials.credentials)
+
+@api_router.post("/auth/reauthenticate")
+async def reauthenticate(body: Reauthentication, credentials: HTTPAuthorizationCredentials = Depends(security)):
+    return await session_auth.reauthenticate(credentials.credentials, body.password)
+
+@api_router.get("/auth/passkeys/options")
+async def get_passkey_options():
+    return passkey_options()
 
 @api_router.get("/auth/me", response_model=UserResponse)
 async def get_me(current_user: dict = Depends(get_current_user)):
