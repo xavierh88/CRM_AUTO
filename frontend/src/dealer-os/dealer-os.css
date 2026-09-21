@@ -1,0 +1,28 @@
+.dealer-os { min-height: 100dvh; background: #f1f5f9; color: #172033; overflow-wrap: anywhere; }
+.dealer-os * { box-sizing: border-box; }
+.os-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px; background: #102238; color: white; }
+.os-header > a:first-child { font-size: 20px; font-weight: 750; }
+.os-header span { font-size: 12px; color: #b9e8da; }
+.dealer-os main { max-width: 1200px; margin: auto; padding: 24px 16px calc(112px + env(safe-area-inset-bottom)); }
+.dealer-os h1 { font-size: clamp(26px, 5vw, 36px); font-weight: 750; margin: 12px 0; }
+.dealer-os h2 { font-size: 18px; font-weight: 650; margin: 12px 0; }
+.dealer-os p { margin: 12px 0 20px; }
+.os-grid { display: grid; gap: 16px; margin-top: 20px; }
+.os-card { display: block; min-width: 0; padding: 20px; background: white; border: 1px solid #cbd5e1; border-radius: 16px; }
+.os-customer { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.os-customer:hover { border-color: #03695a; }
+.dealer-os small { color: #475569; }
+.dealer-os label { display: block; margin-top: 20px; }
+.dealer-os input, .dealer-os select { width: 100%; max-width: 480px; min-height: 48px; border: 1px solid #64748b; border-radius: 8px; padding: 10px; background: white; font: inherit; }
+.os-button { display: inline-flex; min-height: 44px; align-items: center; background: #03695a; color: white; padding: 10px 16px; border-radius: 8px; }
+.dealer-os dt { color: #475569; margin-top: 12px; }
+.dealer-os dd { margin: 4px 0; font-weight: 600; }
+.dealer-os ol { padding-left: 20px; list-style: decimal; }
+.dealer-os li { margin: 12px 0; }
+.os-nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; background: white; border-top: 1px solid #cbd5e1; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); z-index: 30; }
+.os-nav a { flex: 1; max-width: 220px; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 8px; font-size: 13px; }
+.os-nav a.active { background: #d8f3eb; color: #065446; font-weight: 700; }
+.dealer-os :focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+.os-skip { position: absolute; top: -100px; background: white; padding: 12px; z-index: 40; }
+.os-skip:focus { top: 8px; }
+@media (min-width: 720px) { .os-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .dealer-os main { padding-top: 40px; } }

@@ -17,6 +17,7 @@ import SolicitudesPage from "./pages/SolicitudesPage";
 import VendedoresPage from "./pages/VendedoresPage";
 import SoldPage from "./pages/SoldPage";
 import Layout from "./components/Layout";
+import DealerOS from "./dealer-os/DealerOS";
 
 // Public Pages (for clients)
 import PublicDocumentsPage from "./pages/PublicDocumentsPage";
@@ -83,6 +84,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/os/*" element={<ProtectedRoute><DealerOS /></ProtectedRoute>} />
           {/* Public routes for clients (no auth required) */}
           <Route path="/c/docs/:token" element={<PublicDocumentsPage />} />
           <Route path="/c/appointment/:token" element={<PublicAppointmentPage />} />

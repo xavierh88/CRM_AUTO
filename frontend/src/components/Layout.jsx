@@ -43,6 +43,7 @@ export const Layout = ({ children }) => {
   };
 
   const navItems = [
+    { path: '/os', icon: LayoutDashboard, label: 'Dealer AI OS · Demo' },
     { path: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { path: '/clients', icon: Users, label: t('nav.clients') },
     { path: '/sold', icon: Trophy, label: 'Sold' },
