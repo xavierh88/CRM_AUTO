@@ -853,8 +853,8 @@ async def update_user_role(data: UserRoleUpdate, current_user: dict = Depends(ge
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    # Valid roles: admin, bdc_manager, telemarketer (previously salesperson)
-    valid_roles = ["admin", "bdc_manager", "telemarketer", "salesperson"]  # Keep salesperson for backwards compatibility
+    # Valid roles: admin, bdc_manager, telemarketer (previously salesperson), demo
+    valid_roles = ["admin", "bdc_manager", "telemarketer", "salesperson", "demo"]  # Keep salesperson for backwards compatibility
     if data.role not in valid_roles:
         raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}")
     
@@ -7249,7 +7249,7 @@ async def initialize_default_config_lists():
         "Agua", "Luz", "Gas", "Internet", "TV Cable", "Telefono", "Car Insurance", "Bank Statements"
     ]
     
-    # Initialize dealers with addresses (special handling)
+# Initialize dealers with addresses (special handling)
     dealer_count = await db.config_lists.count_documents({"category": "dealer"})
     if dealer_count == 0:
         dealer_docs = [
@@ -7292,6 +7292,363 @@ async def initialize_default_config_lists():
             if docs:
                 await db.config_lists.insert_many(docs)
                 logger.info(f"Initialized {len(docs)} default {category}s")
+
+# ==================== DEMO ENDPOINTS ====================
+
+class DemoResetRequest(BaseModel):
+    confirm: bool = True
+
+@api_router.post("/demo/reset")
+async def reset_demo_data(current_user: dict = Depends(get_current_user)):
+    """Reset demo data for the current demo user"""
+    if current_user.get("role") != "demo":
+        raise HTTPException(status_code=403, detail="Demo access required")
+    
+    # In a real implementation, this would reset demo-specific data
+    # For now, just return success
+    return {
+        "message": "Demo data reset successfully",
+        "demo_user": current_user["id"],
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+@api_router.get("/demo/data")
+async def get_demo_data(current_user: dict = Depends(get_current_user)):
+    """Get demo data overview"""
+    if current_user.get("role") != "demo":
+        raise HTTPException(status_code=403, detail="Demo access required")
+    
+    # Return demo data stats
+    return {
+        "vehicles": 42,
+        "leads": 28,
+        "appointments": 15,
+        "deals": 8,
+        "conversations": 12,
+        "documents_pending": 23,
+        "is_demo": True,
+        "data_source": "fictional"
+    }
+
+# ==================== INVENTORY ENDPOINTS ====================
+
+class VehicleCreate(BaseModel):
+    vin: str
+    make: str
+    model: str
+    year: int
+    trim: Optional[str] = None
+    color: Optional[str] = None
+    mileage: int = 0
+    price: float
+    cost: Optional[float] = None
+    status: str = "available"  # available, reserved, sold, in_transit, service
+    dealer: Optional[str] = None
+    stock_number: Optional[str] = None
+    description: Optional[str] = None
+    features: Optional[str] = None
+    images: Optional[List[str]] = None
+
+class VehicleUpdate(BaseModel):
+    make: Optional[str] = None
+    model: Optional[str] = None
+    year: Optional[int] = None
+    trim: Optional[str] = None
+    color: Optional[str] = None
+    mileage: Optional[int] = None
+    price: Optional[float] = None
+    cost: Optional[float] = None
+    status: Optional[str] = None
+    dealer: Optional[str] = None
+    stock_number: Optional[str] = None
+    description: Optional[str] = None
+    features: Optional[str] = None
+    images: Optional[List[str]] = None
+
+@api_router.post("/inventory", response_model=dict)
+async def create_vehicle(vehicle: VehicleCreate, current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    vehicle_doc = vehicle.dict()
+    vehicle_doc["id"] = str(uuid.uuid4())
+    vehicle_doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    vehicle_doc["created_by"] = current_user["id"]
+    vehicle_doc["days_on_lot"] = 0
+    vehicle_doc["is_deleted"] = False
+    
+    await db.inventory.insert_one(vehicle_doc)
+    return {k: v for k, v in vehicle_doc.items() if k != "_id"}
+
+@api_router.get("/inventory", response_model=dict)
+async def get_inventory(
+    current_user: dict = Depends(get_current_user),
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    make: Optional[str] = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
+    limit: int = 100,
+    offset: int = 0
+):
+    access = CRMAccess(db, current_user)
+    
+    query = {"is_deleted": {"$ne": True}}
+    
+    if search:
+        query["$or"] = [
+            {"vin": {"$regex": search, "$options": "i"}},
+            {"make": {"$regex": search, "$options": "i"}},
+            {"model": {"$regex": search, "$options": "i"}},
+            {"stock_number": {"$regex": search, "$options": "i"}}
+        ]
+    
+    if status:
+        query["status"] = status
+    
+    if make:
+        query["make"] = make
+    
+    # Role-based filtering
+    if current_user["role"] == "admin":
+        pass
+    elif current_user["role"] == "bdc_manager":
+        admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
+        admin_ids = [u["id"] for u in admin_users]
+        query["dealer"] = {"$nin": [u for u in admin_ids]}  # Simplified
+    else:
+        query["dealer"] = current_user.get("dealer_id", "")
+    
+    sort_dir = -1 if sort_order == "desc" else 1
+    
+    vehicles = await db.inventory.find(query).sort(sort_by, sort_dir).skip(offset).limit(limit).to_list(limit)
+    total = await db.inventory.count_documents(query)
+    
+    return {"vehicles": vehicles, "total": total}
+
+@api_router.get("/inventory/{vehicle_id}", response_model=dict)
+async def get_vehicle(vehicle_id: str, current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    vehicle = await db.inventory.find_one({"id": vehicle_id, "is_deleted": {"$ne": True}})
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    return vehicle
+
+@api_router.put("/inventory/{vehicle_id}", response_model=dict)
+async def update_vehicle(vehicle_id: str, vehicle: VehicleUpdate, current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    update_data = {k: v for k, v in vehicle.dict().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.inventory.update_one(
+        {"id": vehicle_id, "is_deleted": {"$ne": True}},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    
+    vehicle = await db.inventory.find_one({"id": vehicle_id})
+    return vehicle
+
+@api_router.delete("/inventory/{vehicle_id}")
+async def delete_vehicle(vehicle_id: str, current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    result = await db.inventory.update_one(
+        {"id": vehicle_id, "is_deleted": {"$ne": True}},
+        {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    
+    return {"message": "Vehicle moved to trash"}
+
+# ==================== JARVIS ENDPOINTS ====================
+
+class JarvisChatRequest(BaseModel):
+    message: str
+    context: Optional[dict] = None
+
+class JarvisExecuteRequest(BaseModel):
+    action: dict
+    confirmed: bool
+
+@api_router.post("/jarvis/chat")
+async def jarvis_chat(request: JarvisChatRequest, current_user: dict = Depends(get_current_user)):
+    """Process Jarvis chat message and return response with optional tool calls"""
+    message = request.message.lower()
+    
+    # Simple intent detection - in production this would use an LLM
+    tool_calls = []
+    response = ""
+    requires_confirmation = False
+    action = None
+    
+    if any(kw in message for kw in ["appointment", "cita", "schedule"]):
+        tool_calls.append({
+            "tool": "get_appointments",
+            "params": {"date_range": "today"},
+            "result": {"count": 3}
+        })
+        response = "I found 3 appointments for today. Would you like me to show them or help you schedule a new one?"
+    
+    elif any(kw in message for kw in ["lead", "follow", "prospect", "contact"]):
+        tool_calls.append({
+            "tool": "search_leads",
+            "params": {"stage": "NEW LEAD", "days_since_contact": 48},
+            "result": {"count": 7}
+        })
+        response = "There are 7 leads that haven't been contacted in 48+ hours. The oldest is from March 15th. Want me to list them?"
+    
+    elif any(kw in message for kw in ["inventory", "vehicle", "car", "stock"]):
+        tool_calls.append({
+            "tool": "get_inventory_report",
+            "params": {},
+            "result": {"total": 42, "aging_over_60": 12}
+        })
+        response = "We have 42 vehicles in inventory. 12 are over 60 days on lot. Top aging: 2023 Ford F-150 (78 days). Need details?"
+    
+    elif any(kw in message for kw in ["conversion", "rate", "metric", "performance"]):
+        tool_calls.append({
+            "tool": "get_conversion_report",
+            "params": {"period": "month"},
+            "result": {"rate": 18.5, "sales": 32, "leads": 173}
+        })
+        response = "Current conversion rate: 18.5% (32 sales / 173 leads this month). Industry avg is 15-20%. Want the breakdown by source?"
+    
+    elif any(kw in message for kw in ["deal", "negoti", "pending", "close"]):
+        tool_calls.append({
+            "tool": "search_leads",
+            "params": {"stage": ["NEGOTIATING", "PENDING DEAL"]},
+            "result": {"count": 8, "value": 485000}
+        })
+        response = "5 deals in negotiation stage, 3 pending deal. Total pipeline value: $485,000. Closest to closing: Robin Test - Electric Sedan ($42k)."
+    
+    elif any(kw in message for kw in ["document", "paperwork", "doc", "missing"]):
+        tool_calls.append({
+            "tool": "search_leads",
+            "params": {"docs_incomplete": True},
+            "result": {"count": 23, "missing_id": 15, "missing_income": 8}
+        })
+        response = "23 clients have incomplete documents. 15 missing ID, 8 missing income proof. Want me to send reminder SMS to any of them?"
+    
+    elif any(kw in message for kw in ["report", "analytics", "dashboard"]):
+        response = "I can generate sales, leads, appointments, inventory, or financial reports. Which type and what period?"
+    
+    else:
+        response = "I can help you with leads, appointments, inventory, deals, documents, and reports. Try asking: \"Show today's appointments\" or \"Which leads need follow-up?\""
+    
+    return {
+        "response": response,
+        "tool_calls": tool_calls,
+        "requires_confirmation": requires_confirmation,
+        "action": action
+    }
+
+@api_router.post("/jarvis/execute")
+async def jarvis_execute(request: JarvisExecuteRequest, current_user: dict = Depends(get_current_user)):
+    """Execute a confirmed Jarvis action"""
+    if not request.confirmed:
+        raise HTTPException(status_code=400, detail="Action not confirmed")
+    
+    action = request.action
+    tool = action.get("tool")
+    params = action.get("params", {})
+    
+    # In production, this would execute the actual tool
+    # For demo, just return success
+    return {
+        "success": True,
+        "tool": tool,
+        "params": params,
+        "result": {"status": "executed", "message": f"Tool {tool} executed with params: {params}"}
+    }
+
+# ==================== REPORTS ENDPOINTS ====================
+
+@api_router.get("/reports/sales")
+async def get_sales_report(period: str = "month", current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    # Mock data
+    return [
+        {"month": "Jan", "sales": 12, "revenue": 340000},
+        {"month": "Feb", "sales": 15, "revenue": 420000},
+        {"month": "Mar", "sales": 18, "revenue": 510000},
+        {"month": "Apr", "sales": 14, "revenue": 390000},
+        {"month": "May", "sales": 20, "revenue": 560000},
+        {"month": "Jun", "sales": 22, "revenue": 620000},
+    ]
+
+@api_router.get("/reports/leads")
+async def get_leads_report(period: str = "month", current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    return [
+        {"source": "Website", "count": 45, "converted": 12},
+        {"source": "Walk-in", "count": 30, "converted": 8},
+        {"source": "Referral", "count": 20, "converted": 10},
+        {"source": "Social Media", "count": 25, "converted": 5},
+        {"source": "Phone", "count": 15, "converted": 4},
+    ]
+
+@api_router.get("/reports/appointments")
+async def get_appointments_report(period: str = "month", current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    return [
+        {"status": "agendado", "count": 35},
+        {"status": "cumplido", "count": 28},
+        {"status": "no_show", "count": 5},
+        {"status": "sin_configurar", "count": 12},
+        {"status": "cambio_hora", "count": 3},
+    ]
+
+@api_router.get("/reports/financial")
+async def get_financial_report(period: str = "month", current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    return {
+        "total_revenue": 2840000,
+        "avg_deal": 32000,
+        "total_gross": 420000,
+        "total_down_payment": 580000,
+    }
+
+@api_router.get("/reports/inventory")
+async def get_inventory_report(period: str = "month", current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    return [
+        {"make": "Toyota", "count": 15, "avg_days": 32},
+        {"make": "Honda", "count": 12, "avg_days": 28},
+        {"make": "Ford", "count": 10, "avg_days": 45},
+        {"make": "Chevrolet", "count": 8, "avg_days": 38},
+        {"make": "Nissan", "count": 6, "avg_days": 41},
+    ]
+
+@api_router.get("/reports/attribution")
+async def get_attribution_report(period: str = "month", current_user: dict = Depends(get_current_user)):
+    access = CRMAccess(db, current_user)
+    return [
+        {"campaign": "Google Ads", "leads": 35, "sales": 8, "cost": 5000, "roi": 4.2},
+        {"campaign": "Facebook", "leads": 28, "sales": 5, "cost": 3500, "roi": 3.8},
+        {"campaign": "Email", "leads": 20, "sales": 4, "cost": 800, "roi": 12.5},
+        {"campaign": "Referral", "leads": 15, "sales": 6, "cost": 0, "roi": 0},
+        {"campaign": "Organic", "leads": 22, "sales": 5, "cost": 0, "roi": 0},
+    ]
+
+# ==================== INBOX CONVERSATIONS ENDPOINT ====================
+
+@api_router.get("/inbox/conversations")
+async def get_conversations(
+    current_user: dict = Depends(get_current_user),
+    search: Optional[str] = None,
+    channel: Optional[str] = None,
+    unread: Optional[bool] = None
+):
+    access = CRMAccess(db, current_user)
+    # Mock data for demo
+    return [
+        {"id": "1", "client_id": "c1", "client_name": "John Smith", "client_phone": "+15551234567", "channel": "sms", "last_message": "Thanks for the info!", "last_message_at": datetime.now(timezone.utc).isoformat(), "unread_count": 2, "status": "active"},
+        {"id": "2", "client_id": "c2", "client_name": "Maria Garcia", "client_phone": "+15559876543", "channel": "email", "last_message": "When can I test drive?", "last_message_at": (datetime.now(timezone.utc).replace(hour=datetime.now().hour-1)).isoformat(), "unread_count": 0, "status": "active"},
+        {"id": "3", "client_id": "c3", "client_name": "Robert Johnson", "client_phone": "+15554567890", "channel": "facebook", "last_message": "Interested in the Honda", "last_message_at": (datetime.now(timezone.utc).replace(hour=datetime.now().hour-2)).isoformat(), "unread_count": 1, "status": "active"},
+    ]
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

@@ -7,8 +7,15 @@ import "./App.css";
 // Pages
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
-import ClientsPage from "./pages/ClientsPage";
-import AgendaPage from "./pages/AgendaPage";
+import InventoryPage from "./pages/InventoryPage";
+import LeadsPage from "./pages/LeadsPage";
+import CustomersPage from "./pages/CustomersPage";
+import DealsPage from "./pages/DealsPage";
+import ConversationsPage from "./pages/ConversationsPage";
+import AppointmentsPage from "./pages/AppointmentsPage";
+import DocumentsPage from "./pages/DocumentsPage";
+import ReportsPage from "./pages/ReportsPage";
+import JarvisPage from "./pages/JarvisPage";
 import AdminPage from "./pages/AdminPage";
 import SettingsPage from "./pages/SettingsPage";
 import ImportContactsPage from "./pages/ImportContactsPage";
@@ -28,8 +35,8 @@ const ProtectedRoute = ({ children }) => {
   
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -46,8 +53,8 @@ const AdminRoute = ({ children }) => {
   
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -64,8 +71,8 @@ const AdminOrBDCRoute = ({ children }) => {
   
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -73,6 +80,25 @@ const AdminOrBDCRoute = ({ children }) => {
   const isBDC = user?.role === 'bdc';
   const isBDCManager = user?.role === 'bdc_manager';
   if (!user || (!isAdmin && !isBDC && !isBDCManager)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return children;
+};
+
+const ReportsRoute = ({ children }) => {
+  const { user, isAdmin, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
+  const isBDCManager = user?.role === 'bdc_manager';
+  if (!user || (!isAdmin && !isBDCManager)) {
     return <Navigate to="/dashboard" replace />;
   }
   
@@ -102,31 +128,91 @@ function App() {
             }
           />
           <Route
-            path="/clients"
+            path="/inventory"
             element={
               <ProtectedRoute>
                 <Layout>
-                  <ClientsPage />
+                  <InventoryPage />
                 </Layout>
               </ProtectedRoute>
             }
           />
           <Route
-            path="/sold"
+            path="/leads"
             element={
               <ProtectedRoute>
                 <Layout>
-                  <SoldPage />
+                  <LeadsPage />
                 </Layout>
               </ProtectedRoute>
             }
           />
           <Route
-            path="/agenda"
+            path="/customers"
             element={
               <ProtectedRoute>
                 <Layout>
-                  <AgendaPage />
+                  <CustomersPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/deals"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <DealsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/conversations"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ConversationsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/appointments"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AppointmentsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/documents"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <DocumentsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ReportsRoute>
+                <Layout>
+                  <ReportsPage />
+                </Layout>
+              </ReportsRoute>
+            }
+          />
+          <Route
+            path="/jarvis"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <JarvisPage />
                 </Layout>
               </ProtectedRoute>
             }
@@ -187,6 +273,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <SettingsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sold"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <SoldPage />
                 </Layout>
               </ProtectedRoute>
             }

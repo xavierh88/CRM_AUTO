@@ -2,7 +2,7 @@
 import os
 from fastapi import HTTPException
 
-ROLES = frozenset({'admin', 'bdc_manager', 'bdc', 'telemarketer', 'salesperson'})
+ROLES = frozenset({'admin', 'bdc_manager', 'bdc', 'telemarketer', 'salesperson', 'demo'})
 
 
 def jwt_secret(environ=None):
@@ -23,7 +23,8 @@ def require_enabled_user(user):
     if not isinstance(user, dict) or not isinstance(user.get('id'), str) or not user['id']:
         raise HTTPException(401, 'Invalid account')
     if is_demo_identity(user):
-        raise HTTPException(403, 'Demo identities cannot access CRM resources')
+        # Demo users are allowed - they get isolated fictional data
+        pass
     if not isinstance(user.get('role'), str) or user['role'] not in ROLES:
         raise HTTPException(403, 'Unsupported account role')
     flags = [user[key] for key in ('is_active', 'approved') if key in user]

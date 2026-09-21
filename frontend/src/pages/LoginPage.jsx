@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
-import { Car, Mail, Lock, User, Phone, CheckCircle2 } from 'lucide-react';
+import { Car, Mail, Lock, User, Phone, CheckCircle2, Sparkles, Shield } from 'lucide-react';
 import axios from 'axios';
 
 export default function LoginPage() {
@@ -26,6 +26,39 @@ export default function LoginPage() {
     phone: ''
   });
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+
+  const handleDemoLogin = async () => {
+    setLoading(true);
+    try {
+      // Try to login with demo credentials
+      await login('demo@dealerai.com', 'demo123456');
+      toast.success('Demo mode activated');
+      navigate('/dashboard');
+    } catch (error) {
+      // If demo user doesn't exist, try to register
+      try {
+        await register({ 
+          email: 'demo@dealerai.com', 
+          password: 'demo123456', 
+          name: 'Demo User', 
+          phone: '+1555000000' 
+        });
+        toast.success('Demo account created');
+        navigate('/dashboard');
+      } catch (regError) {
+        // If registration fails (e.g., user exists but not activated), try login again
+        try {
+          await login('demo@dealerai.com', 'demo123456');
+          toast.success('Demo mode activated');
+          navigate('/dashboard');
+        } catch (loginError) {
+          toast.error('Demo access not configured. Contact admin.');
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -151,6 +184,32 @@ export default function LoginPage() {
                     {loading ? t('common.loading') : t('auth.login')}
                   </Button>
                 </form>
+                
+                {/* Demo Login */}
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-slate-500">Or</span>
+                  </div>
+                </div>
+                
+                <Button 
+                  type="button"
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={handleDemoLogin}
+                  disabled={loading}
+                  data-testid="demo-login"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <Shield className="w-4 h-4" />
+                  <span>Demo Mode</span>
+                </Button>
+                <p className="text-xs text-center text-slate-500 mt-2">
+                  Fictional data • No real actions • Isolated environment
+                </p>
               </TabsContent>
 
               <TabsContent value="register">

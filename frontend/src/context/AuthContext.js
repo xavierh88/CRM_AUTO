@@ -67,7 +67,8 @@ export const AuthProvider = ({ children }) => {
       register, 
       logout, 
       isAdmin: user?.role === 'admin',
-      isBDCManager: user?.role === 'bdc_manager' || user?.role === 'bdc'
+      isBDCManager: user?.role === 'bdc_manager' || user?.role === 'bdc',
+      isDemo: user?.role === 'demo'
     }}>
       {children}
     </AuthContext.Provider>
