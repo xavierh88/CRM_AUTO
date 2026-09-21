@@ -15,6 +15,8 @@ async def can_access_documents(db, user, client, action="read"):
     role, user_id = user.get("role"), user.get("id")
     if not isinstance(role, str) or role not in ROLES or not isinstance(user_id, str) or not user_id:
         return False
+    if user.get('is_demo') or role in ('demo', 'DEMO') or user_id.startswith('demo-'):
+        return False
     if not isinstance(client, dict) or not isinstance(client.get("id"), str) or not client["id"]:
         return False
     if role == "admin":

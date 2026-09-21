@@ -6,7 +6,7 @@ salesperson, search filter, notification or SOLD state.
 """
 from fastapi import HTTPException
 from document_authorization import can_access_documents
-from runtime_security import ROLES
+from runtime_security import ROLES, is_demo_identity
 
 CLIENT_CHILDREN = {'user_records', 'appointments', 'client_comments', 'sms_logs',
                    'email_logs', 'sms_conversations', 'public_links'}
@@ -20,6 +20,8 @@ class CRMAccess:
         self._scopes = {}
 
     def _identity(self):
+        if is_demo_identity(self.user):
+            raise HTTPException(403, 'Demo identities cannot access CRM resources')
         role, uid = self.user.get('role'), self.user.get('id')
         if not isinstance(role, str) or role not in ROLES or not isinstance(uid, str) or not uid:
             raise HTTPException(403, 'CRM access denied')

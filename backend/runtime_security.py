@@ -12,10 +12,18 @@ def jwt_secret(environ=None):
     return secret
 
 
+def is_demo_identity(user):
+    return isinstance(user, dict) and (
+        bool(user.get('is_demo')) or user.get('role') in ('demo', 'DEMO')
+        or (isinstance(user.get('id'), str) and user['id'].startswith('demo-')))
+
+
 def require_enabled_user(user):
     """Legacy accounts may use either flag; explicit denial always wins."""
     if not isinstance(user, dict) or not isinstance(user.get('id'), str) or not user['id']:
         raise HTTPException(401, 'Invalid account')
+    if is_demo_identity(user):
+        raise HTTPException(403, 'Demo identities cannot access CRM resources')
     if not isinstance(user.get('role'), str) or user['role'] not in ROLES:
         raise HTTPException(403, 'Unsupported account role')
     flags = [user[key] for key in ('is_active', 'approved') if key in user]
