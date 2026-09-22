@@ -698,3 +698,25 @@
     padding-bottom: 76px;
   }
 }
+
+
+/* Dealer AI V2 — consolidated responsive sidebar */
+@media (min-width: 1024px) {
+  .sidebar-close { display: inline-flex !important; }
+  .sidebar.collapsed .sidebar-brand { justify-content: center; padding-left: 0; padding-right: 0; }
+  .sidebar.collapsed .brand-link { justify-content: center; }
+  .sidebar.collapsed .sidebar-close { position: absolute; top: 18px; right: -14px; z-index: 30; }
+  .sidebar.collapsed .sidebar-nav .px-3 { padding-left: 8px !important; padding-right: 8px !important; }
+  .sidebar.collapsed .nav-link { justify-content: center; padding-left: 0 !important; padding-right: 0 !important; }
+  .sidebar.collapsed .nav-icon { margin: 0 !important; flex: 0 0 auto; }
+  .sidebar.collapsed .nav-indicator { width: 3px; right: 0; }
+  .sidebar.collapsed .sidebar-user { padding-left: 8px; padding-right: 8px; }
+  .sidebar.collapsed .user-info { justify-content: center; }
+  .sidebar.collapsed .sidebar-user button { justify-content: center !important; padding-left: 0; padding-right: 0; }
+  .sidebar.collapsed .sidebar-logout-icon { margin: 0 !important; }
+  .sidebar.collapsed .sidebar-logout-label { display: none; }
+  .sidebar-collapse-toggle { display: none !important; }
+}
+@media (max-width: 1023px) {
+  .sidebar-close { display: inline-flex; }
+}
