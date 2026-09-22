@@ -9,12 +9,13 @@ import { ScrollArea } from '../components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Separator } from '../components/ui/separator';
 import { toast } from 'sonner';
+import axios from 'axios';
 import {
-  Bot, Send, Mic, MicOff, Loader2, Sparkles, Zap,
-  CheckCircle, XCircle, AlertTriangle, Info, Menu,
-  X, Copy, ThumbsUp, ThumbsDown, RefreshCw, Settings,
+  Bot, Send, Loader2, Sparkles, Zap,
+  CheckCircle, XCircle, AlertTriangle, Info, Settings,
+  X, Copy, ThumbsUp, ThumbsDown, RefreshCw, MessageSquare,
   FileText, Users, Calendar, DollarSign, Package, Target,
-  ChevronDown, ChevronUp
+  Mic, MicOff,
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -31,7 +32,7 @@ const SUGGESTIONS = [
 ];
 
 const TOOL_CATEGORIES = [
-  { id: 'crm', label: 'CRM', icon: Users, color: 'text-blue-500' },
+  { id: 'crm', label: 'CRM Tools', icon: Users, color: 'text-blue-500' },
   { id: 'inventory', label: 'Inventory', icon: Package, color: 'text-green-500' },
   { id: 'appointments', label: 'Appointments', icon: Calendar, color: 'text-purple-500' },
   { id: 'finance', label: 'Finance', icon: DollarSign, color: 'text-amber-500' },
@@ -69,7 +70,7 @@ const MOCK_TOOLS = {
   ],
 };
 
-export default function JarvisPage() {
+export default function JarvisPanel({ onClose, compact = false }) {
   const { t } = useTranslation();
   const { user, isDemo } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -78,7 +79,6 @@ export default function JarvisPage() {
   const [activeTab, setActiveTab] = useState('chat');
   const [showTools, setShowTools] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
-  const [showVoiceInput, setShowVoiceInput] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -200,13 +200,13 @@ export default function JarvisPage() {
           confirmed: true,
           user_id: user.id 
         });
-        toast.success(t('jarvis.actionCompleted') || 'Action completed');
+        toast.success('Action completed');
       } else {
-        toast.info(t('jarvis.actionCancelled') || 'Action cancelled');
+        toast.info('Action cancelled');
       }
     } catch (error) {
-      if (approved) toast.success(t('jarvis.actionCompletedDemo') || 'Action completed (demo)');
-      else toast.info(t('jarvis.actionCancelled') || 'Action cancelled');
+      if (approved) toast.success('Action completed (demo)');
+      else toast.info('Action cancelled');
     } finally {
       setPendingAction(null);
       setLoading(false);
@@ -222,76 +222,93 @@ export default function JarvisPage() {
     toast.success(positive ? 'Thanks for the feedback!' : 'We\'ll improve');
   };
 
-  const handleClearChat = () => {
-    setMessages([]);
-  };
+  if (compact) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl">
+            <Zap className="w-5 h-5" style={{ color: 'hsl(var(--primary))' }} />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm">Jarvis Assistant</h3>
+            <p className="text-xs text-muted-foreground">AI-powered dealership assistant</p>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {SUGGESTIONS.slice(0, 3).map((s, i) => (
+            <Button 
+              key={i} 
+              variant="outline" 
+              size="sm" 
+              className="w-full justify-start gap-2"
+              onClick={() => handleSuggestionClick(s)}
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span className="text-xs truncate">{s}</span>
+            </Button>
+          ))}
+        </div>
+        <Button 
+          variant="default" 
+          className="w-full gap-2"
+          onClick={onClose}
+        >
+          <Zap className="w-4 h-4" />
+          <span>Open Full Chat</span>
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 h-[calc(100vh-200px)] flex flex-col" data-testid="jarvis-page">
+    <div className="flex flex-col h-full" data-testid="jarvis-panel">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
-              <Bot className="w-6 h-6 text-white" />
-            </div>
-            {t('jarvis.title') || 'Jarvis Assistant'}
-          </h1>
-          <p className="text-muted-foreground mt-1 flex items-center gap-2">
-            {isDemo ? t('jarvis.demoNotice') : t('jarvis.description') || 'AI-powered dealership assistant'}
-            {isDemo && (
-              <Badge variant="secondary" className="text-xs ml-2">
-                <Sparkles className="w-3 h-3 mr-1" />
-                DEMO
-              </Badge>
-            )}
-          </p>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl">
+            <Zap className="w-5 h-5" style={{ color: 'hsl(var(--primary))' }} />
+          </div>
+          <div>
+            <h3 className="font-semibold">{t('jarvis.title') || 'Jarvis Assistant'}</h3>
+            <p className="text-xs text-muted-foreground">
+              {isDemo ? t('jarvis.demoNotice') : 'AI-powered dealership assistant'}
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => setShowTools(!showTools)}
-            className={showTools ? 'bg-primary text-primary-foreground' : ''}
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            {t('jarvis.tools') || 'Tools'}
-          </Button>
-          <Button variant="outline" onClick={handleClearChat} disabled={messages.length === 0}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            {t('jarvis.clearChat') || 'Clear'}
-          </Button>
-        </div>
+        <Button variant="ghost" size="sm" onClick={() => setShowTools(!showTools)}>
+          <Settings className="w-4 h-4" />
+        </Button>
       </div>
 
       {/* Tools Panel */}
       {showTools && (
-        <Card className="animate-slide-up">
+        <Card className="mb-4 animate-slide-up">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              {t('jarvis.availableTools') || 'Available Tools'}
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              Available Tools
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="crm" className="w-full">
-              <TabsList className="grid w-full grid-cols-5 mb-4">
+              <TabsList className="grid w-full grid-cols-5 mb-3">
                 {TOOL_CATEGORIES.map(cat => (
-                  <TabsTrigger key={cat.id} value={cat.id} className="flex flex-col items-center gap-1 py-2">
-                    <cat.icon className={`w-5 h-5 ${cat.color}`} />
-                    <span className="text-xs">{cat.label}</span>
+                  <TabsTrigger key={cat.id} value={cat.id} className="flex flex-col items-center gap-1 py-2 text-xs">
+                    <cat.icon className={`w-4 h-4 ${cat.color}`} />
+                    <span>{cat.label}</span>
                   </TabsTrigger>
                 ))}
               </TabsList>
               {TOOL_CATEGORIES.map(cat => (
                 <TabsContent key={cat.id} value={cat.id} className="space-y-2">
                   {MOCK_TOOLS[cat.id].map(tool => (
-                    <div key={tool.name} className="p-3 border border-border rounded-lg bg-background/50 hover:bg-muted/50 transition-colors">
+                    <div key={tool.name} className="p-3 border border-border rounded-lg bg-muted/50">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-mono text-sm font-medium">{tool.name}</p>
-                          <p className="text-xs text-muted-foreground">{tool.description}</p>
+                          <p className="font-mono text-xs font-medium">{tool.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{tool.description}</p>
                         </div>
-                        <Badge variant="outline" className="text-xs">{tool.params.length} params</Badge>
+                        <Badge variant="outline" className="text-[10px]">{tool.params.length} params</Badge>
                       </div>
                     </div>
                   ))}
@@ -303,35 +320,35 @@ export default function JarvisPage() {
       )}
 
       {/* Chat Area */}
-      <Card className="flex-1 flex flex-col">
+      <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader className="pb-2">
           <Tabs defaultValue="chat" onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="chat">
+              <TabsTrigger value="chat" className="text-sm">
                 <MessageSquare className="w-4 h-4 mr-2" />
-                {t('jarvis.chat') || 'Chat'}
+                Chat
               </TabsTrigger>
-              <TabsTrigger value="history">
+              <TabsTrigger value="history" className="text-sm">
                 <FileText className="w-4 h-4 mr-2" />
-                {t('jarvis.history') || 'History'}
+                History
               </TabsTrigger>
             </TabsList>
           </Tabs>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col p-0">
-          <ScrollArea className="flex-1 p-4 space-y-4">
+        <CardContent className="flex-1 flex flex-col p-0 min-h-0">
+          <ScrollArea className="flex-1 p-4 space-y-4" type="auto">
             {activeTab === 'chat' ? (
               <>
                 {messages.length === 0 && (
-                  <div className="text-center py-12 text-muted-foreground animate-fade-in">
+                  <div className="text-center py-8 text-muted-foreground">
                     <div className="p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full w-fit mx-auto mb-4">
-                      <Bot className="w-8 h-8 text-primary" />
+                      <Bot className="w-8 h-8" style={{ color: 'hsl(var(--primary))' }} />
                     </div>
-                    <h3 className="text-lg font-medium mb-2">{t('jarvis.howCanIHelp') || 'How can I help?'}</h3>
-                    <p className="mb-6 max-w-md mx-auto">{t('jarvis.askAbout') || 'Ask me about leads, appointments, inventory, deals, or reports.'}</p>
+                    <h3 className="text-sm font-medium mb-2">How can I help?</h3>
+                    <p className="mb-4 max-w-xs mx-auto text-xs">Ask me about leads, appointments, inventory, deals, or reports.</p>
                     <div className="flex flex-wrap justify-center gap-2">
                       {SUGGESTIONS.map((s, i) => (
-                        <Button key={i} variant="outline" size="sm" onClick={() => handleSuggestionClick(s)} className="whitespace-nowrap">
+                        <Button key={i} variant="outline" size="sm" onClick={() => handleSuggestionClick(s)} className="whitespace-nowrap text-xs">
                           {s}
                         </Button>
                       ))}
@@ -347,12 +364,12 @@ export default function JarvisPage() {
                   />
                 ))}
                 {loading && (
-                  <div className="flex items-start gap-3 animate-fade-in">
+                  <div className="flex items-start gap-3">
                     <div className="p-2 bg-primary/10 rounded-full">
-                      <Bot className="w-5 h-5 text-primary" />
+                      <Bot className="w-5 h-5" style={{ color: 'hsl(var(--primary))' }} />
                     </div>
                     <div className="flex items-center gap-2 bg-muted rounded-lg px-4 py-3">
-                      <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                      <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'hsl(var(--primary))' }} />
                       <span className="text-sm text-muted-foreground">{t('jarvis.thinking')}</span>
                     </div>
                   </div>
@@ -360,33 +377,27 @@ export default function JarvisPage() {
                 <div ref={messagesEndRef} />
               </>
             ) : (
-              <div className="text-center py-12 text-muted-foreground">
+              <div className="text-center py-8 text-muted-foreground">
                 <FileText className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
-                <h3 className="text-lg font-medium mb-1">{t('jarvis.history') || 'Chat History'}</h3>
-                <p>{t('jarvis.historyPlaceholder') || 'Previous conversations will appear here'}</p>
+                <h3 className="text-sm font-medium mb-1">Chat History</h3>
+                <p className="text-xs">Previous conversations will appear here</p>
               </div>
             )}
           </ScrollArea>
           
           {/* Pending Confirmation */}
           {pendingAction && (
-            <div className="border-t border-border p-4 bg-amber-500/5 animate-slide-up">
+            <div className="border-t border-border p-4 bg-amber-500/5">
               <div className="flex items-center gap-3 p-3 bg-amber-500/10 rounded-lg">
                 <AlertTriangle className="w-5 h-5 text-amber-500" />
-                <div className="flex-1">
-                  <p className="font-medium">{t('jarvis.confirmAction') || 'Confirm Action'}</p>
-                  <p className="text-sm text-muted-foreground">{pendingAction.description || t('jarvis.executeAction') || 'Execute this action?'}</p>
-                  <p className="text-xs font-mono text-muted-foreground mt-1">{pendingAction.tool}({JSON.stringify(pendingAction.params)})</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm">Confirm Action</p>
+                  <p className="text-xs text-muted-foreground truncate">{pendingAction.description || 'Execute this action?'}</p>
+                  <p className="text-[10px] font-mono text-muted-foreground mt-1">{pendingAction.tool}({JSON.stringify(pendingAction.params)})</p>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="destructive" size="sm" onClick={() => handleConfirmAction(false)}>
-                    <X className="w-4 h-4 mr-1" />
-                    {t('common.cancel') || 'Cancel'}
-                  </Button>
-                  <Button size="sm" onClick={() => handleConfirmAction(true)}>
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    {t('common.confirm') || 'Confirm'}
-                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleConfirmAction(false)}>Cancel</Button>
+                  <Button size="sm" onClick={() => handleConfirmAction(true)}>Confirm</Button>
                 </div>
               </div>
             </div>
@@ -403,20 +414,13 @@ export default function JarvisPage() {
                 className="flex-1"
                 disabled={loading}
               />
-              <Button type="submit" disabled={loading || !input.trim()} size="lg" className="bg-primary hover:bg-primary/90">
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              <Button type="submit" disabled={loading || !input.trim()} size="sm">
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </form>
-            <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground">
-              <span>{isDemo ? t('jarvis.demoNotice') : t('jarvis.poweredBy') || 'Powered by Dealer AI OS'}</span>
-              <kbd className="px-2 py-1 bg-muted rounded text-[10px] font-mono">
-                Enter
-              </kbd>
-              <kbd className="px-2 py-1 bg-muted rounded text-[10px] font-mono">
-                Shift+Enter
-              </kbd>
-              <span>{t('jarvis.newLine') || 'new line'}</span>
-            </div>
+            <p className="text-[10px] text-muted-foreground text-center mt-2">
+              {isDemo ? t('jarvis.demoNotice') : 'Powered by Dealer AI OS • Responses may be simulated in demo mode'}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -428,26 +432,26 @@ function MessageBubble({ message, onFeedback, isDemo }) {
   const { t } = useTranslation();
   
   return (
-    <div className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : ''} animate-fade-in`}>
+    <div className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
       {message.role === 'assistant' && (
         <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
-          <Bot className="w-5 h-5 text-primary" />
+          <Bot className="w-5 h-5" style={{ color: 'hsl(var(--primary))' }} />
         </div>
       )}
       <div className={`max-w-[85%] ${message.role === 'user' ? 'text-right' : ''}`}>
         <div className={`inline-block px-4 py-3 rounded-2xl ${
           message.role === 'user' 
-            ? 'bg-primary text-primary-foreground rounded-tr-sm shadow-sm' 
-            : 'bg-muted rounded-tl-sm shadow-sm'
+            ? 'bg-primary text-primary-foreground rounded-tr-sm' 
+            : 'bg-muted rounded-tl-sm'
         }`}>
-          <p className="whitespace-pre-wrap">{message.content}</p>
+          <p className="whitespace-pre-wrap text-sm">{message.content}</p>
           {message.tool_calls && message.tool_calls.length > 0 && (
             <details className="mt-2">
-              <summary className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
+              <summary className="text-[10px] text-muted-foreground cursor-pointer flex items-center gap-1">
                 <Zap className="w-3 h-3" />
-                {t('jarvis.toolCalls') || 'Tool calls'} ({message.tool_calls.length})
+                Tool calls ({message.tool_calls.length})
               </summary>
-              <div className="mt-2 p-2 bg-background/50 rounded text-xs font-mono text-left max-h-40 overflow-auto">
+              <div className="mt-2 p-2 bg-background/50 rounded text-[10px] font-mono text-left max-h-40 overflow-auto">
                 {message.tool_calls.map((tc, i) => (
                   <div key={i} className="mb-1">
                     <span className="text-primary">{tc.tool}</span>
@@ -459,22 +463,22 @@ function MessageBubble({ message, onFeedback, isDemo }) {
             </details>
           )}
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs text-muted-foreground">{new Date(message.timestamp).toLocaleTimeString()}</span>
-            <Button variant="ghost" size="sm" onClick={() => onFeedback(message.id, true)} className="p-1" aria-label="Helpful">
-              <ThumbsUp className="w-4 h-4" />
+            <span className="text-[10px] text-muted-foreground">{new Date(message.timestamp).toLocaleTimeString()}</span>
+            <Button variant="ghost" size="sm" onClick={() => onFeedback(message.id, true)} className="p-1">
+              <ThumbsUp className="w-3 h-3" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => onFeedback(message.id, false)} className="p-1" aria-label="Not helpful">
-              <ThumbsDown className="w-4 h-4" />
+            <Button variant="ghost" size="sm" onClick={() => onFeedback(message.id, false)} className="p-1">
+              <ThumbsDown className="w-3 h-3" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(message.content)} className="p-1" aria-label="Copy">
-              <Copy className="w-4 h-4" />
+            <Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(message.content)} className="p-1">
+              <Copy className="w-3 h-3" />
             </Button>
           </div>
         </div>
       </div>
       {message.role === 'user' && (
         <div className="p-2 bg-muted rounded-full flex-shrink-0">
-          <User className="w-5 h-5 text-muted-foreground" />
+          <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
         </div>
       )}
     </div>

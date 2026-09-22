@@ -1,305 +1,339 @@
-# Phase 070 — Current vs Target Audit
-
-**Date:** 2026-09-21  
-**Workspace:** /opt/dealer-ai-v2/worktrees/070-final-product-completion
-
----
+# PHASE 070 — CURRENT VS TARGET AUDIT
 
 ## Executive Summary
 
-The current Dealer AI OS V2 implementation is a functional CRM with light-themed UI, sidebar navigation, and working backend APIs. However, it **does not match** the approved professional dark Dealer AI OS visual direction. The current UI resembles a traditional light CRM, while the target requires a dark professional operating system aesthetic with specific layout patterns.
+The Dealer AI OS V2 codebase contains a functional React frontend with a FastAPI backend, but the UI **does not match** the approved visual references. The current implementation resembles an older CRM interface rather than the professional dark Dealer AI OS experience specified in `desktop-target.png` and `mobile-target.png`.
 
 ---
 
-## 1. What Already Exists (Reusable)
+## 1. WHAT ALREADY EXISTS (Reusable Foundation)
 
-### Backend APIs (Fully Functional)
-- ✅ Authentication (JWT, roles: admin, bdc_manager, bdc, telemarketer/salesperson)
-- ✅ Client/Lead management (CRUD, search, filters, pagination)
-- ✅ Appointments/Agenda (create, update, status, reminders)
-- ✅ Dashboard stats (KPIs, charts, period filtering, clickable drill-downs)
-- ✅ User Records (commercial pipeline, finance, documents)
-- ✅ Co-signer relations
-- ✅ SMS/Email notifications (Twilio/Resend/SMTP - mocked in dev)
-- ✅ Import contacts
-- ✅ Pre-qualification submissions
-- ✅ Document management (upload, list, download, authorization)
-- ✅ Salesperson performance (admin/bdc_manager)
-- ✅ Config lists (banks, dealers, cars, ID types, etc.)
-- ✅ Collaboration requests
-- ✅ Public document/appointment links (token-based)
+### Backend (FastAPI + MongoDB) ✅ PRESERVE
+- **Authentication**: JWT-based with roles (admin, bdc_manager, telemarketer, salesperson, demo) - hardened
+- **Authorization**: Role-based access control (CRMAccess class) with data isolation
+- **CRM APIs**: Clients, Inventory, Appointments, User Records, Documents
+- **Dashboard Stats**: Role-filtered statistics with period/month filtering
+- **Demo Endpoints**: `/demo/reset`, `/demo/data` (stub implementations)
+- **Communications**: SMS/Email infrastructure (Twilio/Resend/SMTP) - disabled in dev
+- **Schedulers**: Marketing SMS, comment reminders, appointment reminders
+- **Security**: Document authorization, upload validation, webhook security
+- **Tests**: Backend pytest suite for role filtering
 
-### Frontend Infrastructure
-- ✅ React 19 + React Router 7
-- ✅ Tailwind CSS + Radix UI primitives (shadcn-style components)
-- ✅ i18n (English/Spanish)
-- ✅ Authentication context with role-based access
-- ✅ Protected/Admin/BDC routes
-- ✅ Layout component with sidebar + top bar
-- ✅ Dashboard page with charts (Recharts)
-- ✅ Clients page (full-featured)
-- ✅ Agenda page (calendar + grouped view)
-- ✅ Admin, Settings, Import, Sold, Vendedores, Solicitudes pages
-- ✅ Public pages (documents, appointments)
-- ✅ DealerOS demo route (`/os/*`) with mock data
+### Frontend Architecture ✅ PRESERVE
+- **React 19 + React Router 7** with protected routes
+- **Tailwind CSS + Radix UI** component library (shadcn/ui pattern)
+- **i18next** for EN/ES localization
+- **AuthContext** with role detection (isAdmin, isBDCManager, isDemo)
+- **Layout Component**: Desktop sidebar + mobile bottom nav + header search
+- **Pages**: Dashboard, Inventory, Leads, Customers, Deals, Conversations, Appointments, Documents, Reports, Jarvis, Settings, Admin
+- **DealerOS**: Separate `/os/*` routes with demo data (model.mjs, demo-session.mjs)
+- **UI Components**: Complete shadcn/ui component set (Card, Button, Table, Dialog, Select, etc.)
 
-### Demo Foundations
-- ✅ `/os` route with mock DealerOS (Action Center, Customers, Pipeline)
-- ✅ `DemoMode.jsx` with tour, reset, language toggle
-- ✅ Demo data model (`model.mjs`, `demo-session.mjs`)
-- ❌ **NOT integrated** into main login flow (separate route only)
+### Demo Infrastructure (Partial) ⚠️ NEEDS WORK
+- Backend `demo` role exists in authorization
+- Frontend `isDemo` flag in AuthContext
+- Demo login button on LoginPage
+- Separate `/os/*` demo routes with fictional data
+- Demo badges in sidebar and header
+- **GAPS**: Demo user not created by default, data isolation incomplete, reset mechanism stubbed
 
 ---
 
-## 2. What Visually Belongs to Old CRM (Must Be Replaced)
+## 2. WHAT CAN BE REUSED (With Styling Updates)
 
-| Current | Target | Status |
-|---------|--------|--------|
-| Light theme (`bg-slate-50`, white cards) | **Professional dark theme** (slate-900/950 backgrounds) | ❌ Complete redesign |
-| Sidebar: CARPLUS logo, gradient slate-900→slate-800 | **CarPlus Dealer AI V2 branding**, professional left nav | ❌ |
-| Top bar: translucent white, role badge | **Top search/header**, integrated actions | ❌ |
-| Dashboard: statistical cards, charts | **Action Center + KPI cards + operational focus** | ❌ |
-| Navigation: Dashboard, Clients, Sold, Agenda, Solicitudes, TM, Pre-Qualify, Import, Admin, Settings | **Dashboard/Home, Inventory, Leads, Customers, Deals, Conversations, Appointments, Documents, Reports, AI/Jarvis, Settings** | ❌ Missing modules |
-| No bottom navigation on mobile | **Bottom nav: Home, Inventory, Leads, Jarvis, More** | ❌ |
-| No Jarvis/Assistant UI | **Jarvis integrated assistant** | ❌ |
-| No Inventory module | **Professional inventory experience** | ❌ |
-| No Conversations module | **Social conversations (SMS, FB, IG, TikTok, Web)** | ❌ |
-| No Documents module (only client docs) | **Documents overview** | ❌ |
-| No Reports module (only dashboard charts) | **Professional reports/financial** | ❌ |
-| Demo = separate `/os` route | **Unified Demo role in normal login** | ❌ |
-
----
-
-## 3. Missing Desktop UI (Per desktop-target.png & CONTRACT.md)
-
-| Module | Required Elements | Current Status |
-|--------|-------------------|----------------|
-| **Navigation** | Left sidebar: Dashboard/Home, Inventory, Leads, Customers, Deals/Sales, Conversations, Appointments, Documents, Reports, AI/Jarvis, Settings, Developer (admin only) | ❌ Wrong items, wrong styling |
-| **Header** | Top search, notifications, user menu, DEMO indicator | ⚠️ Partial (notifications, user menu exist) |
-| **Dashboard/Home** | Action Center (today's appts, awaiting confirmation, new leads, >48hr leads, stale leads, unread conversations, incomplete docs, prequal status, near-close, follow-ups due, inventory attention), Quick Actions (call, SMS, open lead, confirm appt, create appt, add lead, add vehicle), KPI cards | ❌ Current is stats-only |
-| **Inventory** | Vehicle list, search, filters, detail, status, pricing, matching, add/edit | ❌ Missing entirely |
-| **Leads** | Source, status, salesperson, vehicle interest, follow-up, appointments, comm history, attribution, scoring, recovery | ⚠️ ClientsPage exists but not "Leads" focused |
-| **Customers** | CRM capabilities, auth/privacy boundaries | ⚠️ ClientsPage serves this |
-| **Deals/Sales** | Pipeline, financial summaries, close rate | ⚠️ Partial via SoldPage, user_records |
-| **Conversations** | SMS, FB, IG, TikTok, Web chat, WhatsApp (future), human takeover | ❌ Missing |
-| **Appointments** | Date/time, customer, vehicle, type, confirmation, salesperson, quick actions | ⚠️ AgendaPage exists |
-| **Documents** | Overview, status, metadata (no real sensitive docs in demo) | ❌ Missing |
-| **Reports** | Sales, leads, appointments, close rate, attribution, inventory, financial | ⚠️ Dashboard charts only |
-| **AI/Jarvis** | Integrated chat, intent → permission → typed tool → API → DB → audit | ❌ Missing |
-| **Settings** | User management, config, integrations | ⚠️ SettingsPage exists |
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Layout.jsx structure | ✅ Reuse | Sidebar, header, mobile nav - needs dark theme |
+| DashboardPage.jsx logic | ✅ Reuse | Action Center data fetching works - needs visual overhaul |
+| InventoryPage.jsx | ✅ Reuse | Full CRUD + filters - needs dark table styling |
+| LeadsPage.jsx | ✅ Reuse | Full pipeline + stages - needs dark styling |
+| CustomersPage.jsx | ✅ Reuse | Table + card views + documents - needs dark styling |
+| AppointmentsPage.jsx | ✅ Reuse | Calendar/grouped/list views - needs dark styling |
+| ConversationsPage.jsx | ✅ Reuse | Multi-channel inbox - needs dark styling |
+| JarvisPage.jsx | ✅ Reuse | Chat + tools panel - needs dark styling |
+| AuthContext.js | ✅ Reuse | Role detection works |
+| i18n translations | ✅ Reuse | Complete EN/ES |
+| API integration | ✅ Reuse | Axios + endpoints work |
 
 ---
 
-## 4. Missing Mobile UI (Per mobile-target.png & CONTRACT.md)
+## 3. WHAT VISUALLY BELONGS TO THE OLD CRM (Must Replace)
 
-| Requirement | Current Status |
-|-------------|----------------|
-| Native app-like experience | ❌ Current is responsive web, not app-like |
-| Bottom navigation: Home, Inventory, Leads, Jarvis, More | ❌ Missing entirely |
-| Contextual access: Appointments, Customers, Reports, Settings, Documents, Conversations, Dev tools | ❌ Missing |
-| Not merely compressed sidebar | ❌ Current mobile = sidebar drawer |
-| Touch targets ≥ 44px | ⚠️ Partial |
-| Safe area insets | ⚠️ Partial (dealer-os.css has `env(safe-area-inset-bottom)`) |
+### Visual Identity
+- ❌ **Light theme throughout** - Target is professional dark (slate-900/950 backgrounds)
+- ❌ **CARPLUS AUTOSALE branding** - Target is "DEALER AI OS V2" with CarPlus branding
+- ❌ **Blue primary (#2563eb)** - Target uses different primary (likely emerald/teal based on references)
+- ❌ **White cards on gray backgrounds** - Target uses dark cards with subtle borders
+- ❌ **Standard Bootstrap-like tables** - Target uses modern card-based layouts
 
----
+### Layout Issues
+- ❌ **Sidebar**: Current is 260px with gradient bg - Target needs refined dark sidebar
+- ❌ **Header**: Current has search + notifications - Target likely has different arrangement
+- ❌ **Mobile Bottom Nav**: Exists but styling is basic - Target needs native app feel
+- ❌ **Page Content**: Current uses max-width containers - Target likely full-width dashboard grids
 
-## 5. Missing Navigation
-
-- [ ] Professional dark left sidebar (256px desktop, drawer mobile)
-- [ ] Top header with global search, notifications, user avatar, DEMO badge
-- [ ] Bottom tab bar (mobile): Home, Inventory, Leads, Jarvis, More
-- [ ] "More" drawer: Appointments, Customers, Reports, Settings, Documents, Conversations, Developer
-- [ ] Active state indicators
-- [ ] Role-based visibility (Developer only for authorized)
+### Specific Pages
+- ❌ **Login Page**: Unsplash background + glass card - Target likely clean dark branded page
+- ❌ **Dashboard**: Card grid exists but styling is light theme
+- ❌ **Jarvis**: Functional but light theme, mock tools panel
 
 ---
 
-## 6. Missing Action Center (Home/Dashboard Priority)
+## 4. MISSING DESKTOP UI (Per desktop-target.png)
 
-Per CONTRACT §3, Home must prioritize **operational actions**, not decorative statistics:
+Based on CONTRACT.md requirements and visual reference expectations:
+
+| Feature | Current | Required |
+|---------|---------|----------|
+| **Professional Dark Theme** | ❌ Light theme | ✅ Slate-950/900 backgrounds, slate-800 cards |
+| **Left Navigation** | ✅ Exists | ✅ Refined with proper icons, active states |
+| **Top Search/Header** | ✅ Exists | ✅ Refined with global search, demo badge |
+| **Modern Dashboard** | ⚠️ Basic grid | ✅ KPI cards, Action Center, insights, quick actions |
+| **KPI Cards** | ⚠️ Stats cards | ✅ Visual KPI cards with trends |
+| **Action Center** | ✅ Data exists | ✅ Prioritized operational actions (not decorative stats) |
+| **Inventory Overview** | ✅ Table view | ✅ Card/grid view + table toggle |
+| **Lead Overview** | ✅ Table view | ✅ Pipeline visualization |
+| **Sales Information** | ✅ Deals page | ✅ Pipeline + near-close deals |
+| **Appointments** | ✅ Grouped view | ✅ Today/This Week/Unconfigured sections |
+| **Recent Activity** | ❌ Missing | ✅ Activity feed in dashboard |
+| **Jarvis Assistant** | ✅ Page exists | ✅ Integrated sidebar/widget + full page |
+| **Insights** | ❌ Missing | ✅ AI-generated insights panel |
+| **Quick Actions** | ✅ Buttons exist | ✅ Prominent action bar (Call, SMS, Add Lead, etc.) |
+| **Responsive Layout** | ✅ Basic | ✅ Proper breakpoints (1024, 1440+) |
+
+---
+
+## 5. MISSING MOBILE UI (Per mobile-target.png)
+
+| Feature | Current | Required |
+|---------|---------|----------|
+| **Native App Feel** | ⚠️ Web-like | ✅ Bottom nav, sheet modals, touch targets |
+| **Bottom Navigation** | ✅ Exists (5 items) | ✅ Home, Inventory, Leads, Jarvis, More |
+| **Home Screen** | ❌ Redirects to dashboard | ✅ Action Center optimized for mobile |
+| **Inventory Mobile** | ⚠️ Table (scrolls) | ✅ Card-based vehicle list |
+| **Leads Mobile** | ⚠️ Table (scrolls) | ✅ Card-based lead list with swipe actions |
+| **Jarvis Mobile** | ⚠️ Full page chat | ✅ Floating action + bottom sheet |
+| **More Menu** | ✅ Sheet exists | ✅ Contextual: Appointments, Customers, Reports, Settings, Documents, Conversations, Dev Tools |
+| **Touch Targets** | ❌ 40px min | ✅ 48px minimum |
+| **Safe Areas** | ✅ env() used | ✅ Proper notch/Dynamic Island handling |
+
+---
+
+## 6. MISSING NAVIGATION
+
+| Area | Current | Required (CONTRACT §6) |
+|------|---------|------------------------|
+| Dashboard/Home | ✅ | ✅ |
+| Inventory | ✅ | ✅ |
+| Leads | ✅ | ✅ |
+| Customers | ✅ | ✅ |
+| Deals/Sales | ✅ | ✅ |
+| Conversations | ✅ | ✅ |
+| Appointments/Agenda | ✅ | ✅ |
+| Documents | ✅ | ✅ |
+| Reports | ✅ | ✅ (admin/bdc_manager only) |
+| AI/Jarvis | ✅ | ✅ |
+| Settings | ✅ | ✅ |
+| **Developer Mode** | ✅ (admin only) | ✅ (authorized roles only) |
+| **Co-Signers** | ❌ Missing | ⚠️ If backend supports |
+
+---
+
+## 7. MISSING ACTION CENTER (CONTRACT §3)
+
+**Current**: DashboardPage.jsx has `actionSections` with 12 categories fetching real data
+**Required**: Home must prioritize **operational actions**, not decorative statistics
 
 | Action Item | Backend Support | UI Status |
-|-------------|-----------------|-----------|
-| Today's appointments | ✅ `/appointments/agenda` + date filter | ❌ |
-| Appointments awaiting confirmation | ✅ status `sin_configurar` | ❌ |
-| New leads | ✅ `/clients` with `created_at` filter | ❌ |
-| Leads > 48 hours | ✅ `last_contact` filter | ❌ |
-| Stale leads | ✅ Pipeline stages | ❌ |
-| Unread conversations | ✅ `/inbox/unread-count` | ❌ |
-| Incomplete documents | ✅ `documents.pending` | ❌ |
-| Prequalification status | ✅ `/prequalify/submissions` | ❌ |
-| Near-close deals | ✅ Pipeline `PENDING DEAL`, `NEGOTIATING` | ❌ |
-| Follow-ups due | ✅ Comments with `reminder_at` | ❌ |
-| Inventory requiring attention | ❌ No inventory module | ❌ |
+|-------------|----------------|-----------|
+| Today's appointments | ✅ `/appointments/agenda` | ✅ Card |
+| Awaiting confirmation | ✅ `status=sin_configurar` | ✅ Card |
+| New leads (24h) | ✅ `/clients` filter | ✅ Card |
+| Leads > 48h no contact | ✅ Computed client-side | ✅ Card |
+| Stale leads (7d) | ✅ Computed client-side | ✅ Card |
+| Unread conversations | ✅ `/inbox/conversations` | ✅ Card |
+| Incomplete documents | ⚠️ Partial stats | ✅ Card |
+| Prequal status | ✅ `/prequalify/submissions` | ✅ Card |
+| Near-close deals | ✅ Stage filter | ✅ Card |
+| Follow-ups due | ⚠️ Stats only | ✅ Card |
+| Inventory attention | ❌ No backend | ✅ Card (disabled) |
 
-**Quick Actions** (must use real backend or be disabled with explanation):
-- Call → `tel:` link (works)
-- SMS → `/inbox/{client_id}/send` (exists)
-- Open lead/customer → `/clients/:id` (exists)
-- Confirm appointment → PUT `/appointments/:id/status` (exists)
-- Create appointment → POST `/appointments` (exists)
-- Add lead → POST `/clients` (exists)
-- Add vehicle → ❌ No inventory API
+**Quick Actions Required**:
+- Call → Navigate to lead with phone
+- SMS → Navigate to conversations
+- Open Lead → Navigate to leads
+- Confirm Appointment → Navigate to appointments
+- Create Appointment → Dialog
+- Add Lead → Dialog
+- Add Vehicle → Dialog (disabled/pending)
+
+**GAP**: "Add Vehicle" marked `disabled: true, pending: true` - needs backend integration or removal
 
 ---
 
-## 7. Missing Jarvis Presentation
+## 8. MISSING JARVIS PRESENTATION (CONTRACT §4)
+
+**Current**: Full-page chat at `/jarvis` with mock tools panel
+**Required**: Integrated into Dealer AI OS (both desktop and mobile)
 
 | Architecture Layer | Current | Required |
 |--------------------|---------|----------|
-| Intent recognition | ❌ | ✅ |
-| Permission engine | ❌ | ✅ (role-scoped) |
-| Typed CRM tools | ❌ | ✅ (no raw DB writes) |
-| API execution | ❌ | ✅ |
-| Audit logging | ❌ | ✅ |
-| Desktop UI | ❌ | ✅ (sidebar/chat panel) |
-| Mobile UI | ❌ | ✅ (bottom nav → Jarvis) |
-| Sensitive ops confirmation | ❌ | ✅ |
-| No fake capabilities | ⚠️ Demo shows "PENDING_EXTERNAL" | ✅ Must be explicit |
+| Intent recognition | ❌ Mock | ✅ Backend `/jarvis/chat` |
+| Permission engine | ❌ None | ✅ Role-based tool access |
+| Typed CRM tools | ❌ Mock list | ✅ Real tool definitions |
+| API execution | ❌ Mock | ✅ Real API calls |
+| Database writes | ❌ None | ✅ Audit-logged, confirmed |
+| Confirmation flow | ✅ UI exists | ✅ Required for sensitive ops |
+
+**UI Gaps**:
+- ❌ No desktop sidebar integration (collapsible panel)
+- ❌ No mobile floating action button
+- ❌ Tools panel shows mock tools, not real capabilities
+- ❌ No streaming responses
+- ❌ No conversation history persistence
 
 ---
 
-## 8. Demo Architecture Discrepancies
+## 9. DEMO ARCHITECTURE DISCREPANCIES (CONTRACT §5)
 
-| Requirement | Current | Gap |
-|-------------|---------|-----|
-| Same interface, normal login | ❌ Separate `/os` route | Must add `role: 'demo'` support |
-| Fictional isolated data | ✅ `model.mjs` has synthetic data | Need backend demo data seeding |
-| No real external communication | ✅ Mocked in dev | ✅ |
-| Persistent DEMO indicator | ❌ | Add to header |
-| Demo reset mechanism | ✅ `resetDemo()` in frontend only | Need backend reset endpoint |
-| Demo never mixes with real data | ✅ Separate route | Must enforce via role/scoped queries |
-| Demo actions never invoke real providers | ✅ Mocked | ✅ |
+**Current**: Separate `/os/*` routes with `DealerOS` component - **SEPARATE PRODUCT**
+**Required**: Unified Demo mode using **SAME Dealer AI OS interface**
 
----
+| Aspect | Current | Required |
+|--------|---------|----------|
+| Demo Entry | Separate `/os` routes | Normal login with `demo@dealerai.com` |
+| Demo UI | Different layout (DealerOS) | Same Layout + Pages |
+| Demo Data | Hardcoded in `model.mjs` | Isolated fictional dataset in MongoDB |
+| Demo Permissions | None enforced | Role=`demo` with restricted writes |
+| Real Provider Calls | Not blocked explicitly | Must NEVER invoke real providers |
+| Demo Indicator | "MOCK · Synthetic data only" | Persistent "DEMO" badge |
+| Demo Reset | Frontend-only button | Backend `/demo/reset` endpoint |
 
-## 9. Functional Gaps
-
-| Feature | Backend API | Frontend UI | Notes |
-|---------|-------------|-------------|-------|
-| Inventory management | ❌ | ❌ | New module needed |
-| Conversations (multi-channel) | ⚠️ SMS only | ❌ | Need unified inbox |
-| Jarvis AI assistant | ❌ | ❌ | New architecture |
-| Reports/Financials | ⚠️ Partial | ❌ | Need dedicated page |
-| Documents overview | ⚠️ Per-client only | ❌ | Need global view |
-| Lead scoring | ❌ | ❌ | Not implemented |
-| Lead recovery workflow | ❌ | ❌ | Not implemented |
-| Vehicle matching | ❌ | ❌ | Not implemented |
-| WhatsApp integration | ❌ | ❌ | Future per CONTRACT |
+**Critical Fix**: Remove `/os/*` routes; Demo user logs into normal `/dashboard` etc. with fictional data
 
 ---
 
-## 10. Responsive Gaps (Test Widths: 390, 430, 768, 1024, 1440+)
+## 10. FUNCTIONAL GAPS
 
-| Width | Current Behavior | Target Behavior |
-|-------|------------------|-----------------|
-| 390px (mobile) | Sidebar drawer, compressed tables | Bottom nav, stacked cards, touch-optimized |
-| 430px (mobile) | Same as 390px | Same |
-| 768px (tablet) | Sidebar drawer, 2-col grids | Collapsible sidebar, 2-3 col grids |
-| 1024px (desktop) | Fixed sidebar, 6-col stats | Fixed sidebar, full layout |
-| 1440px+ (wide) | Fixed sidebar, wide content | Max-width container, centered |
+| Feature | Backend | Frontend | Gap |
+|---------|---------|----------|-----|
+| Inventory CRUD | ✅ | ✅ | Styling only |
+| Leads Pipeline | ✅ | ✅ | Styling + Kanban view missing |
+| Appointments | ✅ | ✅ | Calendar view needs work |
+| Documents | ✅ | ✅ | Upload/download works |
+| Conversations | ✅ | ✅ | Multi-channel UI done |
+| Reports | ⚠️ Partial | ⚠️ Basic page | Need real charts/data |
+| Jarvis AI | ⚠️ Endpoint exists | ⚠️ Mock responses | Connect real tools |
+| Prequalification | ✅ | ✅ Page exists | Integration check |
+| User Records | ✅ | ❌ No page | Missing UI (OpportunityForm exists) |
+| Co-Signers | ✅ Models | ❌ No UI | Missing |
+| Notifications | ✅ Backend | ✅ Popover | Real-time? |
+| Demo Isolation | ⚠️ Role exists | ⚠️ Partial | Data separation needed |
 
-**Specific Issues:**
-- Tables overflow on mobile (no horizontal scroll wrapper consistently)
+---
+
+## 11. RESPONSIVE GAPS (CONTRACT §15)
+
+Test widths: **390, 430, 768, 1024, 1440+**
+
+| Width | Current Behavior | Required |
+|-------|-----------------|----------|
+| 390px (iPhone SE) | Sidebar overlay, bottom nav | ✅ Native app feel |
+| 430px (iPhone 14/15) | Same | ✅ Optimal touch targets |
+| 768px (iPad) | Tablet - sidebar hidden | ✅ Sidebar collapsible |
+| 1024px (Desktop) | Sidebar visible | ✅ Full sidebar |
+| 1440px+ (Wide) | Content centered | ✅ Max-width containers |
+
+**Specific Issues**:
+- Tables horizontal scroll on mobile (should be cards)
 - Dialogs not full-screen on mobile
-- Charts too cramped < 768px
-- Touch targets too small on some buttons
-- No bottom sheet patterns on mobile
+- Touch targets < 44px in places
+- Bottom nav overlaps page content padding
 
 ---
 
-## 11. Implementation Priority (Per CONTRACT Definition of Done)
+## 12. MARKETING BOUNDARY (CONTRACT §7)
 
-### Phase 1: Visual Foundation (Dark Theme + Layout)
-1. Dark theme CSS variables (slate-900/950 base)
-2. Professional left navigation (desktop)
-3. Top header with search, notifications, DEMO badge
-4. Bottom navigation (mobile)
-5. Responsive layout system
+**Current**: No explicit Marketing OS features visible
+**Required**: Ensure no content publishing UI exists
+- Dealer AI: converse → qualify → follow-up → attribute → convert → sell
+- Marketing OS: create content → publish → attract
 
-### Phase 2: Dashboard/Home → Action Center
-1. Replace statistical dashboard with Action Center
-2. Operational action cards (not decorative KPIs)
-3. Quick actions with real backend wiring
-
-### Phase 3: Core Modules
-1. Inventory (new)
-2. Leads (refactor ClientsPage → Leads focus)
-3. Customers (refactor ClientsPage → Customer 360)
-4. Appointments (enhance AgendaPage)
-5. Conversations (new - unify SMS inbox)
-6. Documents (new global view)
-7. Reports (new page)
-
-### Phase 4: Jarvis Assistant
-1. Chat UI (desktop sidebar + mobile bottom nav)
-2. Intent → permission → tool → API pipeline
-3. Demo mode: simulated responses
-
-### Phase 5: Unified Demo Mode
-1. Add `demo` role to backend auth
-2. Seed fictional data on demo login
-3. Scoped queries for demo role
-4. DEMO indicator in header
-5. Reset endpoint
-
-### Phase 6: Visual Verification & Polish
-1. Build frontend
-2. Test at 390, 430, 768, 1024, 1440+
-3. Compare against visual references
-4. Fix material discrepancies
-5. Run regression tests
+**Action**: Audit for any "Create Post", "Schedule Content", "Social Publisher" UI - remove if found
 
 ---
 
-## 12. Blocker Assessment
+## 13. PRIORITIZED IMPLEMENTATION PLAN
 
-| Blocker | Risk | Mitigation |
-|---------|------|------------|
-| No inventory backend API | High | Build minimal API + mock data for demo |
-| No Jarvis backend | High | Mock intent→tool pipeline for demo; document as pending |
-| No conversations multi-channel backend | Medium | Unify existing SMS inbox; stub other channels |
-| Visual reference images not viewable in CLI | Medium | Implement per CONTRACT textual description; verify visually if tooling available |
-| Demo role requires backend changes | Low | Add role to auth, seed data, scope queries |
+### Phase 1: Visual Foundation (High Priority)
+1. **Dark Theme CSS Variables** - Define `--background`, `--card`, `--primary`, etc. for dark mode
+2. **Update Layout.css** - Professional dark sidebar, header, mobile nav
+3. **Update App.css** - Login page dark theme, remove Unsplash
+4. **Update Component Library** - Ensure all Radix components use dark theme tokens
 
-**No production modification required.** All work isolated in V2 worktree.
+### Phase 2: Dashboard / Action Center (High Priority)
+1. **Redesign DashboardPage** - Dark cards, proper KPI styling, Action Center priority
+2. **Quick Actions Bar** - Prominent, functional, with pending/disabled states
+3. **Recent Activity Feed** - Add to dashboard
+
+### Phase 3: Page Styling (High Priority)
+1. **Inventory** - Dark table + card view toggle
+2. **Leads** - Dark table + pipeline/kanban view
+3. **Customers** - Dark styling
+4. **Appointments** - Dark styling
+5. **Conversations** - Dark styling
+6. **Jarvis** - Dark theme + sidebar integration (desktop) + FAB (mobile)
+
+### Phase 4: Demo Unification (High Priority)
+1. **Remove `/os/*` routes** from App.js
+2. **Create demo user seeder** - Fictional data in MongoDB
+3. **Demo role permissions** - Read-only, no external providers
+4. **Demo indicator** - Persistent badge in header/sidebar
+5. **Demo reset** - Connect frontend to `/demo/reset`
+
+### Phase 5: Mobile Polish (Medium Priority)
+1. **Bottom Nav** - Refine icons, labels, active states
+2. **Sheet Modals** - Full-screen on mobile for forms
+3. **Card Views** - Replace tables on mobile
+4. **Jarvis Mobile** - Floating action button + bottom sheet
+5. **Touch Targets** - 48px minimum
+
+### Phase 6: Responsive Testing (Medium Priority)
+1. Test at 390, 430, 768, 1024, 1440+
+2. Fix overflow, menus, dialogs, tables, forms
+3. Verify Jarvis at all breakpoints
+
+### Phase 7: Regression Testing (Required)
+1. Frontend build (`npm run build`)
+2. Python compile (backend syntax)
+3. Auth/Authorization tests
+4. Demo isolation tests
+5. Existing regression tests
 
 ---
 
-## 13. Reusable Code Inventory
+## 14. BLOCKERS / RISKS
 
-| File | Reuse Strategy |
-|------|----------------|
-| `backend/server.py` | Preserve entirely; add inventory, demo seed, Jarvis stub endpoints |
-| `backend/authentication/*` | Preserve; add demo role handling |
-| `backend/commercial/*` | Preserve; extend for leads pipeline |
-| `frontend/src/context/AuthContext.js` | Extend for demo role |
-| `frontend/src/components/ui/*` | Preserve all Radix components |
-| `frontend/src/components/Layout.jsx` | **Replace** with new dark layout |
-| `frontend/src/pages/DashboardPage.jsx` | **Replace** with Action Center |
-| `frontend/src/pages/ClientsPage.jsx` | Refactor into LeadsPage + CustomersPage |
-| `frontend/src/pages/AgendaPage.jsx` | Enhance → AppointmentsPage |
-| `frontend/src/dealer-os/*` | Refactor → Demo data seed + unified DemoMode context |
-| `frontend/src/hooks/*` | Preserve |
-| `frontend/src/i18n/*` | Preserve; add new translation keys |
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| No `.env` in worktree | Backend won't start | Create from production template (no secrets) |
+| Demo user not in DB | Demo login fails | Seed script needed |
+| Jarvis backend tools not implemented | Mock responses only | Implement tool calling architecture |
+| Inventory backend 404s | Mock data shown | Verify endpoint exists |
+| Marketing OS bleed | Product confusion | Audit and remove any publishing UI |
 
 ---
 
-## 14. Next Steps
+## 15. VISUAL FIDELITY NOTES
 
-1. ✅ Create this audit document
-2. ⏭️ Implement dark theme + layout system (CSS variables, new Layout component)
-3. ⏭️ Build desktop navigation + mobile bottom nav
-4. ⏭️ Implement Action Center (Home) with real data
-5. ⏭️ Build Inventory module (backend + frontend)
-6. ⏭️ Refactor Leads/Customers/Appointments
-7. ⏭️ Build Conversations, Documents, Reports
-8. ⏭️ Implement Jarvis UI + mock backend
-9. ⏭️ Unified Demo mode (backend role + frontend integration)
-10. ⏭️ Visual verification at all breakpoints
-11. ⏭️ Regression tests
-12. ⏭️ FINAL_REPORT.md
+Since I cannot render the PNG references directly, the audit is based on:
+- CONTRACT.md detailed requirements
+- VISUAL_REFERENCES.md directives
+- Codebase inspection
+
+**Next Step**: Implement visual changes, then use browser automation (if available) to capture screenshots at required widths for comparison against `desktop-target.png` and `mobile-target.png`.
 
 ---
 
-**Status:** AUDIT COMPLETE — Ready for implementation phase.
+*Generated: 2026-09-22*
+*Audit by: Autonomous Implementation Engineer*
