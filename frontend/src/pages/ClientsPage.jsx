@@ -948,7 +948,7 @@ export default function ClientsPage() {
                   </div>
                 </CollapsibleTrigger>
               <CollapsibleContent>
-                  <div className="border-t border-slate-100 p-4 bg-slate-50/50">
+                  <div className="client-crm-expanded border-t border-slate-700/80 p-3 sm:p-4 lg:p-5 bg-slate-950 text-slate-100">
                     {/* User Records */}
                     <UserRecordsSection 
                       clientId={client.id}
@@ -1617,7 +1617,17 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
   const currentExpanded = expandedOpportunity ?? defaultExpanded;
 
   return (
-    <div className="mb-4">
+    <div className="mb-4 client-crm-workspace">
+      <div className="mb-4 rounded-xl border border-slate-700 bg-slate-900/80 p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-400">CRM del cliente</p>
+            <h4 className="mt-1 text-base sm:text-lg font-semibold text-white">Oportunidades, citas y financiamiento</h4>
+            <p className="mt-1 text-xs sm:text-sm text-slate-400">Toda la información operativa se mantiene aquí, reorganizada para escritorio y móvil.</p>
+          </div>
+          <span className="inline-flex self-start sm:self-auto rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-xs text-slate-300">{records.length} registros</span>
+        </div>
+      </div>
       {/* Render each opportunity (1-5) */}
       {[1, 2, 3, 4, 5].map((oppNum) => {
         const oppRecords = opportunityGroups[oppNum] || [];
@@ -1628,22 +1638,18 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
         if (!shouldShow) return null;
 
         return (
-          <div key={oppNum} className={`mb-2 ${oppNum > 1 ? 'mt-4 pt-3 border-t-2 border-slate-100' : ''}`}>
+          <div key={oppNum} className={`mb-3 rounded-xl border border-slate-700 bg-slate-900/70 overflow-hidden ${oppNum > 1 ? 'mt-4' : ''}`}>
             {/* Collapsible Header */}
             <div 
-              className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
-                isExpanded 
-                  ? isFirst ? 'bg-blue-50' : oppNum === 2 ? 'bg-purple-50' : oppNum === 3 ? 'bg-emerald-50' : oppNum === 4 ? 'bg-amber-50' : 'bg-rose-50'
-                  : 'bg-slate-50 hover:bg-slate-100'
-              }`}
+              className={`flex items-center justify-between gap-3 p-3 sm:p-4 cursor-pointer transition-colors ${isExpanded ? 'bg-slate-800' : 'bg-slate-900 hover:bg-slate-800'}`}
               onClick={() => toggleOpportunity(oppNum)}
             >
-              <h4 className={`font-semibold ${isFirst ? 'text-slate-700' : oppNum === 2 ? 'text-purple-700' : oppNum === 3 ? 'text-emerald-700' : oppNum === 4 ? 'text-amber-700' : 'text-rose-700'} flex items-center gap-2`}>
+              <h4 className="font-semibold text-slate-100 flex items-center gap-2 min-w-0">
                 <span className={`w-6 h-6 ${isFirst ? 'bg-blue-600' : oppNum === 2 ? 'bg-purple-600' : oppNum === 3 ? 'bg-emerald-600' : oppNum === 4 ? 'bg-amber-600' : 'bg-rose-600'} text-white rounded-full flex items-center justify-center text-xs`}>
                   {oppNum}
                 </span>
                 {isFirst ? 'Oportunidad #1' : `Nueva Oportunidad #${oppNum}`}
-                <span className="text-xs text-slate-400 font-normal">
+                <span className="hidden sm:inline text-xs text-slate-400 font-normal">
                   ({oppRecords.length} record{oppRecords.length !== 1 ? 's' : ''})
                 </span>
               </h4>
@@ -1669,7 +1675,7 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 
             {/* Collapsible Content */}
             {isExpanded && (
-              <div className="space-y-3 mt-3 pl-2">
+              <div className="space-y-3 p-3 sm:p-4 border-t border-slate-700">
                 {oppRecords.map((record) => (
                   <RecordCard 
                     key={record.id}
@@ -1710,10 +1716,10 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 
       {/* Button to create New Opportunity (up to 5) */}
       {canCreateNewOpportunity && !showNewOpportunity && (
-        <div className="mt-4 pt-4 border-t border-dashed border-slate-200">
+        <div className="mt-4 pt-4 border-t border-dashed border-slate-700">
           <Button 
             variant="outline"
-            className="w-full text-purple-600 hover:bg-purple-50 border-purple-200 border-dashed"
+            className="w-full !text-blue-300 hover:!text-white hover:bg-blue-500/10 border-blue-500/40 border-dashed bg-slate-900"
             onClick={() => { setShowNewOpportunity(true); setAddingToOpportunity(maxOpportunity + 1); }}
             data-testid="new-opportunity-btn"
           >
@@ -1825,8 +1831,8 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 
       {/* Add Record Form */}
       {(showAddRecord || showNewOpportunity) && (
-        <div className="bg-white rounded-lg border border-blue-200 p-4 mt-3">
-          <h5 className="font-medium text-slate-700 mb-3">New Record</h5>
+        <div className="client-crm-form bg-slate-900 rounded-xl border border-slate-700 p-3 sm:p-4 lg:p-5 mt-3 text-slate-100">
+          <h5 className="font-semibold text-white mb-4">Nuevo registro</h5>
           
           {/* ID Section */}
           <div className="space-y-3 mb-4">
