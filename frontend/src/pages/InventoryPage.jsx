@@ -17,6 +17,7 @@ import {
   ChevronDown, ChevronUp, Edit, Trash2, Eye, MoreHorizontal,
   AlertTriangle, CheckCircle, XCircle, LayoutGrid, LayoutList
 } from 'lucide-react';
+import { Skeleton } from '../components/ui/skeleton';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 

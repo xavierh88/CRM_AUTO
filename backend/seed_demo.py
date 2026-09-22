@@ -9,7 +9,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 import uuid
 from motor.motor_asyncio import AsyncIOMotorClient
-from passlib.hash import bcrypt
+from authentication.foundation import hash_password
 
 # Add backend to path
 sys.path.insert(0, '/opt/dealer-ai-v2/worktrees/070-final-product-completion/backend')
@@ -23,7 +23,7 @@ async def seed_demo_user():
     
     demo_email = "demo@dealerai.com"
     demo_password = "demo123456"
-    password_hash = bcrypt.hash(demo_password)
+    password_hash = hash_password(demo_password)
     
     # Check if demo user exists
     existing = await demo_db.users.find_one({"email": demo_email})
@@ -37,7 +37,7 @@ async def seed_demo_user():
         "_id": demo_user_id,
         "id": demo_user_id,
         "email": demo_email,
-        "password_hash": password_hash,
+        "password": password_hash,
         "name": "Demo User",
         "phone": "+1555000000",
         "role": "demo",

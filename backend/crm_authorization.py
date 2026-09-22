@@ -20,11 +20,17 @@ class CRMAccess:
         self._scopes = {}
 
     def _identity(self):
-        if is_demo_identity(self.user):
-            raise HTTPException(403, 'Demo identities cannot access CRM resources')
         role, uid = self.user.get('role'), self.user.get('id')
         if not isinstance(role, str) or role not in ROLES or not isinstance(uid, str) or not uid:
             raise HTTPException(403, 'CRM access denied')
+
+        # Demo uses the real CRM code path, but only inside its isolated
+        # fictional dealer tenant.
+        if is_demo_identity(self.user):
+            dealer_id = self.user.get('dealer_id')
+            if not isinstance(dealer_id, str) or not dealer_id:
+                raise HTTPException(403, 'Demo dealer scope unavailable')
+
         return role, uid
 
     async def require(self, collection, object_id, action='read'):
@@ -71,6 +77,15 @@ class CRMAccess:
             return self._scopes[key]
         active = {'is_deleted': {'$ne': True}}
         if collection == 'clients':
+            if is_demo_identity(self.user):
+                dealer_id = self.user.get('dealer_id')
+                scope = {'$and': [
+                    active,
+                    {'dealer_id': dealer_id},
+                    {'created_by': uid},
+                ]}
+                self._scopes[key] = scope
+                return scope
             if role in {'bdc_manager', 'bdc'}:
                 owners = await self._ids('users', {'role': {'$in': sorted(ROLES - {'admin'})}})
                 owner = {'created_by': {'$in': owners}}

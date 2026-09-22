@@ -30,6 +30,7 @@ import Layout from "./components/Layout";
 import PublicDocumentsPage from "./pages/PublicDocumentsPage";
 import PublicAppointmentPage from "./pages/PublicAppointmentPage";
 
+import ClientsPage from './pages/ClientsPage';
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   
@@ -136,7 +137,17 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             }
+          />          <Route
+            path="/clients"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ClientsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
           />
+
           <Route
             path="/leads"
             element={

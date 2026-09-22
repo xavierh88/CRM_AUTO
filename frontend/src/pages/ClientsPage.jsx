@@ -393,10 +393,46 @@ export default function ClientsPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Filter clients by status color
-  const filteredClients = statusFilter === 'all' 
-    ? clients 
-    : clients.filter(c => c.status_color === statusFilter);
+  // Resilient client search + status filtering
+  const normalizeSearchText = (value = '') =>
+    String(value)
+      .normalize('NFD')
+      .replace(/[\\u0300-\\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+
+  const normalizePhone = (value = '') =>
+    String(value).replace(/\\D/g, '');
+
+  const normalizedSearch = normalizeSearchText(searchTerm);
+  const searchedPhone = normalizePhone(searchTerm);
+
+  const filteredClients = clients.filter((client) => {
+    const matchesStatus =
+      statusFilter === 'all' || client.status_color === statusFilter;
+
+    if (!matchesStatus) return false;
+    if (!normalizedSearch) return true;
+
+    const firstName = normalizeSearchText(client.first_name);
+    const lastName = normalizeSearchText(client.last_name);
+    const fullName = normalizeSearchText(
+      `${client.first_name || ''} ${client.last_name || ''}`
+    );
+    const email = normalizeSearchText(client.email);
+    const phone = normalizePhone(client.phone);
+
+    const matchesText =
+      firstName.includes(normalizedSearch) ||
+      lastName.includes(normalizedSearch) ||
+      fullName.includes(normalizedSearch) ||
+      email.includes(normalizedSearch);
+
+    const matchesPhone =
+      searchedPhone.length >= 3 && phone.includes(searchedPhone);
+
+    return matchesText || matchesPhone;
+  });
   
   // Pagination logic
   const totalPages = Math.ceil(filteredClients.length / clientsPerPage);
@@ -436,7 +472,7 @@ export default function ClientsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{t('clients.title')}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Clientes</h1>
           <p className="text-slate-500 mt-1 text-sm">{clients.length} total clients</p>
         </div>
         <div className="flex gap-2 flex-wrap w-full sm:w-auto">
@@ -663,7 +699,7 @@ export default function ClientsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
-            placeholder={t('clients.search')}
+            placeholder="Buscar por nombre, teléfono o email..."
             className="pl-10 max-w-md"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -808,148 +844,253 @@ export default function ClientsPage() {
             <Card key={client.id} className="dashboard-card overflow-hidden" data-testid={`client-card-${client.id}`} data-client-id={client.id}>
               <Collapsible open={expandedClients[client.id]} onOpenChange={() => toggleClientExpand(client.id)}>
                 <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer w-full" role="button" tabIndex={0}>
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold relative">
-                        {client.first_name.charAt(0)}
-                        {/* Status color indicator */}
-                        <div 
-                          className={`absolute -top-1 -left-1 w-3 h-3 rounded-full border-2 border-white ${statusColorClasses[statusColor]}`}
-                          title={statusColorTitles[statusColor]}
-                        />
-                        {/* Sold cars indicator */}
-                        {soldCount > 0 && (
-                          <div className="absolute -bottom-1 -right-1 bg-amber-400 text-white text-xs rounded-full px-1 flex items-center gap-0.5" title={`${soldCount} venta(s)`}>
-                            🚗{soldCount > 1 && <span className="font-bold">{soldCount}</span>}
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-left">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-slate-900">
-                            {client.first_name} {client.last_name}
-                          </p>
-                          {/* Sold indicator */}
-                          {client.is_sold && (
-                            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
-                              VENDIDO
-                            </span>
-                          )}
-                          {/* Sold badges - show stars based on sold count */}
+                  <div
+                    className="group w-full cursor-pointer p-4 sm:p-5 hover:bg-slate-50/70 transition-colors"
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className="flex flex-col gap-4">
+
+                      {/* Primary client identity */}
+                      <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+                        <div className="w-11 h-11 sm:w-12 sm:h-12 shrink-0 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold relative">
+                          {client.first_name.charAt(0)}
+
+                          <div
+                            className={`absolute -top-1 -left-1 w-3 h-3 rounded-full border-2 border-white ${statusColorClasses[statusColor]}`}
+                            title={statusColorTitles[statusColor]}
+                          />
+
                           {soldCount > 0 && (
-                            <div className="flex items-center gap-1">
-                              {[...Array(Math.min(soldCount, 5))].map((_, idx) => (
-                                <span key={idx} className="text-amber-500" title={`Venta #${idx + 1}`}>
-                                  ⭐
-                                </span>
-                              ))}
-                              {soldCount > 5 && <span className="text-amber-500 text-xs font-bold">+{soldCount - 5}</span>}
+                            <div
+                              className="absolute -bottom-1 -right-1 bg-amber-400 text-white text-[10px] rounded-full min-w-5 h-5 px-1 flex items-center justify-center"
+                              title={`${soldCount} venta(s)`}
+                            >
+                              🚗{soldCount > 1 && <span className="font-bold">{soldCount}</span>}
                             </div>
                           )}
                         </div>
-                        <p className="text-sm text-slate-500">{client.phone}</p>
-                        {/* Progress bar */}
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full rounded-full transition-all ${
-                                progress >= 100 ? 'bg-green-500' : 
-                                progress >= 66 ? 'bg-blue-500' : 
-                                progress >= 33 ? 'bg-amber-500' : 'bg-slate-400'
-                              }`}
-                              style={{ width: `${progress}%` }}
-                            />
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <h3 className="font-semibold text-slate-900 text-base sm:text-lg truncate">
+                              {client.first_name} {client.last_name}
+                            </h3>
+
+                            {client.is_sold && (
+                              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[11px] font-semibold rounded-full">
+                                VENDIDO
+                              </span>
+                            )}
+
+                            {soldCount > 0 && (
+                              <div className="hidden sm:flex items-center gap-0.5">
+                                {[...Array(Math.min(soldCount, 5))].map((_, idx) => (
+                                  <span key={idx} className="text-amber-500 text-xs" title={`Venta #${idx + 1}`}>
+                                    ⭐
+                                  </span>
+                                ))}
+                                {soldCount > 5 && (
+                                  <span className="text-amber-500 text-xs font-bold">
+                                    +{soldCount - 5}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
-                          <span className="text-xs text-slate-400">{progress}%</span>
-                          {/* Document indicators */}
-                          <div className="flex items-center gap-0.5 ml-1">
-                            <span className={`text-xs ${client.id_uploaded ? 'text-green-500' : 'text-slate-300'}`} title="ID">📄</span>
-                            <span className={`text-xs ${client.income_proof_uploaded ? 'text-green-500' : 'text-slate-300'}`} title="Ingresos">💵</span>
-                            <span className={`text-xs ${client.residence_proof_uploaded ? 'text-green-500' : 'text-slate-300'}`} title="Residencia">🏠</span>
+
+                          <div className="mt-1 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+                            {client.phone && (
+                              <span className="truncate">{client.phone}</span>
+                            )}
+
+                            {client.email && (
+                              <span className="truncate max-w-full">{client.email}</span>
+                            )}
+
+                            {client.last_record_date && (
+                              <span className="text-xs text-slate-400">
+                                {t('clients.lastContact')}: {formatDate(client.last_record_date)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 pt-1">
+                          {expandedClients[client.id] ? (
+                            <ChevronDown className="w-5 h-5 text-slate-400" />
+                          ) : (
+                            <ChevronRight className="w-5 h-5 text-slate-400" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* CRM/document status */}
+                      <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
+
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="w-full md:w-48 lg:w-56">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-xs font-medium text-slate-500">
+                                  Progreso CRM
+                                </span>
+                                <span className="text-xs font-semibold text-slate-600">
+                                  {progress}%
+                                </span>
+                              </div>
+
+                              <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${
+                                    progress >= 100 ? 'bg-green-500' :
+                                    progress >= 66 ? 'bg-blue-500' :
+                                    progress >= 33 ? 'bg-amber-500' : 'bg-slate-400'
+                                  }`}
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`px-2 py-1 rounded-md text-[11px] font-medium ${
+                                client.id_uploaded
+                                  ? 'bg-green-50 text-green-700'
+                                  : 'bg-white text-slate-400 border border-slate-200'
+                              }`}
+                              title="ID"
+                            >
+                              📄 ID
+                            </span>
+
+                            <span
+                              className={`px-2 py-1 rounded-md text-[11px] font-medium ${
+                                client.income_proof_uploaded
+                                  ? 'bg-green-50 text-green-700'
+                                  : 'bg-white text-slate-400 border border-slate-200'
+                              }`}
+                              title="Ingresos"
+                            >
+                              💵 Ingresos
+                            </span>
+
+                            <span
+                              className={`px-2 py-1 rounded-md text-[11px] font-medium ${
+                                client.residence_proof_uploaded
+                                  ? 'bg-green-50 text-green-700'
+                                  : 'bg-white text-slate-400 border border-slate-200'
+                              }`}
+                              title="Residencia"
+                            >
+                              🏠 Residencia
+                            </span>
                           </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-1 sm:gap-4 flex-wrap sm:flex-nowrap">
-                      {client.last_record_date && (
-                        <div className="text-right hidden sm:block">
-                          <p className="text-xs text-slate-400">{t('clients.lastContact')}</p>
-                          <p className="text-sm font-medium text-slate-600">{formatDate(client.last_record_date)}</p>
+
+                      {/* Quick actions */}
+                      <div
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-slate-100 pt-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-3 bg-white !text-slate-700 border-slate-300 hover:bg-slate-100 hover:!text-slate-900"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedClient(client);
+                            }}
+                            data-testid={`client-info-btn-${client.id}`}
+                            title="Client information"
+                          >
+                            <Info className="w-4 h-4 sm:mr-2" />
+                            <span>Perfil</span>
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-3 bg-white !text-slate-700 border-slate-300 hover:bg-slate-100 hover:!text-slate-900"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setInboxClient(client);
+                            }}
+                            title="SMS Inbox"
+                          >
+                            <MessageSquare className="w-4 h-4 sm:mr-2" />
+                            <span>Mensajes</span>
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-3 bg-white !text-slate-700 border-slate-300 hover:bg-slate-100 hover:!text-slate-900"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleClientExpand(client.id);
+                            }}
+                            title="Open CRM details"
+                          >
+                            {expandedClients[client.id] ? (
+                              <ChevronDown className="w-4 h-4 sm:mr-2" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 sm:mr-2" />
+                            )}
+                            <span>CRM</span>
+                          </Button>
                         </div>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 sm:h-10 sm:w-10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedClient(client);
-                        }}
-                        data-testid={`client-info-btn-${client.id}`}
-                      >
-                        <Info className="w-4 h-4" />
-                      </Button>
-                      {isAdmin && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 sm:h-10 sm:w-10 text-purple-500 hover:text-purple-700 hover:bg-purple-50"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openPrequalifyInfo(client);
-                          }}
-                          data-testid={`client-prequalify-btn-${client.id}`}
-                          title="Ver Precalificación"
-                        >
-                          <ClipboardList className="w-4 h-4" />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setInboxClient(client);
-                        }}
-                        data-testid={`client-inbox-btn-${client.id}`}
-                        title="SMS Inbox"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 sm:h-10 sm:w-10 text-amber-500 hover:text-amber-700 hover:bg-amber-50"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openClientNotes(client);
-                        }}
-                        data-testid={`client-notes-btn-${client.id}`}
-                        title="Notas / Reseñas"
-                      >
-                        <Bell className="w-4 h-4" />
-                      </Button>
-                      {isAdmin && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 sm:h-10 sm:w-10 text-red-400 hover:text-red-600 hover:bg-red-50"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteClient(client.id);
-                          }}
-                          data-testid={`delete-client-btn-${client.id}`}
-                          title="Delete client"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                      {expandedClients[client.id] ? (
-                        <ChevronDown className="w-5 h-5 text-slate-400" />
-                      ) : (
-                        <ChevronRight className="w-5 h-5 text-slate-400" />
-                      )}
+
+                        <div className="flex flex-wrap justify-end items-center gap-1">
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openPrequalifyInfo(client);
+                              }}
+                              title="Prequalification"
+                            >
+                              <CreditCard className="w-4 h-4" />
+                            </Button>
+                          )}
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openClientNotes(client);
+                            }}
+                            title="Notes"
+                          >
+                            <Bell className="w-4 h-4" />
+                          </Button>
+
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 text-red-400 hover:text-red-600 hover:bg-red-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteClient(client.id);
+                              }}
+                              data-testid={`delete-client-btn-${client.id}`}
+                              title="Delete client"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
                     </div>
                   </div>
                 </CollapsibleTrigger>

@@ -492,6 +492,8 @@ class UserResponse(BaseModel):
     role: str
     phone: Optional[str] = None
     created_at: str
+    dealer_id: Optional[str] = None
+    is_demo: bool = False
 
 class ClientCreate(BaseModel):
     first_name: str
@@ -1017,6 +1019,7 @@ async def create_client(client: ClientCreate, current_user: dict = Depends(get_c
         "last_record_date": None,  # No records yet
         "created_at": now,
         "created_by": current_user["id"],
+        "dealer_id": current_user.get("dealer_id"),
         "is_deleted": False
     }
     await db.clients.insert_one(client_doc)
@@ -5127,8 +5130,16 @@ async def delete_client(client_id: str, permanent: bool = False, current_user: d
     access = CRMAccess(db, current_user)
     if client_id:
         await access.require("clients", client_id, "write")
+    # Normal CRM users keep the existing admin-only delete policy.
+    # Demo may soft-delete only its own isolated fictional CRM records.
+    # Permanent deletion remains admin-only.
+    is_demo = current_user.get("is_demo") is True or current_user.get("role") == "demo"
+
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required to delete clients")
+        if not is_demo:
+            raise HTTPException(status_code=403, detail="Admin access required to delete clients")
+        if permanent:
+            raise HTTPException(status_code=403, detail="Permanent delete requires admin access")
     
     client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"))
     if not client:
@@ -7179,7 +7190,6 @@ async def sync_prequalify_to_client(submission_id: str, current_user: dict = Dep
     }
 
 # Include router and middleware
-app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -7685,6 +7695,12 @@ async def create_vehicle(vehicle: VehicleCreate, current_user: dict = Depends(ge
     vehicle_doc["id"] = str(uuid.uuid4())
     vehicle_doc["created_at"] = datetime.now(timezone.utc).isoformat()
     vehicle_doc["created_by"] = current_user["id"]
+
+    # Inventory ownership must come from the authenticated identity.
+    # Do not trust a client-supplied dealer value for non-admin users.
+    if current_user.get("role") not in ("admin", "bdc_manager"):
+        vehicle_doc["dealer"] = current_user.get("dealer_id", "")
+
     vehicle_doc["days_on_lot"] = 0
     vehicle_doc["is_deleted"] = False
     
@@ -7732,7 +7748,7 @@ async def get_inventory(
     
     sort_dir = -1 if sort_order == "desc" else 1
     
-    vehicles = await db.inventory.find(query).sort(sort_by, sort_dir).skip(offset).limit(limit).to_list(limit)
+    vehicles = await db.inventory.find(query, {"_id": 0}).sort(sort_by, sort_dir).skip(offset).limit(limit).to_list(limit)
     total = await db.inventory.count_documents(query)
     
     return {"vehicles": vehicles, "total": total}
@@ -7740,7 +7756,7 @@ async def get_inventory(
 @api_router.get("/inventory/{vehicle_id}", response_model=dict)
 async def get_vehicle(vehicle_id: str, current_user: dict = Depends(get_current_user)):
     access = CRMAccess(db, current_user)
-    vehicle = await db.inventory.find_one({"id": vehicle_id, "is_deleted": {"$ne": True}})
+    vehicle = await db.inventory.find_one({"id": vehicle_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return vehicle
@@ -7759,7 +7775,7 @@ async def update_vehicle(vehicle_id: str, vehicle: VehicleUpdate, current_user: 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     
-    vehicle = await db.inventory.find_one({"id": vehicle_id})
+    vehicle = await db.inventory.find_one({"id": vehicle_id}, {"_id": 0})
     return vehicle
 
 @api_router.delete("/inventory/{vehicle_id}")
@@ -7966,4 +7982,7 @@ async def get_conversations(
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+# Register API routes only after every api_router route has been declared.
+app.include_router(api_router)
 

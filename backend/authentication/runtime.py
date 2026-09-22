@@ -13,7 +13,7 @@ from runtime_security import require_enabled_user
 
 # Public dummy bcrypt value; never an account credential.
 _DUMMY = '$2b$12$rPbNRvrPwoVVtQrdIRhd8OwI2XUIdoC6upxDlkWvGcTNzZGuOOvia'
-_PUBLIC = ('id', 'email', 'name', 'role', 'phone', 'created_at', 'is_active', 'approved')
+_PUBLIC = ('id', 'email', 'name', 'role', 'phone', 'created_at', 'is_active', 'approved', 'dealer_id', 'is_demo')
 
 
 class SessionAuth:

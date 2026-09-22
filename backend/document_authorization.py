@@ -1,6 +1,6 @@
 """Client document policy. No CRM search, notification or SOLD exceptions."""
 
-ROLES = {"admin", "bdc_manager", "bdc", "telemarketer", "salesperson"}
+ROLES = {"admin", "bdc_manager", "bdc", "telemarketer", "salesperson", "demo"}
 MANAGERS = {"bdc_manager", "bdc"}
 DOCUMENT_FIELDS = {
     "id_documents", "income_documents", "residence_documents",
@@ -15,10 +15,19 @@ async def can_access_documents(db, user, client, action="read"):
     role, user_id = user.get("role"), user.get("id")
     if not isinstance(role, str) or role not in ROLES or not isinstance(user_id, str) or not user_id:
         return False
-    if user.get('is_demo') or role in ('demo', 'DEMO') or user_id.startswith('demo-'):
-        return False
     if not isinstance(client, dict) or not isinstance(client.get("id"), str) or not client["id"]:
         return False
+
+    # Demo uses the normal CRM path, but only for fictional records
+    # belonging to its own isolated dealer tenant and identity.
+    if user.get('is_demo') or role in ('demo', 'DEMO') or user_id.startswith('demo-'):
+        dealer_id = user.get('dealer_id')
+        return (
+            isinstance(dealer_id, str)
+            and bool(dealer_id)
+            and client.get('dealer_id') == dealer_id
+            and client.get('created_by') == user_id
+        )
     if role == "admin":
         return True
     owner_id = client.get("created_by")

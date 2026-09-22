@@ -280,6 +280,91 @@
   text-transform: capitalize;
 }
 
+
+/* Dealer AI OS - Collapsible desktop sidebar */
+@media (min-width: 1024px) {
+  .sidebar {
+    transition: width 0.25s ease, transform 0.25s ease-in-out;
+  }
+
+  .sidebar.collapsed {
+    width: 76px;
+  }
+
+  .sidebar.collapsed .sidebar-brand {
+    justify-content: center;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .sidebar.collapsed .brand-link {
+    justify-content: center;
+    gap: 0;
+  }
+
+  .sidebar.collapsed .brand-link > *:not(:first-child),
+  .sidebar.collapsed .nav-item span,
+  .sidebar.collapsed .nav-section-title,
+  .sidebar.collapsed .user-details,
+  .sidebar.collapsed .sidebar-demo-badge span {
+    display: none;
+  }
+
+  .sidebar.collapsed .sidebar-nav {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .sidebar.collapsed .sidebar-user {
+    justify-content: center;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .main-content.sidebar-collapsed {
+    margin-left: 76px;
+  }
+
+  .sidebar-collapse-toggle {
+    position: absolute;
+    top: 76px;
+    right: -14px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid hsl(var(--sidebar-border));
+    background: hsl(var(--sidebar-bg));
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    z-index: 60;
+    box-shadow: 0 4px 14px rgba(0,0,0,.28);
+    font-size: 22px;
+    line-height: 1;
+    transition: transform .15s ease, background .15s ease;
+  }
+
+  .sidebar-collapse-toggle:hover {
+    background: hsl(var(--muted));
+    transform: scale(1.06);
+  }
+}
+
+@media (max-width: 1023px) {
+  .sidebar-collapse-toggle {
+    display: none;
+  }
+}
+
+
 /* Main Content */
 .main-content {
   flex: 1;
@@ -466,11 +551,11 @@
 
 /* Mobile Bottom Navigation */
 .mobile-bottom-nav {
+  display: none;
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  display: flex;
   align-items: center;
   justify-content: space-around;
   height: 72px;
@@ -481,6 +566,13 @@
   -webkit-backdrop-filter: blur(20px);
   z-index: 30;
   box-shadow: 0 -4px 20px -4px rgba(0, 0, 0, 0.3);
+}
+
+
+@media (max-width: 1023px) {
+  .mobile-bottom-nav {
+    display: flex;
+  }
 }
 
 .mobile-nav-item {
@@ -590,5 +682,19 @@
   }
   .page-content {
     padding: 0 !important;
+  }
+}
+
+/* DEALER V2 RESPONSIVE NAV FIX */
+@media (min-width: 1024px) {
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+}
+
+/* Keep mobile content clear of the fixed bottom navigation */
+@media (max-width: 1023px) {
+  .main-content {
+    padding-bottom: 76px;
   }
 }

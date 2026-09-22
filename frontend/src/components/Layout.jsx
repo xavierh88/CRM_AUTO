@@ -27,6 +27,8 @@ import {
   Command,
   Car,
   Zap,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -46,6 +48,23 @@ function LayoutContent({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('dealer-sidebar-collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((current) => {
+      const next = !current;
+      try {
+        localStorage.setItem('dealer-sidebar-collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
   const [headerSearch, setHeaderSearch] = useState('');
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -53,7 +72,11 @@ function LayoutContent({ children }) {
   const isBDC = user?.role === 'bdc';
   const isBDCManager = user?.role === 'bdc_manager';
   const isAdminOrBDC = isAdmin || isBDC || isBDCManager;
-  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(min-width: 1024px)').matches
+      : false
+  );
 
   const getRoleDisplayName = (role) => {
     switch (role) {
@@ -114,11 +137,26 @@ function LayoutContent({ children }) {
   const isActive = (path) => location.pathname === path || (path !== '/dashboard' && location.pathname.startsWith(path + '/'));
 
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) setSidebarOpen(false);
+    const media = window.matchMedia('(min-width: 1024px)');
+
+    const handleBreakpointChange = (event) => {
+      setIsDesktop(event.matches);
+
+      if (event.matches) {
+        setSidebarOpen(false);
+        setMoreSheetOpen(false);
+      }
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+
+    setIsDesktop(media.matches);
+
+    if (media.addEventListener) {
+      media.addEventListener('change', handleBreakpointChange);
+      return () => media.removeEventListener('change', handleBreakpointChange);
+    }
+
+    media.addListener(handleBreakpointChange);
+    return () => media.removeListener(handleBreakpointChange);
   }, []);
 
   useEffect(() => {
@@ -150,7 +188,7 @@ function LayoutContent({ children }) {
 
       {/* Desktop Sidebar */}
       <aside 
-        className={`sidebar ${sidebarOpen ? 'open' : ''} ${isDesktop ? 'desktop' : ''}`}
+        className={`sidebar ${sidebarOpen ? 'open' : ''} ${isDesktop ? 'desktop' : ''} ${isDesktop && sidebarCollapsed ? 'collapsed' : ''}`}
         aria-label="Main navigation"
         id="sidebar"
       >
@@ -168,10 +206,10 @@ function LayoutContent({ children }) {
             </Link>
             <button 
               className="sidebar-close lg:hidden"
-              onClick={() => setSidebarOpen(false)}
+              onClick={() => isDesktop ? setSidebarCollapsed((value) => !value) : setSidebarOpen(false)}
               aria-label={t('nav.closeMenu') || 'Close menu'}
             >
-              <X className="w-5 h-5" />
+              {isDesktop ? (sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />) : <X className="w-5 h-5" />}
             </button>
           </div>
 
@@ -237,10 +275,22 @@ function LayoutContent({ children }) {
             </Button>
           </div>
         </div>
+        {isDesktop && (
+          <button
+            type="button"
+            className="sidebar-collapse-toggle"
+            onClick={toggleSidebarCollapsed}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={sidebarCollapsed ? 'Expandir menú' : 'Minimizar menú'}
+          >
+            <span aria-hidden="true">{sidebarCollapsed ? '›' : '‹'}</span>
+          </button>
+        )}
+
       </aside>
 
       {/* Main Content Area */}
-      <div className="main-content">
+      <div className={`main-content ${isDesktop && sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         {/* Top Header */}
         <header className={`top-header ${isScrolled ? 'scrolled' : ''}`} role="banner">
           <div className="header-left">
