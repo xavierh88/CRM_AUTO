@@ -14,10 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
 import { 
-  Plus, Search, Info, Calendar, ChevronDown, ChevronRight, 
+  Plus, Search, Info, Calendar, ChevronDown, ChevronRight, ChevronLeft, 
   Send, Trash2, CheckCircle2, XCircle, UserPlus, Phone, RefreshCw, MessageSquare,
   X, FileText, MessageCircle, Upload, Download, Home, Mail, Users, Bell, FileSpreadsheet, ClipboardList,
-  BriefcaseBusiness, BadgeDollarSign, CalendarCheck2, IdCard, Landmark, House, CircleCheck, CircleDashed
+  BriefcaseBusiness, BadgeDollarSign, CalendarCheck2, IdCard, Landmark, House, CircleCheck, CircleDashed, SlidersHorizontal, MoreHorizontal, CreditCard
 } from 'lucide-react';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import SmsInboxDialog from '../components/SmsInboxDialog';
@@ -72,7 +72,7 @@ export default function ClientsPage() {
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const clientsPerPage = 10;
+  const [clientsPerPage, setClientsPerPage] = useState(5);
   
   const isAdmin = user?.role === 'admin';
   const isBdcManager = user?.role === 'bdc_manager';
@@ -457,7 +457,7 @@ export default function ClientsPage() {
   // Reset to page 1 when search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, statusFilter, summaryFilter, clientsPerPage]);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
@@ -741,106 +741,73 @@ export default function ClientsPage() {
         })}
       </div>
 
-      {/* Search */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      {/* Search + compact activity filters */}
+      <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             placeholder="Buscar por nombre, teléfono o email..."
-            className="pl-10 max-w-md"
+            className="pl-10 w-full lg:max-w-xl bg-white"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             data-testid="search-clients"
           />
         </div>
-        {/* Status color filters */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-500">Filtrar:</span>
-          <Button
-            size="sm"
-            variant={statusFilter === 'all' ? 'default' : 'outline'}
-            onClick={() => setStatusFilter('all')}
-            className="h-8"
-          >
-            Todos
-          </Button>
-          <Button
-            size="sm"
-            variant={statusFilter === 'green' ? 'default' : 'outline'}
-            onClick={() => setStatusFilter('green')}
-            className="h-8 bg-green-500 hover:bg-green-600 text-white"
-          >
-            Recientes
-          </Button>
-          <Button
-            size="sm"
-            variant={statusFilter === 'orange' ? 'default' : 'outline'}
-            onClick={() => setStatusFilter('orange')}
-            className="h-8 bg-orange-500 hover:bg-orange-600 text-white"
-          >
-            +3 días
-          </Button>
-          <Button
-            size="sm"
-            variant={statusFilter === 'red' ? 'default' : 'outline'}
-            onClick={() => setStatusFilter('red')}
-            className="h-8 bg-red-500 hover:bg-red-600 text-white"
-          >
-            +7 días
-          </Button>
-        </div>
-        
-        {/* Owner filter - only show for admin/bdc_manager */}
-        {(isAdmin || isBdcManager) && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-500">Dueño:</span>
-            <Select value={ownerFilter} onValueChange={(value) => setOwnerFilter(value)}>
-              <SelectTrigger className="w-[180px] h-8" data-testid="owner-filter">
-                <SelectValue placeholder="Seleccionar..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="mine">📍 Mis Clientes</SelectItem>
-                <SelectItem value="all">👥 Todos</SelectItem>
-                <SelectItem value="others">🔄 De Otros (todos)</SelectItem>
-                {/* Separator */}
-                <div className="border-t my-1"></div>
-                {/* Individual users - filter based on role */}
-                {salespersons
-                  .filter(sp => {
-                    // BDC Manager: show telemarketers and other BDC managers, NOT admins
-                    if (isBdcManager && !isAdmin) {
-                      return sp.role === 'telemarketer' || sp.role === 'salesperson' || sp.role === 'bdc_manager';
-                    }
-                    // Admin: show all users
-                    return true;
-                  })
-                  .map((sp) => (
-                    <SelectItem key={sp.id} value={`user:${sp.id}`}>
-                      {sp.name || sp.email} 
-                      <span className="text-xs text-slate-400 ml-1">
-                        ({sp.role === 'admin' ? 'Admin' : sp.role === 'bdc_manager' ? 'BDC' : 'TM'})
-                      </span>
-                    </SelectItem>
-                  ))
-                }
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-        
-        {/* Sort by filter */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-500">Ordenar:</span>
-          <Select value={sortBy} onValueChange={(value) => setSortBy(value)}>
-            <SelectTrigger className="w-[140px] h-8" data-testid="sort-filter">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="created">Más Recientes</SelectItem>
-              <SelectItem value="activity">Por Actividad</SelectItem>
-              <SelectItem value="name">Por Nombre</SelectItem>
-            </SelectContent>
-          </Select>
+
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
+          {[
+            { key: 'all', label: 'Todos', active: 'bg-slate-900 text-white border-slate-900' },
+            { key: 'green', label: 'Recientes', active: 'bg-blue-500 text-white border-blue-500' },
+            { key: 'orange', label: '+3 días', active: 'bg-amber-100 text-amber-800 border-amber-200' },
+            { key: 'red', label: '+7 días', active: 'bg-rose-100 text-rose-700 border-rose-200' },
+          ].map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setStatusFilter(item.key)}
+              className={`shrink-0 h-9 px-3 rounded-lg border text-xs sm:text-sm font-medium transition-colors ${
+                statusFilter === item.key ? item.active : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+              }`}
+              aria-pressed={statusFilter === item.key}
+            >
+              {item.label}
+            </button>
+          ))}
+
+          <details className="relative shrink-0">
+            <summary className="list-none cursor-pointer h-9 w-9 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600" title="Filtros avanzados">
+              <SlidersHorizontal className="w-4 h-4" />
+            </summary>
+            <div className="absolute right-0 z-30 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-xl space-y-3">
+              {(isAdmin || isBdcManager) && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 mb-1.5">Dueño</p>
+                  <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+                    <SelectTrigger className="w-full h-9" data-testid="owner-filter"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mine">Mis clientes</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="others">De otros</SelectItem>
+                      {salespersons.filter(sp => !isBdcManager || isAdmin || ['telemarketer','salesperson','bdc_manager'].includes(sp.role)).map(sp => (
+                        <SelectItem key={sp.id} value={`user:${sp.id}`}>{sp.name || sp.email}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-semibold text-slate-500 mb-1.5">Ordenar</p>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-full h-9" data-testid="sort-filter"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="created">Más recientes</SelectItem>
+                    <SelectItem value="activity">Por actividad</SelectItem>
+                    <SelectItem value="name">Por nombre</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -887,249 +854,100 @@ export default function ClientsPage() {
               gray: 'Sin datos'
             };
             
+            const clientStatusLabel = client.is_sold
+              ? 'Vendido'
+              : statusColor === 'green'
+                ? 'Nuevo'
+                : statusColor === 'orange'
+                  ? 'En proceso'
+                  : statusColor === 'red'
+                    ? 'Sin contacto'
+                    : hasRecords
+                      ? 'Activo'
+                      : 'Nuevo';
+            const clientStatusClass = client.is_sold
+              ? 'bg-emerald-100 text-emerald-700'
+              : statusColor === 'green'
+                ? 'bg-emerald-100 text-emerald-700'
+                : statusColor === 'orange'
+                  ? 'bg-blue-100 text-blue-700'
+                  : statusColor === 'red'
+                    ? 'bg-rose-100 text-rose-700'
+                    : 'bg-slate-100 text-slate-600';
+
             return (
-            <Card key={client.id} className="dashboard-card overflow-hidden" data-testid={`client-card-${client.id}`} data-client-id={client.id}>
+            <Card key={client.id} className="dashboard-card overflow-hidden border-slate-200" data-testid={`client-card-${client.id}`} data-client-id={client.id}>
               <Collapsible open={expandedClients[client.id]} onOpenChange={() => toggleClientExpand(client.id)}>
                 <CollapsibleTrigger asChild>
-                  <div
-                    className="group w-full cursor-pointer p-4 sm:p-5 hover:bg-slate-50/70 transition-colors"
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className="flex flex-col gap-4">
-
-                      {/* Primary client identity */}
-                      <div className="flex items-start gap-3 sm:gap-4 min-w-0">
-                        <div className="w-11 h-11 sm:w-12 sm:h-12 shrink-0 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold relative">
-                          {client.first_name.charAt(0)}
-
-                          <div
-                            className={`absolute -top-1 -left-1 w-3 h-3 rounded-full border-2 border-white ${statusColorClasses[statusColor]}`}
-                            title={statusColorTitles[statusColor]}
-                          />
-
-                          {soldCount > 0 && (
-                            <div
-                              className="absolute -bottom-1 -right-1 bg-amber-400 text-white text-[10px] rounded-full min-w-5 h-5 px-1 flex items-center justify-center"
-                              title={`${soldCount} venta(s)`}
-                            >
-                              🚗{soldCount > 1 && <span className="font-bold">{soldCount}</span>}
-                            </div>
-                          )}
+                  <div className="group w-full cursor-pointer px-3 py-3 sm:px-4 hover:bg-slate-50/70 transition-colors" role="button" tabIndex={0}>
+                    <div className="grid grid-cols-[auto_minmax(0,1fr)] xl:grid-cols-[minmax(240px,1.35fr)_minmax(145px,.7fr)_minmax(260px,1.1fr)_minmax(145px,.7fr)_auto] gap-3 xl:gap-5 items-center">
+                      <div className="col-span-2 xl:col-span-1 flex items-center gap-3 min-w-0">
+                        <div className="w-11 h-11 shrink-0 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-700 font-bold">
+                          {(client.first_name || '?').charAt(0)}{(client.last_name || '').charAt(0)}
                         </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <h3 className="font-semibold text-slate-900 text-base sm:text-lg truncate">
-                              {client.first_name} {client.last_name}
-                            </h3>
-
-                            {client.is_sold && (
-                              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[11px] font-semibold rounded-full">
-                                VENDIDO
-                              </span>
-                            )}
-
-                            {soldCount > 0 && (
-                              <div className="hidden sm:flex items-center gap-0.5">
-                                {[...Array(Math.min(soldCount, 5))].map((_, idx) => (
-                                  <span key={idx} className="text-amber-500 text-xs" title={`Venta #${idx + 1}`}>
-                                    ⭐
-                                  </span>
-                                ))}
-                                {soldCount > 5 && (
-                                  <span className="text-amber-500 text-xs font-bold">
-                                    +{soldCount - 5}
-                                  </span>
-                                )}
-                              </div>
-                            )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <h3 className="font-semibold text-slate-900 truncate">{client.first_name} {client.last_name}</h3>
+                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold ${clientStatusClass}`}>{clientStatusLabel}</span>
                           </div>
-
-                          <div className="mt-1 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-x-4 gap-y-1 text-sm text-slate-500">
-                            {client.phone && (
-                              <span className="truncate">{client.phone}</span>
-                            )}
-
-                            {client.email && (
-                              <span className="truncate max-w-full">{client.email}</span>
-                            )}
-
-                            {client.last_record_date && (
-                              <span className="text-xs text-slate-400">
-                                {t('clients.lastContact')}: {formatDate(client.last_record_date)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="shrink-0 pt-1">
-                          {expandedClients[client.id] ? (
-                            <ChevronDown className="w-5 h-5 text-slate-400" />
-                          ) : (
-                            <ChevronRight className="w-5 h-5 text-slate-400" />
-                          )}
-                        </div>
-                      </div>
-
-                      {/* CRM/document status */}
-                      <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
-
-                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <div className="w-full md:w-48 lg:w-56">
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-xs font-medium text-slate-500">
-                                  Progreso CRM
-                                </span>
-                                <span className="text-xs font-semibold text-slate-600">
-                                  {progress}%
-                                </span>
-                              </div>
-
-                              <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all ${
-                                    progress >= 100 ? 'bg-green-500' :
-                                    progress >= 66 ? 'bg-blue-500' :
-                                    progress >= 33 ? 'bg-amber-500' : 'bg-slate-400'
-                                  }`}
-                                  style={{ width: `${progress}%` }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-2">
-                            {[
-                              { label: 'ID', ready: client.id_uploaded, icon: IdCard },
-                              { label: 'Ingresos', ready: client.income_proof_uploaded, icon: Landmark },
-                              { label: 'Residencia', ready: client.residence_proof_uploaded, icon: House },
-                            ].map(({ label, ready, icon: DocIcon }) => (
-                              <span
-                                key={label}
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border ${
-                                  ready
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                    : 'bg-white text-slate-500 border-slate-200'
-                                }`}
-                                title={`${label}: ${ready ? 'recibido' : 'pendiente'}`}
-                              >
-                                <DocIcon className="w-3.5 h-3.5" />
-                                {label}
-                                {ready ? <CircleCheck className="w-3 h-3" /> : <CircleDashed className="w-3 h-3 text-slate-400" />}
-                              </span>
-                            ))}
+                          <div className="mt-0.5 text-xs sm:text-sm text-slate-500 space-y-0.5">
+                            {client.phone && <div className="truncate">{client.phone}</div>}
+                            {client.email && <div className="truncate">{client.email}</div>}
+                            {client.address && <div className="hidden sm:flex items-center gap-1 truncate"><Home className="w-3 h-3 shrink-0" />{client.address}</div>}
                           </div>
                         </div>
                       </div>
 
-                      {/* Quick actions */}
-                      <div
-                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-slate-100 pt-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 px-3 bg-white !text-slate-700 border-slate-300 hover:bg-slate-100 hover:!text-slate-900"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedClient(client);
-                            }}
-                            data-testid={`client-info-btn-${client.id}`}
-                            title="Client information"
-                          >
-                            <Info className="w-4 h-4 sm:mr-2" />
-                            <span>Perfil</span>
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 px-3 bg-white !text-slate-700 border-slate-300 hover:bg-slate-100 hover:!text-slate-900"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setInboxClient(client);
-                            }}
-                            title="SMS Inbox"
-                          >
-                            <MessageSquare className="w-4 h-4 sm:mr-2" />
-                            <span>Mensajes</span>
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 px-3 bg-white !text-slate-700 border-slate-300 hover:bg-slate-100 hover:!text-slate-900"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleClientExpand(client.id);
-                            }}
-                            title="Open CRM details"
-                          >
-                            {expandedClients[client.id] ? (
-                              <ChevronDown className="w-4 h-4 sm:mr-2" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 sm:mr-2" />
-                            )}
-                            <span>CRM</span>
-                          </Button>
+                      <div className="col-span-2 sm:col-span-1 xl:col-span-1">
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className="text-[11px] font-medium text-slate-500">Progreso CRM</span>
+                          <span className="text-[11px] font-semibold text-slate-700">{progress}%</span>
                         </div>
-
-                        <div className="flex flex-wrap justify-end items-center gap-1">
-                          {isAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-9 w-9"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openPrequalifyInfo(client);
-                              }}
-                              title="Prequalification"
-                            >
-                              <CreditCard className="w-4 h-4" />
-                            </Button>
-                          )}
-
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openClientNotes(client);
-                            }}
-                            title="Notes"
-                          >
-                            <Bell className="w-4 h-4" />
-                          </Button>
-
-                          {isAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-9 w-9 text-red-400 hover:text-red-600 hover:bg-red-50"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteClient(client.id);
-                              }}
-                              data-testid={`delete-client-btn-${client.id}`}
-                              title="Delete client"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
+                        <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${progress >= 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-blue-500' : 'bg-slate-400'}`} style={{ width: `${progress}%` }} />
                         </div>
                       </div>
 
+                      <div className="col-span-2 sm:col-span-1 xl:col-span-1 min-w-0">
+                        <p className="hidden xl:block text-[11px] font-medium text-slate-500 mb-1.5">Documentos</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            { label: 'ID', ready: client.id_uploaded, icon: IdCard },
+                            { label: 'Ingresos', ready: client.income_proof_uploaded, icon: Landmark },
+                            { label: 'Residencia', ready: client.residence_proof_uploaded, icon: House },
+                          ].map(({ label, ready, icon: DocIcon }) => (
+                            <span key={label} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] sm:text-[11px] font-medium ${ready ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-slate-500 border-slate-200'}`}>
+                              {ready ? <CircleCheck className="w-3 h-3" /> : <DocIcon className="w-3 h-3" />}
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="hidden md:block xl:col-span-1 min-w-0">
+                        <p className="text-[11px] font-medium text-slate-500 mb-1">Último contacto</p>
+                        <p className="text-xs text-slate-700 truncate">{client.last_record_date ? formatDate(client.last_record_date) : 'Sin actividad'}</p>
+                      </div>
+
+                      <div className="col-span-2 xl:col-span-1 flex items-center justify-between xl:justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          <Button variant="outline" size="sm" className="h-8 px-2.5 bg-white text-slate-700" onClick={(e) => { e.stopPropagation(); setSelectedClient(client); }} data-testid={`client-info-btn-${client.id}`}><Info className="w-3.5 h-3.5 sm:mr-1.5" /><span>Perfil</span></Button>
+                          <Button variant="outline" size="sm" className="h-8 px-2.5 bg-white text-slate-700" onClick={(e) => { e.stopPropagation(); setInboxClient(client); }}><MessageSquare className="w-3.5 h-3.5 sm:mr-1.5" /><span className="hidden sm:inline">Mensajes</span></Button>
+                          <Button variant="outline" size="sm" className="h-8 px-2.5 bg-white text-slate-700" onClick={(e) => { e.stopPropagation(); toggleClientExpand(client.id); }}>{expandedClients[client.id] ? <ChevronDown className="w-3.5 h-3.5 sm:mr-1.5" /> : <ChevronRight className="w-3.5 h-3.5 sm:mr-1.5" />}<span>CRM</span></Button>
+                        </div>
+                        <details className="relative">
+                          <summary className="list-none cursor-pointer h-8 w-8 rounded-md border border-slate-200 bg-white flex items-center justify-center text-slate-600"><MoreHorizontal className="w-4 h-4" /></summary>
+                          <div className="absolute right-0 z-30 mt-2 min-w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                            {isAdmin && <button type="button" onClick={() => openPrequalifyInfo(client)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-700 hover:bg-slate-50"><CreditCard className="w-4 h-4" />Precalificación</button>}
+                            <button type="button" onClick={() => openClientNotes(client)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-700 hover:bg-slate-50"><Bell className="w-4 h-4" />Notas</button>
+                            {isAdmin && <button type="button" onClick={() => deleteClient(client.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" />Eliminar</button>}
+                          </div>
+                        </details>
+                      </div>
                     </div>
                   </div>
                 </CollapsibleTrigger>
-
-                <CollapsibleContent>
+              <CollapsibleContent>
                   <div className="border-t border-slate-100 p-4 bg-slate-50/50">
                     {/* User Records */}
                     <UserRecordsSection 
@@ -1160,41 +978,30 @@ export default function ClientsPage() {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-4 border-t">
-          <p className="text-sm text-slate-500">
+      {filteredClients.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+          <p className="text-xs sm:text-sm text-slate-500">
             Mostrando {indexOfFirstClient + 1}-{Math.min(indexOfLastClient, filteredClients.length)} de {filteredClients.length} clientes
           </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              Anterior
-            </Button>
-            <div className="flex items-center gap-1">
-              {[...Array(totalPages)].map((_, i) => (
-                <Button
-                  key={i + 1}
-                  variant={currentPage === i + 1 ? "default" : "outline"}
-                  size="sm"
-                  className="w-8 h-8 p-0"
-                  onClick={() => setCurrentPage(i + 1)}
-                >
-                  {i + 1}
-                </Button>
-              ))}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-            >
-              Siguiente
-            </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1}><ChevronLeft className="w-4 h-4" /></Button>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(page => (
+                  <Button key={page} variant={currentPage === page ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0" onClick={() => setCurrentPage(page)}>{page}</Button>
+                ))}
+                {totalPages > 5 && <span className="px-1 text-slate-400">…</span>}
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages}><ChevronRight className="w-4 h-4" /></Button>
+              </div>
+            )}
+            <Select value={String(clientsPerPage)} onValueChange={(value) => { setClientsPerPage(Number(value)); setCurrentPage(1); }}>
+              <SelectTrigger className="h-8 w-[118px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5 por página</SelectItem>
+                <SelectItem value="10">10 por página</SelectItem>
+                <SelectItem value="20">20 por página</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       )}
