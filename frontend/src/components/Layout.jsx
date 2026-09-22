@@ -205,8 +205,8 @@ function LayoutContent({ children }) {
               </div>
             </Link>
             <button 
-              className="sidebar-close lg:hidden"
-              onClick={() => isDesktop ? setSidebarCollapsed((value) => !value) : setSidebarOpen(false)}
+              className="sidebar-close"
+              onClick={() => isDesktop ? toggleSidebarCollapsed() : setSidebarOpen(false)}
               aria-label={t('nav.closeMenu') || 'Close menu'}
             >
               {isDesktop ? (sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />) : <X className="w-5 h-5" />}
@@ -270,22 +270,11 @@ function LayoutContent({ children }) {
               onClick={logout}
               aria-label={t('nav.logout') || 'Logout'}
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              {t('nav.logout') || 'Logout'}
+              <LogOut className="w-4 h-4 sidebar-logout-icon" />
+              <span className="sidebar-logout-label">{t('nav.logout') || 'Logout'}</span>
             </Button>
           </div>
         </div>
-        {isDesktop && (
-          <button
-            type="button"
-            className="sidebar-collapse-toggle"
-            onClick={toggleSidebarCollapsed}
-            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={sidebarCollapsed ? 'Expandir menú' : 'Minimizar menú'}
-          >
-            <span aria-hidden="true">{sidebarCollapsed ? '›' : '‹'}</span>
-          </button>
-        )}
 
       </aside>
 
