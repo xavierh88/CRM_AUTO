@@ -16,7 +16,8 @@ import { toast } from 'sonner';
 import { 
   Plus, Search, Info, Calendar, ChevronDown, ChevronRight, 
   Send, Trash2, CheckCircle2, XCircle, UserPlus, Phone, RefreshCw, MessageSquare,
-  X, FileText, MessageCircle, Upload, Download, Home, Mail, Users, Bell, FileSpreadsheet, ClipboardList
+  X, FileText, MessageCircle, Upload, Download, Home, Mail, Users, Bell, FileSpreadsheet, ClipboardList,
+  BriefcaseBusiness, BadgeDollarSign, CalendarCheck2, IdCard, Landmark, House, CircleCheck, CircleDashed
 } from 'lucide-react';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import SmsInboxDialog from '../components/SmsInboxDialog';
@@ -61,6 +62,7 @@ export default function ClientsPage() {
   
   // Status filter for client colors
   const [statusFilter, setStatusFilter] = useState('all');
+  const [summaryFilter, setSummaryFilter] = useState('all');
   
   // Owner filter (mine, others, all)
   const [ownerFilter, setOwnerFilter] = useState('mine');
@@ -391,7 +393,7 @@ export default function ClientsPage() {
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, statusFilter, summaryFilter]);
 
   // Resilient client search + status filtering
   const normalizeSearchText = (value = '') =>
@@ -412,6 +414,18 @@ export default function ClientsPage() {
       statusFilter === 'all' || client.status_color === statusFilter;
 
     if (!matchesStatus) return false;
+
+    const hasOpportunity = Boolean(client.last_record_date) || Number(client.opportunity_count || 0) > 0;
+    const hasSale = Boolean(client.is_sold) || Number(client.sold_count || 0) > 0;
+    const hasAppointment = Number(client.appointment_count || 0) > 0 || Boolean(client.next_appointment || client.next_appointment_at);
+
+    const matchesSummary =
+      summaryFilter === 'all' ||
+      (summaryFilter === 'opportunities' && hasOpportunity) ||
+      (summaryFilter === 'sales' && hasSale) ||
+      (summaryFilter === 'appointments' && hasAppointment);
+
+    if (!matchesSummary) return false;
     if (!normalizedSearch) return true;
 
     const firstName = normalizeSearchText(client.first_name);
@@ -694,6 +708,39 @@ export default function ClientsPage() {
         </div>
       </div>
 
+      {/* Operational summary — values are derived from the CRM data already loaded on this screen */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3" data-testid="clients-summary">
+        {[
+          { key: 'all', label: 'Clientes', value: clients.length, icon: Users, helper: 'Todos los clientes' },
+          { key: 'opportunities', label: 'Oportunidades', value: clients.filter(c => Boolean(c.last_record_date) || Number(c.opportunity_count || 0) > 0).length, icon: BriefcaseBusiness, helper: 'Con actividad comercial' },
+          { key: 'sales', label: 'Ventas', value: clients.filter(c => Boolean(c.is_sold) || Number(c.sold_count || 0) > 0).length, icon: BadgeDollarSign, helper: 'Clientes con venta' },
+          { key: 'appointments', label: 'Citas', value: clients.filter(c => Number(c.appointment_count || 0) > 0 || Boolean(c.next_appointment || c.next_appointment_at)).length, icon: CalendarCheck2, helper: 'Con cita registrada' },
+        ].map(({ key, label, value, icon: Icon, helper }) => {
+          const active = summaryFilter === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSummaryFilter(key)}
+              className={`text-left rounded-xl border p-3 sm:p-4 transition-all bg-white hover:border-slate-400 hover:shadow-sm ${active ? 'border-slate-900 ring-1 ring-slate-900 shadow-sm' : 'border-slate-200'}`}
+              aria-pressed={active}
+              data-testid={`clients-summary-${key}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-slate-500">{label}</p>
+                  <p className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">{value}</p>
+                  <p className="hidden sm:block mt-1 text-xs text-slate-400">{helper}</p>
+                </div>
+                <span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${active ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                  <Icon className="w-4 h-4" />
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Search */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -954,38 +1001,25 @@ export default function ClientsPage() {
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`px-2 py-1 rounded-md text-[11px] font-medium ${
-                                client.id_uploaded
-                                  ? 'bg-green-50 text-green-700'
-                                  : 'bg-white text-slate-400 border border-slate-200'
-                              }`}
-                              title="ID"
-                            >
-                              📄 ID
-                            </span>
-
-                            <span
-                              className={`px-2 py-1 rounded-md text-[11px] font-medium ${
-                                client.income_proof_uploaded
-                                  ? 'bg-green-50 text-green-700'
-                                  : 'bg-white text-slate-400 border border-slate-200'
-                              }`}
-                              title="Ingresos"
-                            >
-                              💵 Ingresos
-                            </span>
-
-                            <span
-                              className={`px-2 py-1 rounded-md text-[11px] font-medium ${
-                                client.residence_proof_uploaded
-                                  ? 'bg-green-50 text-green-700'
-                                  : 'bg-white text-slate-400 border border-slate-200'
-                              }`}
-                              title="Residencia"
-                            >
-                              🏠 Residencia
-                            </span>
+                            {[
+                              { label: 'ID', ready: client.id_uploaded, icon: IdCard },
+                              { label: 'Ingresos', ready: client.income_proof_uploaded, icon: Landmark },
+                              { label: 'Residencia', ready: client.residence_proof_uploaded, icon: House },
+                            ].map(({ label, ready, icon: DocIcon }) => (
+                              <span
+                                key={label}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border ${
+                                  ready
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-white text-slate-500 border-slate-200'
+                                }`}
+                                title={`${label}: ${ready ? 'recibido' : 'pendiente'}`}
+                              >
+                                <DocIcon className="w-3.5 h-3.5" />
+                                {label}
+                                {ready ? <CircleCheck className="w-3 h-3" /> : <CircleDashed className="w-3 h-3 text-slate-400" />}
+                              </span>
+                            ))}
                           </div>
                         </div>
                       </div>
