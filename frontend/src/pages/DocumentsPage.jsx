@@ -3,15 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
 import {
   Search, FileText, Download, Upload, Trash2, Eye, CheckCircle, AlertCircle,
-  ChevronDown, ChevronUp, Filter, RefreshCw, Loader2
+  ChevronDown, ChevronUp, Filter, RefreshCw, Loader2, XCircle as XCircleIcon, LayoutGrid, LayoutList
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -48,8 +48,6 @@ export default function DocumentsPage() {
         params.append('salesperson_id', user.id);
       }
 
-      // Note: This endpoint would need to be created in backend
-      // For now, we'll fetch clients and their docs
       const response = await axios.get(`${API}/clients?exclude_sold=false&sort_by=name`);
       setDocuments(response.data);
     } catch (error) {
@@ -117,8 +115,32 @@ export default function DocumentsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="loading-spinner" />
+      <div className="space-y-6" data-testid="documents-page">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">{t('documents.title')}</h1>
+            <p className="text-muted-foreground mt-1">Loading documents...</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder={t('documents.search')} disabled className="pl-10" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i} className="border-l-4 border-l-primary">
+              <CardContent className="p-4">
+                <div className="loading-spinner" style={{width: '100%', height: '80px', borderWidth: '2px', borderRadius: '8px'}} />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -188,17 +210,17 @@ export default function DocumentsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">{type.label}</p>
-                    <p className="text-2xl font-bold">{complete}/{documents.length}</p>
+                    <p className="text-2xl font-bold text-foreground">{complete}/{documents.length}</p>
                   </div>
-                  <div className={`p-3 rounded-lg ${type.icon === FileText ? 'bg-blue-500/10' : ''}`}>
+                  <div className="p-3 rounded-lg bg-primary/10">
                     <type.icon className="w-6 h-6 text-primary" />
                   </div>
                 </div>
                 <div className="mt-3 flex items-center gap-4 text-sm">
-                  <span className="flex items-center gap-1 text-emerald-600">
+                  <span className="flex items-center gap-1 text-emerald-500">
                     <CheckCircle className="w-4 h-4" /> {complete} complete
                   </span>
-                  <span className="flex items-center gap-1 text-amber-600">
+                  <span className="flex items-center gap-1 text-amber-500">
                     <AlertCircle className="w-4 h-4" /> {pending} pending
                   </span>
                 </div>
@@ -212,25 +234,25 @@ export default function DocumentsPage() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="p-4 text-left font-medium text-muted-foreground">Client</th>
-                  <th className="p-4 text-left font-medium text-muted-foreground">Phone</th>
-                  <th className="p-4 text-left font-medium text-muted-foreground">ID Docs</th>
-                  <th className="p-4 text-left font-medium text-muted-foreground">Income Proof</th>
-                  <th className="p-4 text-left font-medium text-muted-foreground">Residence Proof</th>
-                  <th className="p-4 text-left font-medium text-muted-foreground">Status</th>
-                  <th className="p-4 text-right font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-border bg-muted/50">
+                  <TableHead className="p-4 text-left font-medium text-muted-foreground">Client</TableHead>
+                  <TableHead className="p-4 text-left font-medium text-muted-foreground">Phone</TableHead>
+                  <TableHead className="p-4 text-left font-medium text-muted-foreground">ID Docs</TableHead>
+                  <TableHead className="p-4 text-left font-medium text-muted-foreground">Income Proof</TableHead>
+                  <TableHead className="p-4 text-left font-medium text-muted-foreground">Residence Proof</TableHead>
+                  <TableHead className="p-4 text-left font-medium text-muted-foreground">Status</TableHead>
+                  <TableHead className="p-4 text-right font-medium text-muted-foreground">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {documents.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="p-12 text-center text-muted-foreground">
+                  <TableRow>
+                    <TableCell colSpan={7} className="p-12 text-center text-muted-foreground">
                       {t('documents.noDocuments')}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   documents
                     .filter(c => {
@@ -247,49 +269,49 @@ export default function DocumentsPage() {
                       return true;
                     })
                     .map((client) => (
-                      <tr key={client.id} className="border-b border-border/50 hover:bg-muted/50 cursor-pointer" onClick={() => fetchClientDocs(client.id)}>
-                        <td className="p-4">
-                          <p className="font-medium">{client.first_name} {client.last_name}</p>
-                        </td>
-                        <td className="p-4 font-mono text-sm">{client.phone}</td>
-                        <td className="p-4">
+                      <TableRow key={client.id} className="border-b border-border/50 hover:bg-muted/50 cursor-pointer" onClick={() => fetchClientDocs(client.id)}>
+                        <TableCell className="p-4">
+                          <p className="font-medium text-foreground">{client.first_name} {client.last_name}</p>
+                        </TableCell>
+                        <TableCell className="p-4 font-mono text-sm">{client.phone}</TableCell>
+                        <TableCell className="p-4">
                           {client.id_uploaded ? (
-                            <span className="flex items-center gap-1 text-emerald-600"><CheckCircle className="w-4 h-4" /> Complete</span>
+                            <span className="flex items-center gap-1 text-emerald-500"><CheckCircle className="w-4 h-4" /> Complete</span>
                           ) : (
-                            <span className="flex items-center gap-1 text-amber-600"><AlertCircle className="w-4 h-4" /> Missing</span>
+                            <span className="flex items-center gap-1 text-amber-500"><AlertCircle className="w-4 h-4" /> Missing</span>
                           )}
-                        </td>
-                        <td className="p-4">
+                        </TableCell>
+                        <TableCell className="p-4">
                           {client.income_proof_uploaded ? (
-                            <span className="flex items-center gap-1 text-emerald-600"><CheckCircle className="w-4 h-4" /> Complete</span>
+                            <span className="flex items-center gap-1 text-emerald-500"><CheckCircle className="w-4 h-4" /> Complete</span>
                           ) : (
-                            <span className="flex items-center gap-1 text-amber-600"><AlertCircle className="w-4 h-4" /> Missing</span>
+                            <span className="flex items-center gap-1 text-amber-500"><AlertCircle className="w-4 h-4" /> Missing</span>
                           )}
-                        </td>
-                        <td className="p-4">
+                        </TableCell>
+                        <TableCell className="p-4">
                           {client.residence_proof_uploaded ? (
-                            <span className="flex items-center gap-1 text-emerald-600"><CheckCircle className="w-4 h-4" /> Complete</span>
+                            <span className="flex items-center gap-1 text-emerald-500"><CheckCircle className="w-4 h-4" /> Complete</span>
                           ) : (
-                            <span className="flex items-center gap-1 text-amber-600"><AlertCircle className="w-4 h-4" /> Missing</span>
+                            <span className="flex items-center gap-1 text-amber-500"><AlertCircle className="w-4 h-4" /> Missing</span>
                           )}
-                        </td>
-                        <td className="p-4">
+                        </TableCell>
+                        <TableCell className="p-4">
                           {client.id_uploaded && client.income_proof_uploaded ? (
                             <Badge variant="default" className="text-xs">{t('documents.complete')}</Badge>
                           ) : (
                             <Badge variant="secondary" className="text-xs">{t('documents.pending')}</Badge>
                           )}
-                        </td>
-                        <td className="p-4 text-right">
+                        </TableCell>
+                        <TableCell className="p-4 text-right">
                           <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); fetchClientDocs(client.id); }}>
                             <Eye className="w-4 h-4 mr-1" /> View
                           </Button>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
@@ -299,7 +321,7 @@ export default function DocumentsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => { setSelectedClient(null); setClientDocs({}); }}>
           <div className="bg-card rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
             <div className="p-4 border-b border-border flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{clientDocs.client?.first_name} {clientDocs.client?.last_name} - Documents</h2>
+              <h2 className="text-lg font-semibold text-foreground">{clientDocs.client?.first_name} {clientDocs.client?.last_name} - Documents</h2>
               <Button variant="ghost" size="sm" onClick={() => { setSelectedClient(null); setClientDocs({}); }}>
                 <XCircleIcon className="w-5 h-5" />
               </Button>
@@ -310,7 +332,7 @@ export default function DocumentsPage() {
                 return (
                   <div key={type.id}>
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-medium flex items-center gap-2">
+                      <h3 className="font-medium flex items-center gap-2 text-foreground">
                         <type.icon className="w-5 h-5 text-primary" />
                         {type.label} ({docs.length})
                       </h3>
@@ -332,7 +354,7 @@ export default function DocumentsPage() {
                             <div className="flex items-center gap-3 min-w-0">
                               <FileText className="w-6 h-6 text-muted-foreground flex-shrink-0" />
                               <div className="min-w-0">
-                                <p className="font-medium text-sm truncate">{doc.original_name || doc.filename}</p>
+                                <p className="font-medium text-sm truncate text-foreground">{doc.original_name || doc.filename}</p>
                                 <p className="text-xs text-muted-foreground">
                                   {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString() : ''}
                                   {doc.size && ` • ${(doc.size / 1024).toFixed(1)} KB`}

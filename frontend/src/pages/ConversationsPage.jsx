@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
@@ -7,26 +7,25 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { toast } from 'sonner';
 import {
   Search, MessageSquare, Send, Phone, Mail, Globe, Bell,
   CheckCircle, Clock, User, MoreHorizontal, ChevronDown,
   ChevronUp, Edit, Trash2, Eye, ExternalLink, Download,
-  AlertCircle, CheckCircle2, XCircle, Loader2
+  AlertCircle, CheckCircle2, XCircle, Loader2, LayoutList, LayoutGrid
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const CHANNELS = [
-  { id: 'sms', label: 'SMS', icon: MessageSquare, color: 'bg-green-500' },
-  { id: 'email', label: 'Email', icon: Mail, color: 'bg-blue-500' },
-  { id: 'facebook', label: 'Facebook', icon: Globe, color: 'bg-blue-600' },
-  { id: 'instagram', label: 'Instagram', icon: Globe, color: 'bg-pink-500' },
-  { id: 'tiktok', label: 'TikTok', icon: Globe, color: 'bg-slate-900' },
-  { id: 'webchat', label: 'Web Chat', icon: MessageSquare, color: 'bg-purple-500' },
-  { id: 'whatsapp', label: 'WhatsApp', icon: Phone, color: 'bg-green-600' },
+  { id: 'sms', label: 'SMS', icon: MessageSquare, color: 'bg-emerald-500/20 text-emerald-500' },
+  { id: 'email', label: 'Email', icon: Mail, color: 'bg-primary/20 text-primary' },
+  { id: 'facebook', label: 'Facebook', icon: Globe, color: 'bg-blue-500/20 text-blue-500' },
+  { id: 'instagram', label: 'Instagram', icon: Globe, color: 'bg-pink-500/20 text-pink-500' },
+  { id: 'tiktok', label: 'TikTok', icon: Globe, color: 'bg-slate-500/20 text-slate-500' },
+  { id: 'webchat', label: 'Web Chat', icon: MessageSquare, color: 'bg-purple-500/20 text-purple-500' },
+  { id: 'whatsapp', label: 'WhatsApp', icon: Phone, color: 'bg-emerald-500/20 text-emerald-500' },
 ];
 
 export default function ConversationsPage() {
@@ -36,16 +35,16 @@ export default function ConversationsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [channelFilter, setChannelFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all'); // all, unread, active
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef(null);
 
   const fetchConversations = async () => {
     setLoading(true);
     try {
-      // Use existing inbox/unread endpoints
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
       if (channelFilter !== 'all') params.append('channel', channelFilter);
@@ -59,7 +58,6 @@ export default function ConversationsPage() {
       setConversations(response.data);
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
-      // Mock data for demo
       setConversations([
         { id: '1', client_id: 'c1', client_name: 'John Smith', client_phone: '+15551234567', channel: 'sms', last_message: 'Thanks for the info!', last_message_at: new Date().toISOString(), unread_count: 2, status: 'active' },
         { id: '2', client_id: 'c2', client_name: 'Maria Garcia', client_phone: '+15559876543', channel: 'email', last_message: 'When can I test drive?', last_message_at: new Date(Date.now() - 3600000).toISOString(), unread_count: 0, status: 'active' },
@@ -80,7 +78,6 @@ export default function ConversationsPage() {
       setMessages(response.data);
     } catch (error) {
       console.error('Failed to fetch messages:', error);
-      // Mock messages
       setMessages([
         { id: 'm1', conversation_id: conversationId, direction: 'inbound', body: 'Hi, interested in the Accord', created_at: new Date(Date.now() - 3600000).toISOString(), status: 'read' },
         { id: 'm2', conversation_id: conversationId, direction: 'outbound', body: 'Great! When can you come in?', created_at: new Date(Date.now() - 1800000).toISOString(), status: 'sent' },
@@ -92,7 +89,6 @@ export default function ConversationsPage() {
   const handleSelect = async (conversation) => {
     setSelectedConversation(conversation);
     await fetchMessages(conversation.id);
-    // Mark as read
     if (conversation.unread_count > 0) {
       try {
         await axios.post(`${API}/inbox/${conversation.id}/mark-read`);
@@ -119,13 +115,13 @@ export default function ConversationsPage() {
   };
 
   const getChannelInfo = (channelId) => {
-    return CHANNELS.find(c => c.id === channelId) || { label: channelId, icon: MessageSquare, color: 'bg-slate-500' };
+    return CHANNELS.find(c => c.id === channelId) || { label: channelId, icon: MessageSquare, color: 'bg-muted text-muted-foreground' };
   };
 
   const renderChannelIcon = (channelId) => {
     const info = getChannelInfo(channelId);
     const Icon = info.icon;
-    return <Icon className="w-3 h-3" />;
+    return <Icon className="w-3.5 h-3.5" />;
   };
 
   const renderChannelIconLarge = (channelId) => {
@@ -134,10 +130,54 @@ export default function ConversationsPage() {
     return <Icon className="w-5 h-5" />;
   };
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="loading-spinner" />
+      <div className="space-y-6" data-testid="conversations-page">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">{t('conversations.title')}</h1>
+            <p className="text-muted-foreground mt-1">Loading conversations...</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder={t('conversations.search')} disabled className="pl-10" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <Card className="lg:col-span-1 flex flex-col">
+            <CardContent className="flex-1 p-0">
+              <div className="p-2 space-y-1 h-[calc(100vh-300px)] overflow-y-auto">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="p-3 bg-muted/50 rounded-lg animate-pulse">
+                    <div className="flex items-center gap-2">
+                      <div className="loading-spinner" style={{width: '100px', height: '16px', borderWidth: '2px'}} />
+                    </div>
+                    <div className="loading-spinner" style={{width: '80px', height: '12px', borderWidth: '2px', marginTop: '4px'}} />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="lg:col-span-2 flex flex-col">
+            <CardContent className="flex-1 flex items-center justify-center">
+              <div className="text-center text-muted-foreground">
+                <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+                <h3 className="text-lg font-medium mb-1">Select a conversation</h3>
+                <p>Choose a conversation from the list to start messaging</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -212,19 +252,21 @@ export default function ConversationsPage() {
                     <Button
                       key={conv.id}
                       variant={selectedConversation?.id === conv.id ? 'default' : 'ghost'}
-                      className="w-full justify-start text-left gap-3 p-3 hover:bg-muted/50"
+                      className="w-full justify-start text-left gap-3 p-3 hover:bg-muted/50 transition-colors"
                       onClick={() => handleSelect(conv)}
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium truncate">{conv.client_name}</span>
+                          <span className="font-medium truncate text-foreground">{conv.client_name}</span>
                           {conv.unread_count > 0 && (
                             <Badge variant="default" className="text-xs ml-auto">{conv.unread_count}</Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
-                            {renderChannelIcon(conv.channel)}
+                            <div className={`p-1 rounded ${getChannelInfo(conv.channel).color}`}>
+                              {renderChannelIcon(conv.channel)}
+                            </div>
                             {getChannelInfo(conv.channel).label}
                           </span>
                           <span>•</span>
@@ -246,17 +288,17 @@ export default function ConversationsPage() {
             <>
               <CardHeader className="pb-2 border-b border-border">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${getChannelInfo(selectedConversation.channel).color} text-white`}>
+                  <div className={`p-2 rounded-lg ${getChannelInfo(selectedConversation.channel).color}`}>
                     {renderChannelIconLarge(selectedConversation.channel)}
                   </div>
                   <div>
-                    <h3 className="font-semibold">{selectedConversation.client_name}</h3>
+                    <h3 className="font-semibold text-foreground">{selectedConversation.client_name}</h3>
                     <p className="text-sm text-muted-foreground">{selectedConversation.client_phone}</p>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="flex-1 p-0">
-                <ScrollArea className="h-[calc(100vh-350px)]" type="always">
+              <CardContent className="flex-1 p-0 flex flex-col">
+                <ScrollArea className="flex-1" type="always">
                   <div className="p-4 space-y-4">
                     {messages.length === 0 ? (
                       <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -277,7 +319,7 @@ export default function ConversationsPage() {
                         </div>
                       ))
                     )}
-                    <div ref={(el) => { if (el) el.scrollIntoView({ behavior: 'smooth' }); }} />
+                    <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
                 

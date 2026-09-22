@@ -1,23 +1,18 @@
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "/opt/dealer-ai-v2/worktrees/070-final-product-completion/backend/server.py", line 1, in <module>
-    from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Form, Request
-ModuleNotFoundError: No module named 'fastapi'
-Error in sys.excepthook:
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/apport_python_hook.py", line 228, in partial_apport_excepthook
-    return apport_excepthook(binary, exc_type, exc_obj, exc_tb)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3/dist-packages/apport_python_hook.py", line 114, in apport_excepthook
-    report["ExecutableTimestamp"] = str(int(os.stat(binary).st_mtime))
-                                            ^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: '/opt/dealer-ai-v2/worktrees/070-final-product-completion/backend/-m'
-
-Original exception was:
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "/opt/dealer-ai-v2/worktrees/070-final-product-completion/backend/server.py", line 1, in <module>
-    from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Form, Request
-ModuleNotFoundError: No module named 'fastapi'
+INFO:     Started server process [1163685]
+INFO:     Waiting for application startup.
+2026-09-22 00:55:53,072 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-09-22 00:55:53,074 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-09-22 00:55:53,075 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-09-22 00:55:53,076 - apscheduler.scheduler - INFO - Added job "send_marketing_sms_job" to job store "default"
+2026-09-22 00:55:53,076 - apscheduler.scheduler - INFO - Added job "check_comment_reminders_job" to job store "default"
+2026-09-22 00:55:53,076 - apscheduler.scheduler - INFO - Added job "check_appointment_reminders_job" to job store "default"
+2026-09-22 00:55:53,077 - apscheduler.scheduler - INFO - Scheduler started
+2026-09-22 00:55:53,077 - server - INFO - Scheduler started - Marketing SMS at 11:00 AM, Comment reminders every 5 min, Appointment reminders at 9:00 AM Pacific
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8002 (Press CTRL+C to quit)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-09-22 00:57:50,185 - server - INFO - SMS Scheduler stopped
+2026-09-22 00:57:50,186 - apscheduler.scheduler - INFO - Scheduler has been shut down
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1163685]

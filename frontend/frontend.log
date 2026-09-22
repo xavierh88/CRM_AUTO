@@ -1,0 +1,412 @@
+
+> frontend@0.1.0 start
+> craco start
+
+(node:1150688) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Browserslist: browsers data (caniuse-lite) is 9 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+(node:1150688) [DEP_WEBPACK_DEV_SERVER_ON_AFTER_SETUP_MIDDLEWARE] DeprecationWarning: 'onAfterSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+(node:1150688) [DEP_WEBPACK_DEV_SERVER_ON_BEFORE_SETUP_MIDDLEWARE] DeprecationWarning: 'onBeforeSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+Starting the development server...
+
+Failed to compile.
+
+[eslint] 
+src/pages/CustomersPage.jsx
+Syntax error: Unexpected token, expected "jsxTagEnd" (342:41) (342:41)
+
+src/pages/LeadsPage.jsx
+Syntax error: Unexpected token, expected "jsxTagEnd" (525:45) (525:45)
+WARNING in [eslint] 
+src/context/AuthContext.js
+  Line 20:6:  React Hook useEffect has a missing dependency: 'fetchUser'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/ConversationsPage.jsx
+  Line 75:6:  React Hook useEffect has a missing dependency: 'fetchConversations'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/DealsPage.jsx
+  Line 81:6:  React Hook useEffect has a missing dependency: 'fetchDeals'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/DocumentsPage.jsx
+  Line 65:6:  React Hook useEffect has a missing dependency: 'fetchDocuments'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/PublicAppointmentPage.jsx
+  Line 140:6:  React Hook useEffect has a missing dependency: 'validateToken'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/PublicDocumentsPage.jsx
+  Line 121:6:  React Hook useEffect has a missing dependency: 'validateToken'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/ReportsPage.jsx
+  Line 109:6:  React Hook useEffect has a missing dependency: 'fetchReports'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/SoldPage.jsx
+  Line 28:6:  React Hook useEffect has missing dependencies: 'canFilterBySalesperson', 'fetchSalespersons', and 'fetchSoldClients'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+ERROR in ./src/pages/CustomersPage.jsx
+Module build failed (from ./node_modules/babel-loader/lib/index.js):
+SyntaxError: /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/src/pages/CustomersPage.jsx: Unexpected token, expected "jsxTagEnd" (342:41)
+
+  340 |                     ))
+  341 |                   )}
+> 342 |                 </TableBody              </Table>
+      |                                          ^
+  343 |             </div>
+  344 |           </CardContent>
+  345 |         </Card>
+    at constructor (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+    at FlowParserMixin.raise (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6624:19)
+    at FlowParserMixin.unexpected (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6644:16)
+    at FlowParserMixin.expect (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6924:12)
+    at FlowParserMixin.jsxParseClosingElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4709:10)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4724:37)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElement (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+    at FlowParserMixin.parseExprSubscripts (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+    at FlowParserMixin.parseUpdate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+    at FlowParserMixin.parseMaybeUnary (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+    at FlowParserMixin.parseExprOps (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+    at FlowParserMixin.parseMaybeConditional (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3527:39
+    at FlowParserMixin.tryParse (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6932:20)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3527:18)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+    at FlowParserMixin.allowInAnd (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+    at FlowParserMixin.parseMaybeAssignAllowIn (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+    at FlowParserMixin.parseMaybeAssignAllowInOrVoidPattern (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11747:28)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3620:18)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+    at FlowParserMixin.parseExprSubscripts (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+    at FlowParserMixin.parseUpdate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+    at FlowParserMixin.parseMaybeUnary (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+    at FlowParserMixin.parseExprOps (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+    at FlowParserMixin.parseMaybeConditional (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3578:18)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+    at FlowParserMixin.allowInAnd (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+    at FlowParserMixin.parseMaybeAssignAllowIn (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+    at FlowParserMixin.tryParseConditionalConsequent (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3050:29)
+    at FlowParserMixin.parseConditional (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3011:14)
+    at FlowParserMixin.parseMaybeConditional (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10949:17)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3578:18)
+    at FlowParserMixin.parseExpressionBase (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10848:23)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10844:39
+    at FlowParserMixin.allowInAnd (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+    at FlowParserMixin.parseExpression (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10844:17)
+
+ERROR in ./src/pages/LeadsPage.jsx
+Module build failed (from ./node_modules/babel-loader/lib/index.js):
+SyntaxError: /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/src/pages/LeadsPage.jsx: Unexpected token, expected "jsxTagEnd" (525:45)
+
+  523 |                     <SelectItem key={sp.id} value={sp.id}>{sp.name}</SelectItem>
+  524 |                   ))}
+> 525 |                 </SelectContent              </Select>
+      |                                              ^
+  526 |             )}
+  527 |           </div>
+  528 |         </CardContent>
+    at constructor (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+    at FlowParserMixin.raise (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6624:19)
+    at FlowParserMixin.unexpected (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6644:16)
+    at FlowParserMixin.expect (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6924:12)
+    at FlowParserMixin.jsxParseClosingElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4709:10)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4724:37)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElement (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+    at FlowParserMixin.parseExprSubscripts (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+    at FlowParserMixin.parseUpdate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+    at FlowParserMixin.parseMaybeUnary (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+    at FlowParserMixin.parseExprOps (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+    at FlowParserMixin.parseMaybeConditional (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3527:39
+    at FlowParserMixin.tryParse (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6932:20)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3527:18)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+    at FlowParserMixin.allowInAnd (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+    at FlowParserMixin.parseMaybeAssignAllowIn (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+    at FlowParserMixin.parseMaybeAssignAllowInOrVoidPattern (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11747:28)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3620:18)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+    at FlowParserMixin.parseExprSubscripts (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+    at FlowParserMixin.parseUpdate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+    at FlowParserMixin.parseMaybeUnary (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+    at FlowParserMixin.parseExprOpBaseRightExpr (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11050:34)
+    at FlowParserMixin.parseExprOpRightExpr (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11045:21)
+    at FlowParserMixin.parseExprOp (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11011:27)
+    at FlowParserMixin.parseExprOp (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11017:21)
+    at FlowParserMixin.parseExprOps (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10972:17)
+    at FlowParserMixin.parseMaybeConditional (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3578:18)
+    at FlowParserMixin.parseExpressionBase (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10848:23)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10844:39
+    at FlowParserMixin.allowInAnd (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+    at FlowParserMixin.parseExpression (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10844:17)
+    at FlowParserMixin.jsxParseExpressionContainer (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4661:31)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4740:36)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElement (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+
+ERROR in [eslint] 
+src/pages/CustomersPage.jsx
+  Line 342:41:  Parsing error: Unexpected token, expected "jsxTagEnd" (342:41)
+
+src/pages/LeadsPage.jsx
+  Line 525:45:  Parsing error: Unexpected token, expected "jsxTagEnd" (525:45)
+
+webpack compiled with 3 errors and 1 warning
+Compiling...
+Failed to compile.
+
+[eslint] 
+src/pages/AppointmentsPage.jsx
+Syntax error: Unexpected token, expected "jsxTagEnd" (421:35) (421:35)
+
+src/pages/CustomersPage.jsx
+Syntax error: Unexpected token, expected "jsxTagEnd" (342:41) (342:41)
+
+src/pages/LeadsPage.jsx
+Syntax error: Unexpected token, expected "jsxTagEnd" (525:45) (525:45)
+WARNING in [eslint] 
+src/context/AuthContext.js
+  Line 20:6:  React Hook useEffect has a missing dependency: 'fetchUser'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/ConversationsPage.jsx
+  Line 75:6:  React Hook useEffect has a missing dependency: 'fetchConversations'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/DealsPage.jsx
+  Line 81:6:  React Hook useEffect has a missing dependency: 'fetchDeals'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/DocumentsPage.jsx
+  Line 65:6:  React Hook useEffect has a missing dependency: 'fetchDocuments'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/PublicAppointmentPage.jsx
+  Line 140:6:  React Hook useEffect has a missing dependency: 'validateToken'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/PublicDocumentsPage.jsx
+  Line 121:6:  React Hook useEffect has a missing dependency: 'validateToken'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/ReportsPage.jsx
+  Line 109:6:  React Hook useEffect has a missing dependency: 'fetchReports'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/SoldPage.jsx
+  Line 28:6:  React Hook useEffect has missing dependencies: 'canFilterBySalesperson', 'fetchSalespersons', and 'fetchSoldClients'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+ERROR in ./src/pages/AppointmentsPage.jsx
+Module build failed (from ./node_modules/babel-loader/lib/index.js):
+SyntaxError: /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/src/pages/AppointmentsPage.jsx: Unexpected token, expected "jsxTagEnd" (421:35)
+
+  419 |                 <p className="text-muted-foreground text-center py-8">{t('appointments.noToday') || 'No appointments today'}</p>
+  420 |               )}
+> 421 |             </CardContent          </Card>
+      |                                    ^
+  422 |
+  423 |           <Card>
+  424 |             <CardHeader className="pb-2">
+    at constructor (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+    at FlowParserMixin.raise (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6624:19)
+    at FlowParserMixin.unexpected (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6644:16)
+    at FlowParserMixin.expect (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6924:12)
+    at FlowParserMixin.jsxParseClosingElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4709:10)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4724:37)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElement (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+    at FlowParserMixin.parseExprSubscripts (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+    at FlowParserMixin.parseUpdate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+    at FlowParserMixin.parseMaybeUnary (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+    at FlowParserMixin.parseExprOps (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+    at FlowParserMixin.parseMaybeConditional (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3527:39
+    at FlowParserMixin.tryParse (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6932:20)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3527:18)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+    at FlowParserMixin.allowInAnd (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+    at FlowParserMixin.parseMaybeAssignAllowIn (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+    at FlowParserMixin.parseMaybeAssignAllowInOrVoidPattern (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11747:28)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3620:18)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+    at FlowParserMixin.parseExprSubscripts (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+    at FlowParserMixin.parseUpdate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+    at FlowParserMixin.parseMaybeUnary (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+    at FlowParserMixin.parseExprOpBaseRightExpr (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11050:34)
+    at FlowParserMixin.parseExprOpRightExpr (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11045:21)
+    at FlowParserMixin.parseExprOp (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11011:27)
+    at FlowParserMixin.parseExprOp (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11017:21)
+    at FlowParserMixin.parseExprOps (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10972:17)
+    at FlowParserMixin.parseMaybeConditional (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3578:18)
+    at FlowParserMixin.parseExpressionBase (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10848:23)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10844:39
+    at FlowParserMixin.allowInAnd (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+    at FlowParserMixin.parseExpression (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10844:17)
+    at FlowParserMixin.jsxParseExpressionContainer (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4661:31)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4740:36)
+    at FlowParserMixin.jsxParseElement (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+    at FlowParserMixin.parseExprSubscripts (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+    at FlowParserMixin.parseUpdate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+
+ERROR in ./src/pages/CustomersPage.jsx
+Module build failed (from ./node_modules/babel-loader/lib/index.js):
+SyntaxError: /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/src/pages/CustomersPage.jsx: Unexpected token, expected "jsxTagEnd" (342:41)
+
+  340 |                     ))
+  341 |                   )}
+> 342 |                 </TableBody              </Table>
+      |                                          ^
+  343 |             </div>
+  344 |           </CardContent>
+  345 |         </Card>
+    at constructor (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+    at FlowParserMixin.raise (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6624:19)
+    at FlowParserMixin.unexpected (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6644:16)
+    at FlowParserMixin.expect (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6924:12)
+    at FlowParserMixin.jsxParseClosingElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4709:10)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4724:37)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElement (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+    at FlowParserMixin.parseExprSubscripts (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+    at FlowParserMixin.parseUpdate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+    at FlowParserMixin.parseMaybeUnary (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+    at FlowParserMixin.parseExprOps (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+    at FlowParserMixin.parseMaybeConditional (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3527:39
+    at FlowParserMixin.tryParse (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6932:20)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3527:18)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+    at FlowParserMixin.allowInAnd (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+    at FlowParserMixin.parseMaybeAssignAllowIn (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+    at FlowParserMixin.parseMaybeAssignAllowInOrVoidPattern (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11747:28)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3620:18)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+    at FlowParserMixin.parseExprSubscripts (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+    at FlowParserMixin.parseUpdate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+    at FlowParserMixin.parseMaybeUnary (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+    at FlowParserMixin.parseExprOps (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+    at FlowParserMixin.parseMaybeConditional (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3578:18)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+    at FlowParserMixin.allowInAnd (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+    at FlowParserMixin.parseMaybeAssignAllowIn (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+    at FlowParserMixin.tryParseConditionalConsequent (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3050:29)
+    at FlowParserMixin.parseConditional (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3011:14)
+    at FlowParserMixin.parseMaybeConditional (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10949:17)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3578:18)
+    at FlowParserMixin.parseExpressionBase (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10848:23)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10844:39
+    at FlowParserMixin.allowInAnd (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+    at FlowParserMixin.parseExpression (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10844:17)
+
+ERROR in ./src/pages/LeadsPage.jsx
+Module build failed (from ./node_modules/babel-loader/lib/index.js):
+SyntaxError: /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/src/pages/LeadsPage.jsx: Unexpected token, expected "jsxTagEnd" (525:45)
+
+  523 |                     <SelectItem key={sp.id} value={sp.id}>{sp.name}</SelectItem>
+  524 |                   ))}
+> 525 |                 </SelectContent              </Select>
+      |                                              ^
+  526 |             )}
+  527 |           </div>
+  528 |         </CardContent>
+    at constructor (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+    at FlowParserMixin.raise (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6624:19)
+    at FlowParserMixin.unexpected (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6644:16)
+    at FlowParserMixin.expect (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6924:12)
+    at FlowParserMixin.jsxParseClosingElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4709:10)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4724:37)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElement (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+    at FlowParserMixin.parseExprSubscripts (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+    at FlowParserMixin.parseUpdate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+    at FlowParserMixin.parseMaybeUnary (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+    at FlowParserMixin.parseExprOps (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+    at FlowParserMixin.parseMaybeConditional (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3527:39
+    at FlowParserMixin.tryParse (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:6932:20)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3527:18)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+    at FlowParserMixin.allowInAnd (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+    at FlowParserMixin.parseMaybeAssignAllowIn (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+    at FlowParserMixin.parseMaybeAssignAllowInOrVoidPattern (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11747:28)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3620:18)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+    at FlowParserMixin.parseExprSubscripts (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+    at FlowParserMixin.parseUpdate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+    at FlowParserMixin.parseMaybeUnary (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+    at FlowParserMixin.parseExprOpBaseRightExpr (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11050:34)
+    at FlowParserMixin.parseExprOpRightExpr (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11045:21)
+    at FlowParserMixin.parseExprOp (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11011:27)
+    at FlowParserMixin.parseExprOp (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:11017:21)
+    at FlowParserMixin.parseExprOps (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10972:17)
+    at FlowParserMixin.parseMaybeConditional (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+    at FlowParserMixin.parseMaybeAssign (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:3578:18)
+    at FlowParserMixin.parseExpressionBase (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10848:23)
+    at /opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10844:39
+    at FlowParserMixin.allowInAnd (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+    at FlowParserMixin.parseExpression (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:10844:17)
+    at FlowParserMixin.jsxParseExpressionContainer (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4661:31)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4740:36)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElementAt (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+    at FlowParserMixin.jsxParseElement (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+    at FlowParserMixin.parseExprAtom (/opt/dealer-ai-v2/worktrees/070-final-product-completion/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+
+ERROR in [eslint] 
+src/pages/AppointmentsPage.jsx
+  Line 421:35:  Parsing error: Unexpected token, expected "jsxTagEnd" (421:35)
+
+src/pages/CustomersPage.jsx
+  Line 342:41:  Parsing error: Unexpected token, expected "jsxTagEnd" (342:41)
+
+src/pages/LeadsPage.jsx
+  Line 525:45:  Parsing error: Unexpected token, expected "jsxTagEnd" (525:45)
+
+webpack compiled with 4 errors and 1 warning

@@ -9,13 +9,13 @@ import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
 import {
   Plus, Search, Filter, Truck, Car, Package, DollarSign,
   ChevronDown, ChevronUp, Edit, Trash2, Eye, MoreHorizontal,
-  AlertTriangle, CheckCircle, XCircle
+  AlertTriangle, CheckCircle, XCircle, LayoutGrid, LayoutList
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -29,6 +29,22 @@ const STATUS_OPTIONS = [
 ];
 
 const MAKES = ['Toyota', 'Honda', 'Ford', 'Chevrolet', 'Nissan', 'Hyundai', 'Kia', 'BMW', 'Mercedes-Benz', 'Audi', 'Lexus', 'Acura', 'Infiniti', 'Cadillac', 'Lincoln', 'Buick', 'GMC', 'Dodge', 'Jeep', 'Ram', 'Chrysler', 'Subaru', 'Mazda', 'Mitsubishi', 'Volkswagen', 'Volvo', 'Porsche', 'Tesla', 'Rivian', 'Lucid', 'Other'];
+
+const statusBadgeVariant = {
+  available: 'default',
+  reserved: 'secondary',
+  sold: 'destructive',
+  in_transit: 'outline',
+  service: 'outline',
+};
+
+const statusColors = {
+  available: 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30',
+  reserved: 'bg-amber-500/20 text-amber-500 border-amber-500/30',
+  sold: 'bg-rose-500/20 text-rose-500 border-rose-500/30',
+  in_transit: 'bg-blue-500/20 text-blue-500 border-blue-500/30',
+  service: 'bg-purple-500/20 text-purple-500 border-purple-500/30',
+};
 
 export default function InventoryPage() {
   const { t } = useTranslation();
@@ -44,6 +60,7 @@ export default function InventoryPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'card'
 
   // Form state
   const [formData, setFormData] = useState({
@@ -105,17 +122,20 @@ export default function InventoryPage() {
   };
 
   const getStatusBadge = (status) => {
-    const variants = {
-      available: 'default',
-      reserved: 'secondary',
-      sold: 'destructive',
-      in_transit: 'outline',
-      service: 'outline',
-    };
+    const variant = statusBadgeVariant[status] || 'outline';
     return (
-      <Badge variant={variants[status] || 'outline'} className="capitalize">
+      <Badge variant={variant} className="capitalize">
         {status.replace('_', ' ')}
       </Badge>
+    );
+  };
+
+  const getStatusBadgeCard = (status) => {
+    const className = statusColors[status] || statusColors.available;
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${className}`}>
+        {status.replace('_', ' ')}
+      </span>
     );
   };
 
@@ -201,13 +221,118 @@ export default function InventoryPage() {
     return true;
   });
 
+  const formatPrice = (price) => price ? `$${Number(price).toLocaleString()}` : '-';
+  const formatMileage = (mileage) => mileage ? Number(mileage).toLocaleString() : '-';
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="loading-spinner" />
+      <div className="space-y-6" data-testid="inventory-page">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">{t('inventory.title')}</h1>
+            <p className="text-muted-foreground mt-1">
+              {totalCount} {totalCount === 1 ? 'vehicle' : 'vehicles'} in inventory
+            </p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder={t('inventory.search')} disabled className="pl-10" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        {viewMode === 'table' ? (
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-b border-border">
+                      {[...Array(10)].map((_, i) => (
+                        <TableHead key={i} className="w-24 h-12">
+                          <Skeleton className="h-4 w-3/4" />
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[...Array(5)].map((_, i) => (
+                      <TableRow key={i}>
+                        {[...Array(10)].map((_, j) => (
+                          <TableCell key={j} className="h-12">
+                            <Skeleton className="h-4 w-full" />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i} className="p-4">
+                <Skeleton className="h-32 w-full rounded-lg mb-3" />
+                <Skeleton className="h-5 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-1/2 mb-1" />
+                <Skeleton className="h-4 w-1/3" />
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
+
+  const VehicleCard = ({ vehicle }) => (
+    <Card className="p-4 hover:shadow-lg transition-shadow group flex flex-col h-full">
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-foreground truncate">
+            {vehicle.year} {vehicle.make} {vehicle.model}
+            {vehicle.trim && <span className="text-muted-foreground ml-1">{vehicle.trim}</span>}
+          </h3>
+          <p className="text-xs text-muted-foreground font-mono">VIN: {vehicle.vin?.slice(-8)}</p>
+        </div>
+        {getStatusBadgeCard(vehicle.status)}
+      </div>
+      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3 flex-wrap">
+        <span className="flex items-center gap-1">
+          <Package className="w-3.5 h-3.5" />
+          {vehicle.stock_number}
+        </span>
+        <span className="flex items-center gap-1">
+          <Car className="w-3.5 h-3.5" />
+          {vehicle.color}
+        </span>
+        <span className="flex items-center gap-1">
+          <Truck className="w-3.5 h-3.5" />
+          {formatMileage(vehicle.mileage)} mi
+        </span>
+        <span className="flex items-center gap-1">
+          <Calendar className="w-3.5 h-3.5" />
+          {vehicle.days_on_lot} days
+        </span>
+      </div>
+      <div className="mt-auto pt-3 border-t border-border flex items-center justify-between">
+        <div className="font-bold text-lg text-foreground">{formatPrice(vehicle.price)}</div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => handleEdit(vehicle)} aria-label={t('common.edit') || 'Edit'}>
+            <Eye className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => handleDelete(vehicle.id)} aria-label={t('common.delete') || 'Delete'} className="text-destructive hover:text-destructive">
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
 
   return (
     <div className="space-y-6" data-testid="inventory-page">
@@ -219,7 +344,27 @@ export default function InventoryPage() {
             {totalCount} {totalCount === 1 ? 'vehicle' : 'vehicles'} in inventory
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="hidden sm:flex border-border bg-muted rounded-lg p-1" role="group" aria-label="View mode">
+            <Button
+              variant={viewMode === 'table' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('table')}
+              aria-pressed={viewMode === 'table'}
+              aria-label="Table view"
+            >
+              <LayoutList className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'card' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('card')}
+              aria-pressed={viewMode === 'card'}
+              aria-label="Card view"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
+          </div>
           <Button onClick={() => { resetForm(); setShowAddDialog(true); }}>
             <Plus className="w-4 h-4 mr-2" />
             {t('inventory.addVehicle')}
@@ -266,84 +411,99 @@ export default function InventoryPage() {
         </CardContent>
       </Card>
 
-      {/* Vehicle Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-b border-border">
-                  <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('stock_number')}>
-                    Stock # <span className={sortBy === 'stock_number' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''} />
-                  </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('year')}>
-                    Year <span className={sortBy === 'year' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''} />
-                  </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('make')}>
-                    Make <span className={sortBy === 'make' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''} />
-                  </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('model')}>
-                    Model <span className={sortBy === 'model' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''} />
-                  </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('trim')}>
-                    Trim
-                  </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('color')}>
-                    Color
-                  </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('mileage')}>
-                    Mileage <span className={sortBy === 'mileage' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''} />
-                  </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('price')}>
-                    Price <span className={sortBy === 'price' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''} />
-                  </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('status')}>
-                    Status <span className={sortBy === 'status' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''} />
-                  </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('days_on_lot')}>
-                    Days
-                  </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredVehicles.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">
-                      {t('inventory.noVehicles')}
-                    </TableCell>
+      {/* Vehicle List */}
+      {viewMode === 'table' ? (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-border bg-muted/50">
+                    <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('stock_number')}>
+                      Stock # <span className={sortBy === 'stock_number' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''} />
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('year')}>
+                      Year <span className={sortBy === 'year' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''} />
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('make')}>
+                      Make <span className={sortBy === 'make' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''} />
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('model')}>
+                      Model <span className={sortBy === 'model' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''} />
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('trim')}>
+                      Trim
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('color')}>
+                      Color
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('mileage')}>
+                      Mileage <span className={sortBy === 'mileage' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''} />
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('price')}>
+                      Price <span className={sortBy === 'price' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''} />
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('status')}>
+                      Status <span className={sortBy === 'status' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''} />
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('days_on_lot')}>
+                      Days
+                    </TableHead>
+                    <TableHead className="text-right w-24">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  filteredVehicles.map((vehicle) => (
-                    <TableRow key={vehicle.id} className="hover:bg-muted/50">
-                      <TableCell className="font-mono text-sm font-medium">{vehicle.stock_number || '-'}</TableCell>
-                      <TableCell>{vehicle.year}</TableCell>
-                      <TableCell>{vehicle.make}</TableCell>
-                      <TableCell>{vehicle.model}</TableCell>
-                      <TableCell>{vehicle.trim || '-'}</TableCell>
-                      <TableCell>{vehicle.color || '-'}</TableCell>
-                      <TableCell className="font-mono tabular-nums">{vehicle.mileage ? vehicle.mileage.toLocaleString() : '-'}</TableCell>
-                      <TableCell className="font-medium tabular-nums">${vehicle.price ? vehicle.price.toLocaleString() : '-'}</TableCell>
-                      <TableCell>{getStatusBadge(vehicle.status)}</TableCell>
-                      <TableCell className="font-mono tabular-nums text-muted-foreground">{vehicle.days_on_lot || 0}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(vehicle)} aria-label="Edit">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(vehicle.id)} aria-label="Delete" className="text-destructive hover:text-destructive">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredVehicles.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">
+                        {t('inventory.noVehicles')}
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                  ) : (
+                    filteredVehicles.map((vehicle) => (
+                      <TableRow key={vehicle.id} className="hover:bg-muted/50 border-b border-border/50">
+                        <TableCell className="font-mono text-sm font-medium">{vehicle.stock_number || '-'}</TableCell>
+                        <TableCell>{vehicle.year}</TableCell>
+                        <TableCell>{vehicle.make}</TableCell>
+                        <TableCell>{vehicle.model}</TableCell>
+                        <TableCell>{vehicle.trim || '-'}</TableCell>
+                        <TableCell>{vehicle.color || '-'}</TableCell>
+                        <TableCell className="font-mono tabular-nums">{formatMileage(vehicle.mileage)}</TableCell>
+                        <TableCell className="font-medium tabular-nums">{formatPrice(vehicle.price)}</TableCell>
+                        <TableCell>{getStatusBadge(vehicle.status)}</TableCell>
+                        <TableCell className="font-mono tabular-nums text-muted-foreground">{vehicle.days_on_lot || 0}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(vehicle)} aria-label={t('common.edit') || 'Edit'}>
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(vehicle.id)} aria-label={t('common.delete') || 'Delete'} className="text-destructive hover:text-destructive">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredVehicles.length === 0 ? (
+            <div className="col-span-full text-center py-12 text-muted-foreground">
+              <Package className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
+              <p>{t('inventory.noVehicles')}</p>
+            </div>
+          ) : (
+            filteredVehicles.map((vehicle) => (
+              <VehicleCard key={vehicle.id} vehicle={vehicle} />
+            ))
+          )}
+        </div>
+      )}
 
       {/* Add/Edit Vehicle Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>

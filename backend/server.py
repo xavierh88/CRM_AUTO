@@ -7298,18 +7298,324 @@ async def initialize_default_config_lists():
 class DemoResetRequest(BaseModel):
     confirm: bool = True
 
+async def _seed_demo_data(demo_user_id: str, db):
+    """Seed fictional demo data for a demo user"""
+    from datetime import datetime, timedelta, timezone
+    import uuid
+    
+    now = datetime.now(timezone.utc)
+    
+    # Delete existing demo data for this user
+    await db.inventory.delete_many({"created_by": demo_user_id})
+    await db.clients.delete_many({"created_by": demo_user_id})
+    await db.appointments.delete_many({"created_by": demo_user_id})
+    await db.conversations.delete_many({"salesperson_id": demo_user_id})
+    await db.messages.delete_many({"conversation_id": {"$in": 
+        [c["id"] async for c in db.conversations.find({"salesperson_id": demo_user_id}, {"id": 1})]
+    }})
+    await db.prequalifications.delete_many({"client_id": {"$in": 
+        [c["id"] async for c in db.clients.find({"created_by": demo_user_id}, {"id": 1})]
+    }})
+    await db.activities.delete_many({"user_id": demo_user_id})
+    
+    # Create fictional vehicles
+    vehicles = [
+        {
+            "id": str(uuid.uuid4()), "vin": "1HGCM82633A123456", "make": "Honda", "model": "Accord",
+            "year": 2023, "trim": "EX-L", "color": "White", "mileage": 15000, "price": 28500, "cost": 25000,
+            "status": "available", "dealer": "Main", "stock_number": "H23-001", "days_on_lot": 45,
+            "description": "Clean CarFax, one owner", "features": "Bluetooth, Backup Camera, Leather Seats, Sunroof",
+            "images": [], "created_at": (now - timedelta(days=45)).isoformat(),
+            "created_by": demo_user_id, "is_deleted": False
+        },
+        {
+            "id": str(uuid.uuid4()), "vin": "5TDZZRFH0MS123456", "make": "Toyota", "model": "RAV4",
+            "year": 2024, "trim": "XLE", "color": "Blue", "mileage": 500, "price": 34500, "cost": 31000,
+            "status": "available", "dealer": "Main", "stock_number": "T24-002", "days_on_lot": 12,
+            "description": "New arrival, hybrid AWD", "features": "Bluetooth, Backup Camera, Blind Spot Monitor, Lane Keep Assist",
+            "images": [], "created_at": (now - timedelta(days=12)).isoformat(),
+            "created_by": demo_user_id, "is_deleted": False
+        },
+        {
+            "id": str(uuid.uuid4()), "vin": "1FTFW1E50MFA12345", "make": "Ford", "model": "F-150",
+            "year": 2023, "trim": "Lariat", "color": "Black", "mileage": 22000, "price": 42000, "cost": 38000,
+            "status": "reserved", "dealer": "North", "stock_number": "F23-003", "days_on_lot": 78,
+            "description": "EcoBoost, 4WD, crew cab", "features": "Leather, Navigation, 360 Camera, Pro Trailer Backup",
+            "images": [], "created_at": (now - timedelta(days=78)).isoformat(),
+            "created_by": demo_user_id, "is_deleted": False
+        },
+        {
+            "id": str(uuid.uuid4()), "vin": "1G1BE5SM0N7123456", "make": "Chevrolet", "model": "Malibu",
+            "year": 2024, "trim": "LT", "color": "Silver", "mileage": 100, "price": 26500, "cost": 23500,
+            "status": "available", "dealer": "Main", "stock_number": "C24-004", "days_on_lot": 8,
+            "description": "Fuel efficient sedan", "features": "Bluetooth, Backup Camera, Apple CarPlay, Android Auto",
+            "images": [], "created_at": (now - timedelta(days=8)).isoformat(),
+            "created_by": demo_user_id, "is_deleted": False
+        },
+        {
+            "id": str(uuid.uuid4()), "vin": "KM8K33AG0NU123456", "make": "Hyundai", "model": "Santa Fe",
+            "year": 2023, "trim": "Limited", "color": "Red", "mileage": 18000, "price": 36500, "cost": 32500,
+            "status": "sold", "dealer": "South", "stock_number": "H23-005", "days_on_lot": 120,
+            "description": "Well maintained, all service records", "features": "Leather, Panoramic Sunroof, Heated Seats, Harman Kardon Audio",
+            "images": [], "created_at": (now - timedelta(days=120)).isoformat(),
+            "created_by": demo_user_id, "is_deleted": False
+        },
+    ]
+    
+    await db.inventory.insert_many(vehicles)
+    
+    # Create fictional leads/customers
+    leads = [
+        {
+            "id": str(uuid.uuid4()), "first_name": "John", "last_name": "Smith", "phone": "+15551234567",
+            "email": "john.smith@email.com", "address": "123 Main St, Anytown, ST 12345",
+            "source": "Website", "commercial_stage": "NEW LEAD", "vehicle_interest": "2024 Honda Accord EX-L",
+            "assigned_salesperson": "Demo User", "assigned_salesperson_name": "Demo User",
+            "notes": "Interested in test drive this weekend", "follow_up_date": (now + timedelta(days=2)).date().isoformat(),
+            "follow_up_notes": "Schedule test drive", "created_at": (now - timedelta(hours=5)).isoformat(),
+            "last_contact": (now - timedelta(hours=5)).isoformat(), "is_sold": False,
+            "id_uploaded": False, "income_proof_uploaded": False, "residence_proof_uploaded": False,
+            "created_by": demo_user_id, "dealer_id": "demo-dealer"
+        },
+        {
+            "id": str(uuid.uuid4()), "first_name": "Maria", "last_name": "Garcia", "phone": "+15559876543",
+            "email": "maria.garcia@email.com", "address": "456 Oak Ave, Springfield, ST 67890",
+            "source": "Walk-in", "commercial_stage": "CONTACTED", "vehicle_interest": "2024 Toyota RAV4 Hybrid",
+            "assigned_salesperson": "Demo User", "assigned_salesperson_name": "Demo User",
+            "notes": "Wants to compare RAV4 vs CR-V", "follow_up_date": (now + timedelta(days=1)).date().isoformat(),
+            "follow_up_notes": "Send comparison sheet", "created_at": (now - timedelta(days=1)).isoformat(),
+            "last_contact": (now - timedelta(hours=2)).isoformat(), "is_sold": False,
+            "id_uploaded": True, "income_proof_uploaded": False, "residence_proof_uploaded": False,
+            "created_by": demo_user_id, "dealer_id": "demo-dealer"
+        },
+        {
+            "id": str(uuid.uuid4()), "first_name": "Robert", "last_name": "Johnson", "phone": "+15554567890",
+            "email": "robert.j@email.com", "address": "789 Pine Rd, Lakeside, ST 54321",
+            "source": "Facebook", "commercial_stage": "ENGAGED", "vehicle_interest": "2023 Ford F-150 Lariat",
+            "assigned_salesperson": "Demo User", "assigned_salesperson_name": "Demo User",
+            "notes": "Trade-in 2018 Silverado, needs appraisal", "follow_up_date": now.date().isoformat(),
+            "follow_up_notes": "Complete trade appraisal", "created_at": (now - timedelta(days=3)).isoformat(),
+            "last_contact": (now - timedelta(hours=24)).isoformat(), "is_sold": False,
+            "id_uploaded": True, "income_proof_uploaded": True, "residence_proof_uploaded": False,
+            "created_by": demo_user_id, "dealer_id": "demo-dealer"
+        },
+        {
+            "id": str(uuid.uuid4()), "first_name": "Sarah", "last_name": "Williams", "phone": "+15552345678",
+            "email": "sarah.w@email.com", "address": "321 Elm Blvd, Riverside, ST 98765",
+            "source": "Referral", "commercial_stage": "APPOINTMENT", "vehicle_interest": "2024 Chevrolet Malibu LT",
+            "assigned_salesperson": "Demo User", "assigned_salesperson_name": "Demo User",
+            "notes": "Appointment scheduled for Saturday 10am", "follow_up_date": (now + timedelta(days=3)).date().isoformat(),
+            "follow_up_notes": "Confirm appointment", "created_at": (now - timedelta(days=5)).isoformat(),
+            "last_contact": (now - timedelta(hours=12)).isoformat(), "is_sold": False,
+            "id_uploaded": True, "income_proof_uploaded": True, "residence_proof_uploaded": True,
+            "created_by": demo_user_id, "dealer_id": "demo-dealer"
+        },
+        {
+            "id": str(uuid.uuid4()), "first_name": "David", "last_name": "Brown", "phone": "+15553456789",
+            "email": "david.brown@email.com", "address": "555 Cedar Ln, Hilltop, ST 11111",
+            "source": "Phone", "commercial_stage": "NEGOTIATING", "vehicle_interest": "2023 Hyundai Santa Fe Limited",
+            "assigned_salesperson": "Demo User", "assigned_salesperson_name": "Demo User",
+            "notes": "Negotiating price, wants $500 off", "follow_up_date": (now - timedelta(days=1)).date().isoformat(),
+            "follow_up_notes": "Follow up on counter-offer", "created_at": (now - timedelta(days=7)).isoformat(),
+            "last_contact": (now - timedelta(days=2)).isoformat(), "is_sold": False,
+            "id_uploaded": True, "income_proof_uploaded": True, "residence_proof_uploaded": True,
+            "created_by": demo_user_id, "dealer_id": "demo-dealer"
+        },
+        {
+            "id": str(uuid.uuid4()), "first_name": "Lisa", "last_name": "Davis", "phone": "+15554567891",
+            "email": "lisa.davis@email.com", "address": "777 Maple Dr, Valley View, ST 22222",
+            "source": "Email Campaign", "commercial_stage": "PENDING DEAL", "vehicle_interest": "2024 Toyota RAV4 XLE",
+            "assigned_salesperson": "Demo User", "assigned_salesperson_name": "Demo User",
+            "notes": "Credit approved, pending final paperwork", "follow_up_date": now.date().isoformat(),
+            "follow_up_notes": "Finalize deal structure", "created_at": (now - timedelta(days=10)).isoformat(),
+            "last_contact": (now - timedelta(hours=6)).isoformat(), "is_sold": False,
+            "id_uploaded": True, "income_proof_uploaded": True, "residence_proof_uploaded": True,
+            "created_by": demo_user_id, "dealer_id": "demo-dealer"
+        },
+        {
+            "id": str(uuid.uuid4()), "first_name": "James", "last_name": "Wilson", "phone": "+15555678901",
+            "email": "james.w@email.com", "address": "888 Birch Way, Summit, ST 33333",
+            "source": "Third Party", "commercial_stage": "SOLD", "vehicle_interest": "2023 Chevrolet Malibu LT",
+            "assigned_salesperson": "Demo User", "assigned_salesperson_name": "Demo User",
+            "notes": "Deal closed, delivery scheduled", "follow_up_date": (now + timedelta(days=1)).date().isoformat(),
+            "follow_up_notes": "Delivery confirmation", "created_at": (now - timedelta(days=14)).isoformat(),
+            "last_contact": (now - timedelta(days=1)).isoformat(), "is_sold": True,
+            "id_uploaded": True, "income_proof_uploaded": True, "residence_proof_uploaded": True,
+            "created_by": demo_user_id, "dealer_id": "demo-dealer"
+        },
+        {
+            "id": str(uuid.uuid4()), "first_name": "Jennifer", "last_name": "Martinez", "phone": "+15556789012",
+            "email": "jen.martinez@email.com", "address": "999 Spruce Ct, Meadowbrook, ST 44444",
+            "source": "Previous Customer", "commercial_stage": "STOP/HOLD", "vehicle_interest": "2024 Honda Accord Touring",
+            "assigned_salesperson": "Demo User", "assigned_salesperson_name": "Demo User",
+            "notes": "Customer requested hold until next month", "follow_up_date": (now + timedelta(days=30)).date().isoformat(),
+            "follow_up_notes": "Re-engage in 30 days", "created_at": (now - timedelta(days=20)).isoformat(),
+            "last_contact": (now - timedelta(days=5)).isoformat(), "is_sold": False,
+            "id_uploaded": False, "income_proof_uploaded": False, "residence_proof_uploaded": False,
+            "created_by": demo_user_id, "dealer_id": "demo-dealer"
+        },
+    ]
+    
+    await db.clients.insert_many(leads)
+    
+    # Create fictional appointments
+    appointments = [
+        {
+            "id": str(uuid.uuid4()), "client_id": leads[0]["id"], "client_name": "John Smith",
+            "client_phone": "+15551234567", "date": (now + timedelta(days=1)).date().isoformat(),
+            "time": "10:00", "dealer": "Main", "type": "test_drive", "language": "en",
+            "notes": "Test drive 2024 Honda Accord EX-L", "status": "agendado",
+            "created_at": now.isoformat(), "created_by": demo_user_id
+        },
+        {
+            "id": str(uuid.uuid4()), "client_id": leads[1]["id"], "client_name": "Maria Garcia",
+            "client_phone": "+15559876543", "date": now.date().isoformat(),
+            "time": "14:00", "dealer": "Main", "type": "showroom", "language": "es",
+            "notes": "Compare RAV4 vs CR-V", "status": "agendado",
+            "created_at": (now - timedelta(days=1)).isoformat(), "created_by": demo_user_id
+        },
+        {
+            "id": str(uuid.uuid4()), "client_id": leads[2]["id"], "client_name": "Robert Johnson",
+            "client_phone": "+15554567890", "date": (now + timedelta(days=2)).date().isoformat(),
+            "time": "11:00", "dealer": "North", "type": "test_drive", "language": "en",
+            "notes": "Test drive F-150, trade appraisal for Silverado", "status": "sin_configurar",
+            "created_at": (now - timedelta(days=2)).isoformat(), "created_by": demo_user_id
+        },
+        {
+            "id": str(uuid.uuid4()), "client_id": leads[3]["id"], "client_name": "Sarah Williams",
+            "client_phone": "+15552345678", "date": (now + timedelta(days=3)).date().isoformat(),
+            "time": "10:00", "dealer": "Main", "type": "delivery", "language": "en",
+            "notes": "Delivery of 2024 Malibu LT", "status": "agendado",
+            "created_at": (now - timedelta(days=4)).isoformat(), "created_by": demo_user_id
+        },
+        {
+            "id": str(uuid.uuid4()), "client_id": leads[4]["id"], "client_name": "David Brown",
+            "client_phone": "+15553456789", "date": (now - timedelta(days=1)).date().isoformat(),
+            "time": "15:00", "dealer": "South", "type": "follow_up", "language": "en",
+            "notes": "Follow up on Santa Fe negotiation", "status": "cambio_hora",
+            "created_at": (now - timedelta(days=6)).isoformat(), "created_by": demo_user_id
+        },
+    ]
+    
+    await db.appointments.insert_many(appointments)
+    
+    # Create fictional conversations
+    conversations = [
+        {
+            "id": str(uuid.uuid4()), "client_id": leads[0]["id"], "client_name": "John Smith",
+            "client_phone": "+15551234567", "channel": "sms", "salesperson_id": demo_user_id,
+            "last_message": "Thanks for the info! What's the best time Saturday?", "last_message_at": (now - timedelta(hours=2)).isoformat(),
+            "unread_count": 2, "status": "active", "created_at": (now - timedelta(days=1)).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()), "client_id": leads[1]["id"], "client_name": "Maria Garcia",
+            "client_phone": "+15559876543", "channel": "email", "salesperson_id": demo_user_id,
+            "last_message": "When can I test drive the RAV4 Hybrid?", "last_message_at": (now - timedelta(hours=5)).isoformat(),
+            "unread_count": 0, "status": "active", "created_at": (now - timedelta(days=2)).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()), "client_id": leads[2]["id"], "client_name": "Robert Johnson",
+            "client_phone": "+15554567890", "channel": "facebook", "salesperson_id": demo_user_id,
+            "last_message": "Interested in the F-150, can we talk trade?", "last_message_at": (now - timedelta(hours=1)).isoformat(),
+            "unread_count": 1, "status": "active", "created_at": (now - timedelta(days=3)).isoformat()
+        },
+    ]
+    
+    await db.conversations.insert_many(conversations)
+    
+    # Create fictional messages
+    messages = []
+    for conv in conversations:
+        messages.extend([
+            {
+                "id": str(uuid.uuid4()), "conversation_id": conv["id"], "direction": "inbound",
+                "body": f"Hi, I saw the {leads[0]['vehicle_interest'] if conv['client_id'] == leads[0]['id'] else 'vehicle'} online. Is it still available?",
+                "created_at": (now - timedelta(hours=4)).isoformat(), "status": "read"
+            },
+            {
+                "id": str(uuid.uuid4()), "conversation_id": conv["id"], "direction": "outbound",
+                "body": "Yes it is! Would you like to schedule a test drive?",
+                "created_at": (now - timedelta(hours=3)).isoformat(), "status": "sent"
+            },
+            {
+                "id": str(uuid.uuid4()), "conversation_id": conv["id"], "direction": "inbound",
+                "body": conv["last_message"],
+                "created_at": conv["last_message_at"], "status": "delivered"
+            },
+        ])
+    
+    await db.messages.insert_many(messages)
+    
+    # Create fictional prequalifications
+    prequals = [
+        {
+            "id": str(uuid.uuid4()), "client_id": leads[2]["id"], "client_name": "Robert Johnson",
+            "client_email": "robert.j@email.com", "status": "APPROVED", "amount": 35000,
+            "rate": 5.99, "term": 72, "lender": "Demo Credit Union",
+            "created_at": (now - timedelta(days=2)).isoformat(), "updated_at": (now - timedelta(hours=12)).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()), "client_id": leads[3]["id"], "client_name": "Sarah Williams",
+            "client_email": "sarah.w@email.com", "status": "APPROVED", "amount": 28000,
+            "rate": 4.99, "term": 60, "lender": "Demo Bank",
+            "created_at": (now - timedelta(days=3)).isoformat(), "updated_at": (now - timedelta(days=1)).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()), "client_id": leads[4]["id"], "client_name": "David Brown",
+            "client_email": "david.brown@email.com", "status": "CONDITIONAL", "amount": 32000,
+            "rate": 6.49, "term": 72, "lender": "Demo Finance",
+            "created_at": (now - timedelta(days=5)).isoformat(), "updated_at": (now - timedelta(days=2)).isoformat()
+        },
+    ]
+    
+    await db.prequalifications.insert_many(prequals)
+    
+    # Create fictional activities
+    activities = [
+        {"id": str(uuid.uuid4()), "type": "lead_created", "description": "New lead: John Smith - 2024 Honda Accord EX-L",
+         "user_id": demo_user_id, "user_name": "Demo User", "metadata": {"lead_id": leads[0]["id"]},
+         "created_at": (now - timedelta(hours=5)).isoformat()},
+        {"id": str(uuid.uuid4()), "type": "message_received", "description": "SMS from John Smith: Thanks for the info!",
+         "user_id": demo_user_id, "user_name": "Demo User", "metadata": {"conversation_id": conversations[0]["id"]},
+         "created_at": (now - timedelta(hours=2)).isoformat()},
+        {"id": str(uuid.uuid4()), "type": "appointment_created", "description": "Appointment scheduled: Maria Garcia - RAV4 Comparison",
+         "user_id": demo_user_id, "user_name": "Demo User", "metadata": {"appointment_id": appointments[1]["id"]},
+         "created_at": (now - timedelta(days=1)).isoformat()},
+        {"id": str(uuid.uuid4()), "type": "lead_updated", "description": "Lead stage updated: Robert Johnson → ENGAGED",
+         "user_id": demo_user_id, "user_name": "Demo User", "metadata": {"lead_id": leads[2]["id"]},
+         "created_at": (now - timedelta(hours=24)).isoformat()},
+        {"id": str(uuid.uuid4()), "type": "prequalification_approved", "description": "Prequalification approved: Sarah Williams - $28,000",
+         "user_id": demo_user_id, "user_name": "Demo User", "metadata": {"prequal_id": prequals[1]["id"]},
+         "created_at": (now - timedelta(days=1)).isoformat()},
+        {"id": str(uuid.uuid4()), "type": "deal_closed", "description": "Deal closed: James Wilson - 2023 Chevrolet Malibu LT",
+         "user_id": demo_user_id, "user_name": "Demo User", "metadata": {"deal_value": 26500, "lead_id": leads[6]["id"]},
+         "created_at": (now - timedelta(days=1)).isoformat()},
+    ]
+    
+    await db.activities.insert_many(activities)
+    
+    return {
+        "vehicles": len(vehicles),
+        "leads": len(leads),
+        "appointments": len(appointments),
+        "conversations": len(conversations),
+        "prequals": len(prequals),
+        "activities": len(activities)
+    }
+
 @api_router.post("/demo/reset")
 async def reset_demo_data(current_user: dict = Depends(get_current_user)):
     """Reset demo data for the current demo user"""
     if current_user.get("role") != "demo":
         raise HTTPException(status_code=403, detail="Demo access required")
     
-    # In a real implementation, this would reset demo-specific data
-    # For now, just return success
+    counts = await _seed_demo_data(current_user["id"], db)
+    
     return {
         "message": "Demo data reset successfully",
         "demo_user": current_user["id"],
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "seeded": counts
     }
 
 @api_router.get("/demo/data")
@@ -7318,14 +7624,21 @@ async def get_demo_data(current_user: dict = Depends(get_current_user)):
     if current_user.get("role") != "demo":
         raise HTTPException(status_code=403, detail="Demo access required")
     
-    # Return demo data stats
+    # Return actual demo data stats
+    vehicles_count = await db.inventory.count_documents({"created_by": current_user["id"]})
+    leads_count = await db.clients.count_documents({"created_by": current_user["id"]})
+    appointments_count = await db.appointments.count_documents({"created_by": current_user["id"]})
+    conversations_count = await db.conversations.count_documents({"salesperson_id": current_user["id"]})
+    prequals_count = await db.prequalifications.count_documents({
+        "client_id": {"$in": await db.clients.find({"created_by": current_user["id"]}).distinct("id")}
+    })
+    
     return {
-        "vehicles": 42,
-        "leads": 28,
-        "appointments": 15,
-        "deals": 8,
-        "conversations": 12,
-        "documents_pending": 23,
+        "vehicles": vehicles_count,
+        "leads": leads_count,
+        "appointments": appointments_count,
+        "conversations": conversations_count,
+        "prequalifications": prequals_count,
         "is_demo": True,
         "data_source": "fictional"
     }

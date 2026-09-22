@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import { useJarvis } from '../context/JarvisContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -14,7 +15,7 @@ import {
   CheckCircle, XCircle, AlertTriangle, Info, Menu,
   X, Copy, ThumbsUp, ThumbsDown, RefreshCw, Settings,
   FileText, Users, Calendar, DollarSign, Package, Target,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, LayoutSidebarRight
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -31,8 +32,8 @@ const SUGGESTIONS = [
 ];
 
 const TOOL_CATEGORIES = [
-  { id: 'crm', label: 'CRM', icon: Users, color: 'text-blue-500' },
-  { id: 'inventory', label: 'Inventory', icon: Package, color: 'text-green-500' },
+  { id: 'crm', label: 'CRM', icon: Users, color: 'text-primary' },
+  { id: 'inventory', label: 'Inventory', icon: Package, color: 'text-emerald-500' },
   { id: 'appointments', label: 'Appointments', icon: Calendar, color: 'text-purple-500' },
   { id: 'finance', label: 'Finance', icon: DollarSign, color: 'text-amber-500' },
   { id: 'reports', label: 'Reports', icon: FileText, color: 'text-pink-500' },
@@ -72,13 +73,13 @@ const MOCK_TOOLS = {
 export default function JarvisPage() {
   const { t } = useTranslation();
   const { user, isDemo } = useAuth();
+  const { sidebarOpen, closeSidebar, mobileSheetOpen, closeMobileSheet } = useJarvis();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('chat');
   const [showTools, setShowTools] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
-  const [showVoiceInput, setShowVoiceInput] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -285,10 +286,10 @@ export default function JarvisPage() {
               {TOOL_CATEGORIES.map(cat => (
                 <TabsContent key={cat.id} value={cat.id} className="space-y-2">
                   {MOCK_TOOLS[cat.id].map(tool => (
-                    <div key={tool.name} className="p-3 border border-border rounded-lg bg-background/50 hover:bg-muted/50 transition-colors">
+                    <div key={tool.name} className="p-3 border border-border rounded-lg bg-muted/50 hover:bg-muted transition-colors">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-mono text-sm font-medium">{tool.name}</p>
+                          <p className="font-mono text-sm font-medium text-foreground">{tool.name}</p>
                           <p className="text-xs text-muted-foreground">{tool.description}</p>
                         </div>
                         <Badge variant="outline" className="text-xs">{tool.params.length} params</Badge>
@@ -367,14 +368,14 @@ export default function JarvisPage() {
               </div>
             )}
           </ScrollArea>
-          
+           
           {/* Pending Confirmation */}
           {pendingAction && (
             <div className="border-t border-border p-4 bg-amber-500/5 animate-slide-up">
               <div className="flex items-center gap-3 p-3 bg-amber-500/10 rounded-lg">
                 <AlertTriangle className="w-5 h-5 text-amber-500" />
                 <div className="flex-1">
-                  <p className="font-medium">{t('jarvis.confirmAction') || 'Confirm Action'}</p>
+                  <p className="font-medium text-foreground">{t('jarvis.confirmAction') || 'Confirm Action'}</p>
                   <p className="text-sm text-muted-foreground">{pendingAction.description || t('jarvis.executeAction') || 'Execute this action?'}</p>
                   <p className="text-xs font-mono text-muted-foreground mt-1">{pendingAction.tool}({JSON.stringify(pendingAction.params)})</p>
                 </div>

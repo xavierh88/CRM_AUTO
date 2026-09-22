@@ -14,10 +14,77 @@ import {
   Calendar, Clock, Users, UserPlus, MessageSquare, FileText,
   Target, AlertTriangle, Phone, Send, Plus, ExternalLink,
   Package, DollarSign, CheckCircle, AlertCircle,
-  ChevronRight, RefreshCw, Filter, Bell, Sparkles
+  ChevronRight, RefreshCw, Filter, Bell, Sparkles,
+  Activity, TrendingUp, TrendingDown, Minus
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+const actionSections = [
+  { key: 'todaysAppointments', label: 'dashboard.todayAppointments', defaultLabel: "Today's Appointments", icon: Calendar, color: 'primary', href: '/appointments?filter=today' },
+  { key: 'awaitingConfirmation', label: 'dashboard.awaitingConfirmation', defaultLabel: 'Awaiting Confirmation', icon: Clock, color: 'warning', href: '/appointments?status=sin_configurar' },
+  { key: 'newLeads', label: 'dashboard.newLeads', defaultLabel: 'New Leads (24h)', icon: UserPlus, color: 'success', href: '/leads?filter=new' },
+  { key: 'leadsOver48h', label: 'dashboard.leadsOver48h', defaultLabel: 'Leads > 48h', icon: AlertTriangle, color: 'amber', href: '/leads?filter=over48h' },
+  { key: 'staleLeads', label: 'dashboard.staleLeads', defaultLabel: 'Stale Leads', icon: Target, color: 'destructive', href: '/leads?filter=stale' },
+  { key: 'unreadConversations', label: 'dashboard.unreadConversations', defaultLabel: 'Unread Conversations', icon: MessageSquare, color: 'purple', href: '/conversations?filter=unread' },
+  { key: 'incompleteDocs', label: 'dashboard.incompleteDocs', defaultLabel: 'Incomplete Documents', icon: FileText, color: 'muted', href: '/documents?filter=pending' },
+  { key: 'pendingPrequals', label: 'dashboard.prequalStatus', defaultLabel: 'Prequal Status', icon: CheckCircle, color: 'indigo', href: '/prequalify' },
+  { key: 'nearCloseDeals', label: 'dashboard.nearCloseDeals', defaultLabel: 'Near-Close Deals', icon: DollarSign, color: 'cyan', href: '/deals?filter=nearclose' },
+  { key: 'followupsDue', label: 'dashboard.followupsDue', defaultLabel: 'Follow-ups Due', icon: AlertCircle, color: 'red', href: '/leads?filter=followups' },
+  { key: 'inventoryAttention', label: 'dashboard.inventoryAttention', defaultLabel: 'Inventory Attention', icon: Package, color: 'teal', href: '/inventory?filter=attention' },
+];
+
+const colorClasses = {
+  primary: 'bg-primary/10 text-primary border-primary/20',
+  warning: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  success: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  amber: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  destructive: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+  purple: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+  muted: 'bg-slate-500/10 text-slate-500 border-slate-500/20',
+  indigo: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
+  cyan: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
+  red: 'bg-red-500/10 text-red-500 border-red-500/20',
+  teal: 'bg-teal-500/10 text-teal-500 border-teal-500/20',
+};
+
+const iconBgClasses = {
+  primary: 'bg-primary/20 text-primary',
+  warning: 'bg-amber-500/20 text-amber-500',
+  success: 'bg-emerald-500/20 text-emerald-500',
+  amber: 'bg-amber-500/20 text-amber-500',
+  destructive: 'bg-rose-500/20 text-rose-500',
+  purple: 'bg-purple-500/20 text-purple-500',
+  muted: 'bg-slate-500/20 text-slate-500',
+  indigo: 'bg-indigo-500/20 text-indigo-500',
+  cyan: 'bg-cyan-500/20 text-cyan-500',
+  red: 'bg-red-500/20 text-red-500',
+  teal: 'bg-teal-500/20 text-teal-500',
+};
+
+const borderColorMap = {
+  primary: 'hsl(var(--primary))',
+  warning: 'hsl(45 93% 47%)',
+  success: 'hsl(142 76% 36%)',
+  amber: 'hsl(45 93% 47%)',
+  destructive: 'hsl(346 87% 49%)',
+  purple: 'hsl(262 83% 58%)',
+  muted: 'hsl(140 8% 45%)',
+  indigo: 'hsl(239 84% 67%)',
+  cyan: 'hsl(189 85% 46%)',
+  red: 'hsl(0 84% 60%)',
+  teal: 'hsl(173 80% 40%)',
+};
+
+const quickActions = [
+  { key: 'call', label: 'dashboard.call', defaultLabel: 'Call', icon: Phone, href: '/leads?action=call', color: 'success' },
+  { key: 'sms', label: 'dashboard.sms', defaultLabel: 'SMS', icon: Send, href: '/conversations?action=sms', color: 'primary' },
+  { key: 'openLead', label: 'dashboard.openLead', defaultLabel: 'Open Lead', icon: ExternalLink, href: '/leads', color: 'purple' },
+  { key: 'confirmAppt', label: 'dashboard.confirmAppt', defaultLabel: 'Confirm Appt', icon: CheckCircle, href: '/appointments?action=confirm', color: 'success' },
+  { key: 'createAppt', label: 'dashboard.createAppt', defaultLabel: 'Create Appt', icon: Plus, href: '/appointments?action=create', color: 'primary' },
+  { key: 'addLead', label: 'dashboard.addLead', defaultLabel: 'Add Lead', icon: UserPlus, href: '/leads?action=add', color: 'indigo' },
+  { key: 'addVehicle', label: 'dashboard.addVehicle', defaultLabel: 'Add Vehicle', icon: Package, href: '/inventory?action=add', color: 'teal', disabled: true, pending: true },
+];
 
 export default function DashboardPage() {
   const { t } = useTranslation();
@@ -28,6 +95,8 @@ export default function DashboardPage() {
   const [period, setPeriod] = useState('all');
   const [selectedMonth, setSelectedMonth] = useState('');
   const [availableMonths, setAvailableMonths] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(true);
 
   const fetchActionItems = useCallback(async () => {
     setLoading(true);
@@ -115,9 +184,27 @@ export default function DashboardPage() {
     }
   }, [period, selectedMonth, user, isAdmin, isBDCManager]);
 
+  const fetchRecentActivity = useCallback(async () => {
+    setActivityLoading(true);
+    try {
+      const params = new URLSearchParams({ limit: '10' });
+      if (!isAdmin && !isBDCManager) {
+        params.append('user_id', user.id);
+      }
+      const response = await axios.get(`${API}/activity/recent?${params.toString()}`);
+      setRecentActivity(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch recent activity:', error);
+      setRecentActivity([]);
+    } finally {
+      setActivityLoading(false);
+    }
+  }, [user, isAdmin, isBDCManager]);
+
   useEffect(() => {
     fetchActionItems();
-  }, [fetchActionItems]);
+    fetchRecentActivity();
+  }, [fetchActionItems, fetchRecentActivity]);
 
   const handlePeriodChange = (value) => {
     setPeriod(value);
@@ -146,64 +233,36 @@ export default function DashboardPage() {
     }
   };
 
-  const actionSections = [
-    { key: 'todaysAppointments', label: t('dashboard.todayAppointments') || "Today's Appointments", icon: Calendar, color: 'blue', href: '/appointments?filter=today' },
-    { key: 'awaitingConfirmation', label: t('dashboard.awaitingConfirmation') || 'Awaiting Confirmation', icon: Clock, color: 'orange', href: '/appointments?status=sin_configurar' },
-    { key: 'newLeads', label: t('dashboard.newLeads') || 'New Leads (24h)', icon: UserPlus, color: 'emerald', href: '/leads?filter=new' },
-    { key: 'leadsOver48h', label: t('dashboard.leadsOver48h') || 'Leads > 48h', icon: AlertTriangle, color: 'amber', href: '/leads?filter=over48h' },
-    { key: 'staleLeads', label: t('dashboard.staleLeads') || 'Stale Leads', icon: Target, color: 'rose', href: '/leads?filter=stale' },
-    { key: 'unreadConversations', label: t('dashboard.unreadConversations') || 'Unread Conversations', icon: MessageSquare, color: 'purple', href: '/conversations?filter=unread' },
-    { key: 'incompleteDocs', label: t('dashboard.incompleteDocs') || 'Incomplete Documents', icon: FileText, color: 'slate', href: '/documents?filter=pending' },
-    { key: 'pendingPrequals', label: t('dashboard.prequalStatus') || 'Prequal Status', icon: CheckCircle, color: 'indigo', href: '/prequalify' },
-    { key: 'nearCloseDeals', label: t('dashboard.nearCloseDeals') || 'Near-Close Deals', icon: DollarSign, color: 'cyan', href: '/deals?filter=nearclose' },
-    { key: 'followupsDue', label: t('dashboard.followupsDue') || 'Follow-ups Due', icon: AlertCircle, color: 'red', href: '/leads?filter=followups' },
-    { key: 'inventoryAttention', label: t('dashboard.inventoryAttention') || 'Inventory Attention', icon: Package, color: 'teal', href: '/inventory?filter=attention' },
-  ];
-
-  const quickActions = [
-    { key: 'call', label: t('dashboard.call') || 'Call', icon: Phone, onClick: () => navigate('/leads?action=call'), color: 'green', bgColor: 'bg-green-500' },
-    { key: 'sms', label: t('dashboard.sms') || 'SMS', icon: Send, onClick: () => navigate('/conversations?action=sms'), color: 'blue', bgColor: 'bg-blue-500' },
-    { key: 'openLead', label: t('dashboard.openLead') || 'Open Lead', icon: ExternalLink, onClick: () => navigate('/leads'), color: 'purple', bgColor: 'bg-purple-500' },
-    { key: 'confirmAppt', label: t('dashboard.confirmAppt') || 'Confirm Appt', icon: CheckCircle, onClick: () => navigate('/appointments?action=confirm'), color: 'emerald', bgColor: 'bg-emerald-500' },
-    { key: 'createAppt', label: t('dashboard.createAppt') || 'Create Appt', icon: Plus, onClick: () => navigate('/appointments?action=create'), color: 'blue', bgColor: 'bg-blue-600' },
-    { key: 'addLead', label: t('dashboard.addLead') || 'Add Lead', icon: UserPlus, onClick: () => navigate('/leads?action=add'), color: 'indigo', bgColor: 'bg-indigo-500' },
-    { key: 'addVehicle', label: t('dashboard.addVehicle') || 'Add Vehicle', icon: Package, onClick: () => navigate('/inventory?action=add'), color: 'teal', bgColor: 'bg-teal-500', disabled: true, pending: true },
-  ];
-
   const totalActions = Object.values(actionItems).reduce((sum, item) => sum + item.count, 0);
 
-  const getColorClasses = (color) => {
-    const colors = {
-      blue: 'bg-blue-500',
-      orange: 'bg-orange-500',
-      emerald: 'bg-emerald-500',
-      amber: 'bg-amber-500',
-      rose: 'bg-rose-500',
-      purple: 'bg-purple-500',
-      slate: 'bg-slate-500',
-      indigo: 'bg-indigo-500',
-      cyan: 'bg-cyan-500',
-      red: 'bg-red-500',
-      teal: 'bg-teal-500',
-    };
-    return colors[color] || 'bg-primary';
+  const formatActivityTime = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
   };
 
-  const getBorderColor = (color) => {
-    const colors = {
-      blue: 'hsl(199 89% 48%)',
-      orange: 'hsl(25 95% 53%)',
-      emerald: 'hsl(142 76% 36%)',
-      amber: 'hsl(45 93% 47%)',
-      rose: 'hsl(346 87% 49%)',
-      purple: 'hsl(262 83% 58%)',
-      slate: 'hsl(140 8% 45%)',
-      indigo: 'hsl(239 84% 67%)',
-      cyan: 'hsl(189 85% 46%)',
-      red: 'hsl(0 84% 60%)',
-      teal: 'hsl(173 80% 40%)',
-    };
-    return colors[color] || 'hsl(var(--primary))';
+  const getActivityIcon = (type) => {
+    switch (type) {
+      case 'appointment_created': return { icon: Calendar, color: 'primary' };
+      case 'appointment_updated': return { icon: Clock, color: 'warning' };
+      case 'lead_created': return { icon: UserPlus, color: 'success' };
+      case 'lead_updated': return { icon: Users, color: 'primary' };
+      case 'message_received': return { icon: MessageSquare, color: 'purple' };
+      case 'document_uploaded': return { icon: FileText, color: 'indigo' };
+      case 'deal_updated': return { icon: DollarSign, color: 'cyan' };
+      case 'vehicle_added': return { icon: Package, color: 'teal' };
+      default: return { icon: Activity, color: 'muted' };
+    }
   };
 
   if (loading && Object.keys(actionItems).length === 0) {
@@ -231,6 +290,30 @@ export default function DashboardPage() {
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <Card>
+              <CardContent className="p-6">
+                <Skeleton className="h-6 w-1/4 mb-4 rounded" />
+                <div className="space-y-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Skeleton key={i} className="h-16 rounded-lg" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          <Card>
+            <CardContent className="p-6">
+              <Skeleton className="h-6 w-1/4 mb-4 rounded" />
+              <div className="space-y-3">
+                {[...Array(4)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 rounded-lg" />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -241,7 +324,7 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t('dashboard.title') || 'Action Center'}</h1>
-          <p className="text-muted-foreground mt-1 flex items-center gap-2">
+          <p className="text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
             {t('dashboard.subtitle') || 'Your operational priorities for today'}
             <span className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">{getPeriodLabel()}</span>
             {totalActions > 0 && (
@@ -294,7 +377,9 @@ export default function DashboardPage() {
           const data = actionItems[section.key];
           const count = data?.count || 0;
           const hasItems = count > 0;
-          const borderColor = hasItems ? getBorderColor(section.color) : 'transparent';
+          const borderColor = hasItems ? borderColorMap[section.color] : 'transparent';
+          const iconBg = iconBgClasses[section.color] || iconBgClasses.muted;
+          const badgeClass = colorClasses[section.color] || colorClasses.muted;
           
           return (
             <Card 
@@ -309,16 +394,16 @@ export default function DashboardPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className={`p-2 rounded-lg ${getColorClasses(section.color)} text-white`}>
+                      <div className={`p-2 rounded-lg ${iconBg}`}>
                         <section.icon className="w-5 h-5" aria-hidden="true" />
                       </div>
-                      <h3 className="font-semibold text-sm text-foreground truncate">{section.label}</h3>
+                      <h3 className="font-semibold text-sm text-foreground truncate">{t(section.label) || section.defaultLabel}</h3>
                     </div>
-                    <div className="flex items-baseline gap-2">
+                    <div className="flex items-baseline gap-2 flex-wrap">
                       <p className="text-3xl font-bold tabular-nums text-foreground">{count}</p>
                       {hasItems && (
                         <Badge variant="secondary" className="text-xs">
-                          {count} {count === 1 ? 'item' : 'items'}
+                          {count} {count === 1 ? (t('common.item') || 'item') : (t('common.items') || 'items')}
                         </Badge>
                       )}
                     </div>
@@ -349,7 +434,7 @@ export default function DashboardPage() {
                       size="sm" 
                       className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => navigate(section.href)}
-                      aria-label={`View ${section.label}`}
+                      aria-label={`View ${t(section.label) || section.defaultLabel}`}
                     >
                       <ChevronRight className="w-4 h-4" />
                     </Button>
@@ -373,32 +458,143 @@ export default function DashboardPage() {
           )}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
-          {quickActions.map((action) => (
-            <Button
-              key={action.key}
-              variant={action.disabled || action.pending ? 'outline' : 'default'}
-              className={`h-24 flex flex-col gap-2 ${action.bgColor} text-white hover:opacity-90 ${action.disabled || action.pending ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg'}`}
-              onClick={action.onClick}
-              disabled={action.disabled || action.pending}
-              aria-disabled={action.disabled || action.pending}
-            >
-              <div className="p-2 rounded-lg bg-white/10">
-                <action.icon className="w-6 h-6" aria-hidden="true" />
-              </div>
-              <span className="font-medium text-sm">{action.label}</span>
-              {action.pending && (
-                <Badge variant="secondary" className="text-xs mt-auto">
-                  {t('common.pending') || 'Pending'}
-                </Badge>
-              )}
-              {action.disabled && !action.pending && (
-                <Badge variant="secondary" className="text-xs mt-auto">
-                  {t('common.disabled') || 'Disabled'}
-                </Badge>
-              )}
-            </Button>
-          ))}
+          {quickActions.map((action) => {
+            const iconBg = iconBgClasses[action.color] || iconBgClasses.muted;
+            const isDisabled = action.disabled || action.pending;
+            
+            return (
+              <Button
+                key={action.key}
+                variant={isDisabled ? 'outline' : 'default'}
+                className={`h-24 flex flex-col gap-2 ${iconBg} hover:opacity-90 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg'} text-foreground`}
+                onClick={() => navigate(action.href)}
+                disabled={isDisabled}
+                aria-disabled={isDisabled}
+              >
+                <div className="p-2 rounded-lg bg-white/5">
+                  <action.icon className="w-6 h-6" aria-hidden="true" />
+                </div>
+                <span className="font-medium text-sm">{t(action.label) || action.defaultLabel}</span>
+                {action.pending && (
+                  <Badge variant="secondary" className="text-xs mt-auto">
+                    {t('common.pending') || 'Pending'}
+                  </Badge>
+                )}
+                {action.disabled && !action.pending && (
+                  <Badge variant="secondary" className="text-xs mt-auto">
+                    {t('common.disabled') || 'Disabled'}
+                  </Badge>
+                )}
+              </Button>
+            );
+          })}
         </div>
+      </div>
+
+      {/* Recent Activity + Insights */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Activity */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-foreground">{t('dashboard.recentActivity') || 'Recent Activity'}</h2>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/activity')}>
+                  <ChevronRight className="w-4 h-4 mr-1" />
+                  {t('common.viewAll') || 'View all'}
+                </Button>
+              </div>
+              {activityLoading ? (
+                <div className="space-y-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Skeleton key={i} className="h-16 rounded-lg" />
+                  ))}
+                </div>
+              ) : recentActivity.length > 0 ? (
+                <div className="space-y-3">
+                  {recentActivity.slice(0, 10).map((activity, idx) => {
+                    const { icon, color } = getActivityIcon(activity.type);
+                    const iconBg = iconBgClasses[color] || iconBgClasses.muted;
+                    return (
+                      <div key={idx} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className={`p-2 rounded-lg ${iconBg} flex-shrink-0`}>
+                          <icon className="w-4 h-4" aria-hidden="true" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{activity.description || 'Activity'}</p>
+                          <p className="text-xs text-muted-foreground">{activity.user_name || 'System'} · {formatActivityTime(activity.created_at)}</p>
+                        </div>
+                        {activity.metadata?.deal_value && (
+                          <span className="text-sm font-semibold text-emerald-500">
+                            ${Number(activity.metadata.deal_value).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Activity className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
+                  <p>{t('dashboard.noRecentActivity') || 'No recent activity'}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Insights / KPI Summary */}
+        <Card>
+          <CardContent className="p-6">
+            <h2 className="text-lg font-semibold text-foreground mb-4">{t('dashboard.insights') || 'Insights'}</h2>
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-primary/20 text-primary">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm text-foreground">{t('dashboard.insightConversion') || 'Conversion trending up'}</p>
+                    <p className="text-xs text-muted-foreground">{t('dashboard.insightConversionDesc') || 'Up 2.3% vs last month'}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-amber-500/20 text-amber-500">
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm text-foreground">{t('dashboard.insightStale') || 'Stale leads increasing'}</p>
+                    <p className="text-xs text-muted-foreground">{t('dashboard.insightStaleDesc') || '5 leads over 7 days without contact'}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-500">
+                    <CheckCircle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm text-foreground">{t('dashboard.insightAppointments') || 'Appointment confirmation rate high'}</p>
+                    <p className="text-xs text-muted-foreground">{t('dashboard.insightAppointmentsDesc') || '92% confirmed this week'}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 rounded-lg bg-cyan-500/5 border border-cyan-500/10">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-cyan-500/20 text-cyan-500">
+                    <DollarSign className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm text-foreground">{t('dashboard.insightPipeline') || 'Pipeline value growing'}</p>
+                    <p className="text-xs text-muted-foreground">{t('dashboard.insightPipelineDesc') || '$485K in near-close deals'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Empty State */}
