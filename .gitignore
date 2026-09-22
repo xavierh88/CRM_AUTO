@@ -520,3 +520,5 @@ credentials.json
 # Existing tracked uploads remain quarantined; these rules do not untrack them.
 /backend/uploads
 /uploads
+backend/server.log
+frontend/frontend.log
