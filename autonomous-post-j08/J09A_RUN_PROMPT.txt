@@ -1,0 +1,83 @@
+Read autonomous-post-j08/MISSION.md first.
+
+CURRENT ASSIGNMENT:
+J09A_CLIENT_PROFILE ONLY.
+
+AUTHORIZED WRITE ROOT:
+/opt/dealer-ai-v2/worktrees/070-final-product-completion
+
+IMPORTANT:
+The worktree already contains a large amount of OWNER-APPROVED and
+in-progress work from J01-J05, Jarvis, Voice, Vision and other modules.
+
+DO NOT assume the existing git diff belongs to J09A.
+DO NOT reset, clean, revert, rewrite, or discard unrelated changes.
+
+Continue from the CURRENT Client Profile implementation left by the previous
+J09 attempt. Do not restart the redesign from scratch.
+
+SCOPE:
+- frontend/src/pages/ClientsPage.jsx
+- directly required supporting files inside this worktree ONLY if unavoidable.
+
+OBJECTIVES:
+
+1. Finish the Client Profile modernization already started.
+2. Preserve existing fields, relationships, permissions, validation,
+   create/edit behavior and API behavior.
+3. Verify desktop and mobile usability.
+4. Investigate and fix this OWNER-REPORTED bug if reproducible:
+      Leads -> select/open a lead -> page becomes completely blank.
+   Treat a React/runtime crash as a release blocker for J09A.
+5. Do NOT work on Opportunity modernization.
+6. Do NOT work on Co-Signer modernization beyond what is strictly necessary
+   to prevent Client Profile from crashing.
+7. Do NOT modify Jarvis J01-J05 behavior.
+8. Do NOT send real communications or perform external/financial actions.
+
+EXECUTION:
+Inspect current state -> finish implementation -> compile/build ->
+check for runtime/import/component errors -> functional QA ->
+mobile/desktop review where possible -> correct -> retest.
+
+ANTI-LOOP:
+Maximum TWO reasonable attempts for the same blocker.
+If still blocked, document it and exit.
+
+REQUIRED FINAL REPORT:
+autonomous-post-j08/reports/J09A_CLIENT_PROFILE.md
+
+Report:
+- files inspected
+- files changed by THIS task
+- what was implemented
+- Leads blank-page investigation and result
+- build/test commands and results
+- desktop/mobile status
+- remaining limitations
+- exact owner tests required
+
+FINAL STATE:
+autonomous-post-j08/state/J09A_CURRENT
+
+Use exactly one:
+TASK=J09A_CLIENT_PROFILE STATUS=LISTO_PARA_PRUEBA ATTEMPT=<number>
+TASK=J09A_CLIENT_PROFILE STATUS=BLOCKED ATTEMPT=<number>
+TASK=J09A_CLIENT_PROFILE STATUS=FAILED ATTEMPT=<number>
+
+NEVER write APROBADO_POR_TI.
+Only the owner can approve.
+
+HARD SAFETY:
+NEVER touch /var/www/carplus.
+NEVER touch SoyEcua or port 8320.
+NEVER touch deploy screens/processes.
+NEVER touch production services/databases.
+NEVER modify system nginx.
+NEVER use git reset --hard, git clean, force push or destructive DB commands.
+NEVER weaken authentication/authorization/tenant isolation.
+NEVER access or expose secrets.
+
+Automatic permission approval does NOT expand this scope.
+
+After report + state are written, EXIT immediately.

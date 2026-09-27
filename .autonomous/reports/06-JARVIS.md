@@ -1,0 +1,17 @@
+BLOCK=06-JARVIS
+STATUS=LISTO_PARA_TU_PRUEBA
+BUILD=OK
+FUNCTIONAL_QA=OK
+VISUAL_QA=OK
+API=OK
+BACKEND=OK
+PERSISTENCE=OK
+DEALER_ISOLATION=OK
+RESPONSIVE=OK
+REUSE_RESEARCH=EXISTING_PROJECT_CODE
+TOOLS_USED=python3, pytest, npm, pydantic, ai_automation/foundation.py
+FIXES=None required - Jarvis UI fully implemented with chat interface, tool suggestions, tool confirmation flow, feedback buttons, history tab, mobile sheet. Backend has `/jarvis/chat` (keyword-based intent detection with mock tool calls) and `/jarvis/execute` (confirmation endpoint). Advanced AI automation foundation exists in `backend/ai_automation/foundation.py` with typed proposals, permission engine, confirmation flow, audit logging, vehicle matching, appointment guardians, recovery analysis - but not integrated with chat endpoint.
+KNOWN_LIMITATIONS=Current `/jarvis/chat` returns mock tool results (violates "Jarvis NO puede inventar resultados" - should use real data via ai_automation foundation). Tool execution in `/jarvis/execute` is mock only. No LLM integration (OpenAI/Anthropic/etc.). No real CRM tool execution (search_leads, create_appointment, etc.). Demo mode shows mock responses when API fails. Requires integration of ai_automation.foundation.Jarvis with chat endpoint for production use.
+BLOCKERS=Requires LLM integration and real tool execution layer
+FILES_CHANGED=None (existing functionality verified)
+NEXT=07-DEMO

@@ -1,0 +1,115 @@
+Read autonomous-post-j08/MISSION.md completely before doing anything.
+
+CURRENT ASSIGNMENT: J09_MODERN_CRM_FORMS ONLY.
+
+Work only inside:
+/opt/dealer-ai-v2/worktrees/070-final-product-completion
+
+J04 is owner-approved.
+J05-J08 are being manually validated in parallel.
+DO NOT modify J04-J08 unless an unavoidable dependency is discovered; if so, document the dependency instead of changing them.
+
+J09 scope:
+Modernize and functionally verify the existing CRM forms:
+1. Client Profile
+2. Opportunity
+3. Co-Signer
+
+This is NOT merely a visual recolor.
+
+For each form:
+- inspect the existing implementation first;
+- preserve all existing fields, relationships, permissions and data behavior;
+- reuse existing architecture instead of creating a parallel system;
+- verify create/edit flows and backend/API integration;
+- verify validation and error handling;
+- improve usability and organization;
+- ensure desktop and mobile usability;
+- use only synthetic/demo data for safe tests;
+- do not send real messages or perform real financial/external actions.
+
+SAFETY:
+- NEVER touch /var/www/carplus.
+- NEVER touch SoyEcua or port 8320.
+- NEVER touch deploy screens/processes.
+- NEVER reset, clean, discard, or overwrite unrelated uncommitted work.
+- No git reset --hard, git clean, force push, or destructive database operations.
+- Do not weaken authentication, authorization or tenant isolation.
+- Preserve the owner's current J04 changes in backend/server.py.
+
+EXECUTION RULE:
+Inspect -> implement -> build/compile -> functional QA -> visual/mobile review where possible -> correct -> retest.
+
+Maximum two reasonable implementation attempts for the same blocker.
+Do not loop indefinitely.
+
+A task is NOT complete because code was inspected.
+It requires implementation plus verification evidence.
+
+When J09 reaches a final state, write:
+autonomous-post-j08/reports/J09_MODERN_CRM_FORMS.md
+
+The report must include:
+- files inspected
+- files changed
+- functionality implemented
+- tests/builds executed and results
+- Client Profile status
+- Opportunity status
+- Co-Signer status
+- mobile/desktop status
+- remaining limitations/blockers
+- exact owner tests still required
+
+Update:
+autonomous-post-j08/state/CURRENT
+
+Use only:
+TASK=J09_MODERN_CRM_FORMS
+STATUS=LISTO_PARA_PRUEBA | BLOCKED | FAILED
+ATTEMPT=<number>
+
+NEVER use APROBADO_POR_TI.
+Only the owner can approve.
+
+After writing the report and state, EXIT.
+Do not monitor, wait, prune, or perform unrelated cleanup.
+
+AUTO-MODE HARD GUARD:
+You are running non-interactively with automatic permission approval.
+
+The permission mechanism DOES NOT expand your authorized workspace.
+
+AUTHORIZED WRITE ROOT:
+  /opt/dealer-ai-v2/worktrees/070-final-product-completion
+
+You MAY read/write files required for J09 only inside that root.
+
+ABSOLUTELY FORBIDDEN:
+- /var/www/carplus
+- SoyEcua
+- port 8320
+- system nginx configuration
+- production services or databases
+- deploy screens/processes
+- files outside the authorized worktree
+- destructive git commands
+- git reset --hard
+- git clean
+- force push
+- deleting unrelated files
+- weakening authentication, authorization, tenant isolation, or security controls
+- real customer communications
+- real financial/external actions
+- secrets or credentials
+
+If completing J09 would require modifying anything outside the authorized
+worktree, DO NOT DO IT. Record the dependency/blocker in the J09 report.
+
+Automatic permission approval is only a mechanism for unattended execution.
+It is NOT authorization to expand scope.
+
+When J09 is finished or blocked:
+1. write autonomous-post-j08/reports/J09_MODERN_CRM_FORMS.md
+2. update autonomous-post-j08/state/CURRENT
+3. EXIT immediately.

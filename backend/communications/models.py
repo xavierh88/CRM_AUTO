@@ -12,6 +12,8 @@ class Channel(StrEnum):
     EMAIL = 'EMAIL'
     FACEBOOK = 'FACEBOOK'
     INSTAGRAM = 'INSTAGRAM'
+    TIKTOK = 'TIKTOK'
+    WEBSITE = 'WEBSITE'
 
 
 class Actor(StrEnum):
@@ -87,3 +89,30 @@ class CommunicationEvent:
     message_id: str
     timestamp: datetime
     reason: str
+
+
+@dataclass(frozen=True)
+class Conversation:
+    id: str
+    customer_id: str
+    channel: Channel
+    status: str  # 'active', 'closed', 'archived'
+    last_message: str
+    last_message_at: datetime
+    unread_count: int
+    created_at: datetime
+    updated_at: datetime
+    assigned_to: str | None = None
+    metadata: dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        required(self.id)
+        required(self.customer_id)
+        object.__setattr__(self, 'channel', Channel(self.channel))
+        if self.status not in ('active', 'closed', 'archived'):
+            raise ValueError('Invalid conversation status')
+        aware(self.last_message_at)
+        aware(self.created_at)
+        aware(self.updated_at)
+        if self.assigned_to is not None:
+            required(self.assigned_to)

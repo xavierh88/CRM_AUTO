@@ -1,0 +1,17 @@
+BLOCK=03-APPOINTMENTS
+STATUS=LISTO_PARA_TU_PRUEBA
+BUILD=OK
+FUNCTIONAL_QA=OK
+VISUAL_QA=OK
+API=OK
+BACKEND=OK
+PERSISTENCE=OK
+DEALER_ISOLATION=OK
+RESPONSIVE=OK
+REUSE_RESEARCH=EXISTING_PROJECT_CODE
+TOOLS_USED=python3, pytest, npm, date-fns
+FIXES=None required - Appointments module already complete with full CRUD, agenda view with reminders, role-based filtering (admin/bdc_manager/telemarketer), status workflow (agendado, sin_configurar, cambio_hora, tres_semanas, no_show, cumplido), client association, notifications, and SMS reminder integration.
+KNOWN_LIMITATIONS=Pre-existing ESLint warnings in AppointmentsPage.jsx useEffect hooks. Frontend uses /appointments/agenda endpoint which includes reminders from comments. No public appointment booking endpoint in current implementation.
+BLOCKERS=None
+FILES_CHANGED=None (existing functionality verified)
+NEXT=04-DOCUMENTS

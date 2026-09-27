@@ -106,16 +106,16 @@ export default function SmsInboxDialog({ open, onOpenChange, client, onMessageSe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg h-[600px] flex flex-col p-0">
+      <DialogContent className="sms-inbox-v2 max-w-lg h-[min(680px,90vh)] flex flex-col p-0 overflow-hidden border border-slate-700 bg-slate-950 text-slate-100 shadow-2xl">
         {/* Header */}
-        <DialogHeader className="px-4 py-3 border-b bg-slate-50">
+        <DialogHeader className="px-4 py-3 border-b border-slate-800 bg-slate-900">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                 <User className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="font-semibold text-slate-900">
+                <p className="font-semibold text-white">
                   {client?.first_name} {client?.last_name}
                 </p>
                 <p className="text-sm text-slate-500 flex items-center gap-1">
@@ -153,7 +153,7 @@ export default function SmsInboxDialog({ open, onOpenChange, client, onMessageSe
                     className={`max-w-[80%] rounded-2xl px-4 py-2 ${
                       msg.direction === 'outbound'
                         ? 'bg-blue-600 text-white rounded-br-md'
-                        : 'bg-slate-100 text-slate-900 rounded-bl-md'
+                        : 'bg-slate-100 text-white rounded-bl-md'
                     }`}
                   >
                     <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
@@ -179,9 +179,9 @@ export default function SmsInboxDialog({ open, onOpenChange, client, onMessageSe
         </ScrollArea>
 
         {/* Input */}
-        <form onSubmit={handleSend} className="p-3 border-t bg-white">
+        <form onSubmit={handleSend} className="p-3 border-t bg-slate-950">
           <div className="flex items-center gap-2">
-            <Input
+            <Input className="border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus-visible:ring-cyan-500"
               ref={inputRef}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}

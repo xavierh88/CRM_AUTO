@@ -1,0 +1,80 @@
+DEALER AI OS V2 — PRIORITY 0: JARVIS VOICE ONLY
+
+Work ONLY inside:
+/opt/dealer-ai-v2/worktrees/070-final-product-completion
+
+GOAL:
+Finish and verify Jarvis Voice before doing any other module.
+
+CURRENT ARCHITECTURE:
+Voice must remain a modular I/O layer:
+microphone -> MediaRecorder -> /api/jarvis/transcribe -> transcription
+-> EXISTING Jarvis reasoning/tools/context -> response -> browser TTS.
+
+Voice MUST NOT:
+- replace Jarvis reasoning;
+- reduce Jarvis context/model quality;
+- write automatically to long-term memory;
+- modify Jarvis memory architecture;
+- bypass authentication.
+
+KNOWN CURRENT STATE:
+- backend/voice/stt.py exists.
+- faster-whisper is installed in project venv.
+- POST /api/jarvis/transcribe exists.
+- MIME normalization was added.
+- JarvisPage has MediaRecorder support.
+- Current frontend previously produced React minified error #31.
+- Suspected cause: toast calls passing {title, description} to an incompatible toast API.
+DO NOT assume this diagnosis. Inspect actual toast import and existing project usage first.
+- Existing served build before this task was main.79c15e67.js.
+- Preserve all existing uncommitted work.
+
+PROCESS:
+1. Inspect JarvisPage and actual toast API/usage.
+2. Diagnose current React #31.
+3. Apply the smallest safe fix.
+4. Verify MediaRecorder -> authenticated transcription endpoint.
+5. Verify transcript enters the existing Jarvis input/request path.
+6. Verify Jarvis response path remains unchanged.
+7. Verify TTS does not alter reasoning or memory.
+8. Check backend voice module syntax/import.
+9. Run applicable safe backend checks.
+10. Run frontend build exactly with:
+   REACT_APP_BACKEND_URL='' npm run build
+11. Do not claim browser microphone success unless automatically demonstrable.
+12. If human browser verification is still required, state:
+   LISTO PARA TU PRUEBA
+13. Update:
+   .autonomous/reports/VOICE_REPORT.md
+   .autonomous/state/progress.txt
+   /opt/dealer-ai-v2/parallel-control/night-run/NIGHT_REPORT.md
+
+ANTI-LOOP:
+Maximum two reasonable attempts for the same failure.
+If still failing, record BLOCKED with:
+error, files, attempts, evidence, recommended next step.
+Then STOP this voice task. Do not move to other priorities in this session.
+
+SAFETY:
+Do not touch /var/www/carplus.
+Do not touch SoyEcua.
+Do not deploy/restart production.
+Do not modify or terminate screen sessions named deploy.
+Do not reset --hard.
+Do not git clean.
+Do not discard existing changes.
+Do not merge.
+Do not force push.
+Do not use real customer data.
+Do not send real SMS/WhatsApp/email.
+Do not expose secrets.
+Do not install packages globally.
+Do not make destructive database changes.
+
+GATE:
+Code existence or successful compilation alone is NOT completion.
+Record concrete verification evidence.
+Maximum automatic status:
+LISTO PARA TU PRUEBA
+Never write APROBADO POR TI.

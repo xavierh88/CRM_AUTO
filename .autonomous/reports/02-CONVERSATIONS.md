@@ -1,0 +1,17 @@
+BLOCK=02-CONVERSATIONS
+STATUS=LISTO_PARA_TU_PRUEBA
+BUILD=OK
+FUNCTIONAL_QA=OK
+VISUAL_QA=OK
+API=OK
+BACKEND=OK
+PERSISTENCE=OK
+DEALER_ISOLATION=OK
+RESPONSIVE=OK
+REUSE_RESEARCH=EXISTING_PROJECT_CODE_AND_OPEN_SOURCE
+TOOLS_USED=python3, pytest, npm, textbee (researched), Meta APIs (researched)
+FIXES=Added Channel.WEBSITE and Channel.TIKTOK to models. Created Conversation dataclass. Built conversation.py repository with CRUD operations. Updated adapters.py with provider registry for all 7 channels (SMS, WhatsApp, Email, Facebook, Instagram, TikTok, Website). Implemented database-backed CommunicationService with send/receive/mark_read. Replaced mock /inbox/conversations with real DB-backed implementation. Added webhook endpoints for TextBee SMS and Meta (WhatsApp/FB/IG). Added WhatsApp webhook verification endpoint.
+KNOWN_LIMITATIONS=TextBee and Meta providers are mock/stubs (WAITING_CONFIG/NOT_CONFIGURED). Real integration requires dealer configuration. No TikTok inbound implementation. Frontend ConversationsPage.jsx still uses mock fallback when API fails - needs update to use new endpoints. Conversation metadata (client_name, client_phone) not auto-populated on create.
+BLOCKERS=Requires dealer configuration for real SMS/WhatsApp/Meta credentials
+FILES_CHANGED=backend/communications/models.py, backend/communications/adapters.py, backend/communications/service.py, backend/communications/conversation.py (new), backend/server.py (inbox routes + webhooks)
+NEXT=03-APPOINTMENTS

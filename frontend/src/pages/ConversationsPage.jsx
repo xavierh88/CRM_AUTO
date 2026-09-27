@@ -58,11 +58,8 @@ export default function ConversationsPage() {
       setConversations(response.data);
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
-      setConversations([
-        { id: '1', client_id: 'c1', client_name: 'John Smith', client_phone: '+15551234567', channel: 'sms', last_message: 'Thanks for the info!', last_message_at: new Date().toISOString(), unread_count: 2, status: 'active' },
-        { id: '2', client_id: 'c2', client_name: 'Maria Garcia', client_phone: '+15559876543', channel: 'email', last_message: 'When can I test drive?', last_message_at: new Date(Date.now() - 3600000).toISOString(), unread_count: 0, status: 'active' },
-        { id: '3', client_id: 'c3', client_name: 'Robert Johnson', client_phone: '+15554567890', channel: 'facebook', last_message: 'Interested in the Honda', last_message_at: new Date(Date.now() - 7200000).toISOString(), unread_count: 1, status: 'active' },
-      ]);
+      setConversations([]);
+      toast.error('Unable to load conversations');
     } finally {
       setLoading(false);
     }
@@ -74,15 +71,12 @@ export default function ConversationsPage() {
 
   const fetchMessages = async (conversationId) => {
     try {
-      const response = await axios.get(`${API}/inbox/${conversationId}`);
+      const response = await axios.get(`${API}/inbox/conversations/${conversationId}/messages`);
       setMessages(response.data);
     } catch (error) {
       console.error('Failed to fetch messages:', error);
-      setMessages([
-        { id: 'm1', conversation_id: conversationId, direction: 'inbound', body: 'Hi, interested in the Accord', created_at: new Date(Date.now() - 3600000).toISOString(), status: 'read' },
-        { id: 'm2', conversation_id: conversationId, direction: 'outbound', body: 'Great! When can you come in?', created_at: new Date(Date.now() - 1800000).toISOString(), status: 'sent' },
-        { id: 'm3', conversation_id: conversationId, direction: 'inbound', body: 'Tomorrow at 2pm?', created_at: new Date().toISOString(), status: 'delivered' },
-      ]);
+      setMessages([]);
+      toast.error('Unable to load messages');
     }
   };
 
@@ -91,7 +85,7 @@ export default function ConversationsPage() {
     await fetchMessages(conversation.id);
     if (conversation.unread_count > 0) {
       try {
-        await axios.post(`${API}/inbox/${conversation.id}/mark-read`);
+        await axios.post(`${API}/inbox/conversations/${conversation.id}/mark-read`);
         fetchConversations();
       } catch (e) {}
     }
@@ -103,7 +97,7 @@ export default function ConversationsPage() {
     
     setSending(true);
     try {
-      await axios.post(`${API}/inbox/${selectedConversation.id}/send`, { body: newMessage });
+      await axios.post(`${API}/inbox/conversations/${selectedConversation.id}/send`, { body: newMessage });
       setNewMessage('');
       fetchMessages(selectedConversation.id);
       toast.success('Message sent');

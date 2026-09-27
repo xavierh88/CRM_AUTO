@@ -46,6 +46,7 @@ function LayoutContent({ children }) {
   const { user, logout, isAdmin, isDemo } = useAuth();
   const { sidebarOpen: jarvisSidebarOpen, closeSidebar: closeJarvisSidebar, mobileSheetOpen: jarvisMobileSheetOpen, closeMobileSheet: closeJarvisMobileSheet, toggleSidebar: toggleJarvisSidebar, toggleMobileSheet: toggleJarvisMobileSheet } = useJarvis();
   const location = useLocation();
+  const isJarvisPage = location.pathname === '/jarvis';
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -94,7 +95,7 @@ function LayoutContent({ children }) {
     { path: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') || 'Dashboard', roles: ['all'], section: 'core' },
     { path: '/inventory', icon: Package, label: t('nav.inventory') || 'Inventory', roles: ['all'], section: 'core' },
     { path: '/leads', icon: Users, label: t('nav.leads') || 'Leads', roles: ['all'], section: 'core' },
-    { path: '/customers', icon: Users, label: t('nav.customers') || 'Customers', roles: ['all'], section: 'core' },
+    { path: '/clients', icon: Users, label: 'Clientes', roles: ['all'], section: 'core' },
     { path: '/deals', icon: DollarSign, label: t('nav.deals') || 'Deals', roles: ['all'], section: 'core' },
     { path: '/conversations', icon: MessageSquare, label: t('nav.conversations') || 'Conversations', roles: ['all'], section: 'core' },
     { path: '/appointments', icon: Calendar, label: t('nav.appointments') || 'Appointments', roles: ['all'], section: 'core' },
@@ -126,12 +127,12 @@ function LayoutContent({ children }) {
     { path: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') || 'Home' },
     { path: '/inventory', icon: Package, label: t('nav.inventory') || 'Inventory' },
     { path: '/leads', icon: Users, label: t('nav.leads') || 'Leads' },
-    { path: '/jarvis', icon: Sparkles, label: t('nav.jarvis') || 'Jarvis' },
+    { path: '/clients', icon: Users, label: 'Clientes' },
     { path: '#more', icon: MoreHorizontal, label: t('nav.more') || 'More', isMore: true },
   ];
 
   const moreMenuItems = filteredNavItems.filter(item => 
-    !['/dashboard', '/inventory', '/leads', '/jarvis'].includes(item.path)
+    !['/dashboard', '/inventory', '/leads', '/clients'].includes(item.path)
   );
 
   const isActive = (path) => location.pathname === path || (path !== '/dashboard' && location.pathname.startsWith(path + '/'));
@@ -284,10 +285,20 @@ function LayoutContent({ children }) {
         <header className={`top-header ${isScrolled ? 'scrolled' : ''}`} role="banner">
           <div className="header-left">
             <button
-              className="menu-toggle lg:hidden"
-              onClick={() => setSidebarOpen(true)}
-              aria-label={t('nav.openMenu') || 'Open menu'}
-              aria-expanded={sidebarOpen}
+              className="menu-toggle"
+              onClick={() => {
+                if (isDesktop) {
+                  toggleSidebarCollapsed();
+                } else {
+                  setSidebarOpen(true);
+                }
+              }}
+              aria-label={
+                isDesktop
+                  ? (sidebarCollapsed ? 'Expandir menú lateral' : 'Contraer menú lateral')
+                  : (t('nav.openMenu') || 'Open menu')
+              }
+              aria-expanded={isDesktop ? !sidebarCollapsed : sidebarOpen}
               aria-controls="sidebar"
             >
               <Menu className="w-6 h-6" />
@@ -446,7 +457,7 @@ function LayoutContent({ children }) {
         )}
 
         {/* Jarvis Mobile Bottom Sheet */}
-        {!isDesktop && (
+        {!isDesktop && !isJarvisPage && (
           <div className={`jarvis-bottom-sheet ${jarvisMobileSheetOpen ? 'open' : ''}`} role="dialog" aria-label="Jarvis Assistant">
             <div className="jarvis-sheet-handle" />
             <div className="jarvis-sheet-content">
@@ -456,7 +467,7 @@ function LayoutContent({ children }) {
         )}
 
         {/* Jarvis Desktop Sidebar Panel */}
-        {isDesktop && (
+        {isDesktop && !isJarvisPage && (
           <aside className={`jarvis-sidebar-panel ${jarvisSidebarOpen ? 'open' : ''}`} role="complementary" aria-label="Jarvis Assistant">
             <div className="flex items-center justify-between p-4 border-b border-slate-800">
               <h2 className="text-lg font-semibold flex items-center gap-2">

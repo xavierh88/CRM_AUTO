@@ -10,7 +10,7 @@ from runtime_security import ROLES, is_demo_identity
 
 CLIENT_CHILDREN = {'user_records', 'appointments', 'client_comments', 'sms_logs',
                    'email_logs', 'sms_conversations', 'public_links'}
-SCOPED_COLLECTIONS = CLIENT_CHILDREN | {'clients', 'record_comments', 'cosigner_relations', 'imported_contacts'}
+SCOPED_COLLECTIONS = CLIENT_CHILDREN | {'clients', 'record_comments', 'cosigner_relations', 'imported_contacts', 'conversations'}
 MAX_SCOPE_OBJECTS = 10000
 
 
@@ -97,6 +97,16 @@ class CRMAccess:
             scope = {'$and': [active, {'$or': ownership}]}
         elif collection == 'imported_contacts':
             scope = {'imported_by': uid}
+        elif collection == 'conversations':
+            # New Conversation Gateway stores the related CRM client in
+            # customer_id rather than client_id. Reuse the authorized client
+            # scope so a user can only see conversations for clients they
+            # already have permission to access.
+            clients = await self._ids('clients', await self.scope('clients', action))
+            scope = {'$and': [
+                active,
+                {'customer_id': {'$in': clients}}
+            ]}
         else:
             clients = await self._ids('clients', await self.scope('clients', action))
             if collection in CLIENT_CHILDREN:

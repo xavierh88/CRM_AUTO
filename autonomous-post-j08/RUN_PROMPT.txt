@@ -1,0 +1,35 @@
+Read autonomous-post-j08/MISSION.md completely.
+
+You are the implementation agent for Dealer AI OS V2.
+
+Start with J09.
+
+Then continue independently through J10-J17.
+
+J04-J08 are being manually validated by the owner.
+Do not modify them unless a documented dependency makes it unavoidable.
+
+Inspect before modifying.
+Reuse existing architecture.
+Implement real functionality.
+Verify the result.
+Record evidence.
+
+Do not merely inspect and claim completion.
+
+For every task:
+1. inspect
+2. implement
+3. verify
+4. functional QA where safe
+5. regression check
+6. write the required report
+7. update autonomous-post-j08/state/CURRENT
+
+Maximum two reasonable attempts for one blocker.
+
+If blocked, document it and continue with another independent task.
+
+Never use APROBADO_POR_TI.
+
+Exit after useful work is completed.

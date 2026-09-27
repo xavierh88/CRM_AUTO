@@ -41,16 +41,29 @@
   border-width: 1px;
 }
 
-/* Card styles */
+/* Card styles - Dark theme (Dealer AI OS) */
 .dashboard-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.75rem;
-  transition: box-shadow 0.2s ease;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .dashboard-card:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+/* Light mode fallback for dashboard-card */
+@media (prefers-color-scheme: light) {
+  .dashboard-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+  }
+  
+  .dashboard-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
 }
 
 /* Button styles */
@@ -182,5 +195,361 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+
+/* V2 single desktop sidebar controller */
+@media (min-width: 1024px) {
+  .sidebar-brand .sidebar-close {
+    display: none !important;
+  }
+
+  .menu-toggle {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* DEALER AI V2 NOTES POLISHED HEADER */
+
+.notes-v2-header-shell {
+  width: 100% !important;
+  box-sizing: border-box !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+
+  padding: 16px 20px !important;
+
+  background: rgb(15 23 42) !important;
+  background-color: rgb(15 23 42) !important;
+
+  border-bottom: 1px solid rgb(30 41 59) !important;
+
+  color: rgb(241 245 249) !important;
+}
+
+/* Todo el contenido del encabezado hereda correctamente */
+.notes-v2-header-shell > div {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.notes-v2-header-shell h1,
+.notes-v2-header-shell h2,
+.notes-v2-header-shell h3,
+.notes-v2-header-shell h4 {
+  margin: 0 !important;
+  color: rgb(248 250 252) !important;
+  font-weight: 600 !important;
+}
+
+.notes-v2-header-shell p {
+  margin: 3px 0 0 0 !important;
+  color: rgb(148 163 184) !important;
+}
+
+.notes-v2-header-shell svg {
+  color: rgb(34 211 238) !important;
+}
+
+/* Botón cerrar */
+.notes-v2-header-shell button {
+  color: rgb(148 163 184) !important;
+  background: transparent !important;
+}
+
+.notes-v2-header-shell button:hover {
+  color: white !important;
+  background: rgb(30 41 59) !important;
+}
+
+/* Evitar cualquier fondo blanco heredado dentro del header */
+.notes-v2-header-shell .bg-white,
+.notes-v2-header-shell .bg-slate-50,
+.notes-v2-header-shell .bg-gray-50 {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* CLIENT PROFILE V2 EXACT */
+
+.client-profile-v2 {
+  width: min(94vw, 900px) !important;
+  max-width: 900px !important;
+
+  background: rgb(15 23 42) !important;
+  background-color: rgb(15 23 42) !important;
+
+  border: 1px solid rgb(30 41 59) !important;
+  border-radius: 18px !important;
+
+  color: rgb(226 232 240) !important;
+
+  box-shadow:
+    0 30px 80px rgba(0,0,0,.55),
+    0 0 0 1px rgba(255,255,255,.02) !important;
+}
+
+/* ---------- HEADER ---------- */
+
+.client-profile-v2 [class*="DialogHeader"],
+.client-profile-v2 > div:first-child {
+  background: transparent !important;
+}
+
+.client-profile-v2 h1,
+.client-profile-v2 h2,
+.client-profile-v2 h3,
+.client-profile-v2 h4 {
+  color: rgb(248 250 252) !important;
+}
+
+.client-profile-v2 p {
+  color: rgb(148 163 184);
+}
+
+/* ---------- FORMULARIO ---------- */
+
+.client-profile-v2 label {
+  color: rgb(148 163 184) !important;
+  font-weight: 500 !important;
+}
+
+.client-profile-v2 input,
+.client-profile-v2 textarea,
+.client-profile-v2 select {
+  background: rgb(2 6 23) !important;
+  background-color: rgb(2 6 23) !important;
+
+  border-color: rgb(51 65 85) !important;
+
+  color: rgb(241 245 249) !important;
+}
+
+.client-profile-v2 input::placeholder,
+.client-profile-v2 textarea::placeholder {
+  color: rgb(100 116 139) !important;
+}
+
+.client-profile-v2 input:focus,
+.client-profile-v2 textarea:focus,
+.client-profile-v2 select:focus {
+  border-color: rgb(6 182 212) !important;
+}
+
+/* ---------- QUITAR BLANCOS ANTIGUOS ---------- */
+
+.client-profile-v2 .bg-white,
+.client-profile-v2 .bg-slate-50,
+.client-profile-v2 .bg-gray-50,
+.client-profile-v2 .bg-gray-100 {
+  background: rgb(2 6 23) !important;
+  background-color: rgb(2 6 23) !important;
+}
+
+/* ---------- TEXTO LEGIBLE ---------- */
+
+.client-profile-v2 .text-black,
+.client-profile-v2 .text-slate-900,
+.client-profile-v2 .text-slate-800,
+.client-profile-v2 .text-slate-700,
+.client-profile-v2 .text-gray-900,
+.client-profile-v2 .text-gray-800,
+.client-profile-v2 .text-gray-700 {
+  color: rgb(226 232 240) !important;
+}
+
+.client-profile-v2 .text-slate-600,
+.client-profile-v2 .text-slate-500,
+.client-profile-v2 .text-gray-600,
+.client-profile-v2 .text-gray-500 {
+  color: rgb(148 163 184) !important;
+}
+
+/* ---------- BORDES / CARDS ---------- */
+
+.client-profile-v2 .border,
+.client-profile-v2 .border-t,
+.client-profile-v2 .border-b,
+.client-profile-v2 .border-l,
+.client-profile-v2 .border-r {
+  border-color: rgb(30 41 59) !important;
+}
+
+/* ---------- DOCUMENTOS ---------- */
+
+.client-profile-v2 [data-testid*="document"],
+.client-profile-v2 [data-testid*="doc-"] {
+  background-color: rgb(2 6 23) !important;
+  border-color: rgb(51 65 85) !important;
+  color: rgb(226 232 240) !important;
+}
+
+/* ---------- BOTONES ---------- */
+
+.client-profile-v2 button {
+  transition:
+    background-color .15s ease,
+    border-color .15s ease,
+    color .15s ease;
+}
+
+.client-profile-v2 button[class*="border"] {
+  border-color: rgb(51 65 85) !important;
+}
+
+/* ---------- SCROLL ---------- */
+
+.client-profile-v2::-webkit-scrollbar {
+  width: 8px;
+}
+
+.client-profile-v2::-webkit-scrollbar-track {
+  background: rgb(15 23 42);
+}
+
+.client-profile-v2::-webkit-scrollbar-thumb {
+  background: rgb(51 65 85);
+  border-radius: 999px;
+}
+
+/* ---------- MOBILE ---------- */
+
+@media (max-width: 640px) {
+  .client-profile-v2 {
+    width: calc(100vw - 20px) !important;
+    max-width: none !important;
+    max-height: 92vh !important;
+
+    padding: 16px !important;
+    border-radius: 16px !important;
+  }
+
+  .client-profile-v2 input,
+  .client-profile-v2 textarea,
+  .client-profile-v2 select {
+    font-size: 16px !important;
+  }
+}
+
+/* ==========================================================
+   DEALER AI OS V2 — DEALS
+   ========================================================== */
+
+.deals-v2-page {
+  min-height: 100%;
+  color: rgb(226 232 240);
+}
+
+.deals-v2-page h1 {
+  color: rgb(248 250 252);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.deals-v2-page h2,
+.deals-v2-page h3 {
+  color: rgb(241 245 249);
+}
+
+.deals-v2-page p {
+  color: rgb(148 163 184);
+}
+
+/* Cards */
+.deals-v2-page .bg-white,
+.deals-v2-page .bg-slate-50,
+.deals-v2-page .bg-gray-50,
+.deals-v2-page .bg-gray-100 {
+  background: rgb(15 23 42) !important;
+  background-color: rgb(15 23 42) !important;
+}
+
+.deals-v2-page .border,
+.deals-v2-page .border-t,
+.deals-v2-page .border-b,
+.deals-v2-page .border-l,
+.deals-v2-page .border-r {
+  border-color: rgb(30 41 59) !important;
+}
+
+/* Inputs */
+.deals-v2-page input,
+.deals-v2-page select,
+.deals-v2-page textarea {
+  background: rgb(2 6 23) !important;
+  border-color: rgb(51 65 85) !important;
+  color: rgb(241 245 249) !important;
+}
+
+.deals-v2-page input::placeholder,
+.deals-v2-page textarea::placeholder {
+  color: rgb(100 116 139) !important;
+}
+
+.deals-v2-page input:focus,
+.deals-v2-page select:focus,
+.deals-v2-page textarea:focus {
+  border-color: rgb(6 182 212) !important;
+}
+
+/* Dark text inherited from legacy UI */
+.deals-v2-page .text-black,
+.deals-v2-page .text-gray-900,
+.deals-v2-page .text-gray-800,
+.deals-v2-page .text-gray-700,
+.deals-v2-page .text-slate-900,
+.deals-v2-page .text-slate-800,
+.deals-v2-page .text-slate-700 {
+  color: rgb(226 232 240) !important;
+}
+
+.deals-v2-page .text-gray-500,
+.deals-v2-page .text-gray-600,
+.deals-v2-page .text-slate-500,
+.deals-v2-page .text-slate-600 {
+  color: rgb(148 163 184) !important;
+}
+
+/* Table */
+.deals-v2-page table {
+  width: 100%;
+}
+
+.deals-v2-page thead {
+  background: rgb(2 6 23);
+}
+
+.deals-v2-page th {
+  color: rgb(148 163 184);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.deals-v2-page td {
+  color: rgb(226 232 240);
+  border-color: rgb(30 41 59);
+}
+
+/* Hover */
+.deals-v2-page tbody tr:hover {
+  background: rgba(30, 41, 59, .55);
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .deals-v2-page {
+    padding-bottom: 80px;
+  }
+
+  .deals-v2-page input,
+  .deals-v2-page select,
+  .deals-v2-page textarea {
+    font-size: 16px !important;
   }
 }

@@ -103,3 +103,52 @@ class SocialInboundAdapter(MockProvider):
 
     def send(self, message: Message, now: datetime) -> SendResult:
         return SendResult(Delivery.BLOCKED, reason='INBOUND_ONLY')
+
+
+class WebsiteChatProvider(MockProvider):
+    status = 'MOCK'
+
+    def __init__(self):
+        super().__init__(Channel.WEBSITE)
+
+    def normalize_inbound(self, payload: Mapping, customer_id: str) -> Message:
+        try:
+            provider_id = payload['provider_message_id']
+            required(provider_id)
+            timestamp = datetime.fromisoformat(payload['timestamp'])
+            return Message(customer_id=customer_id, channel=self.channel,
+                           direction=Direction.INBOUND, actor=Actor.CLIENT,
+                           text=payload['text'], timestamp=timestamp,
+                           delivery_status=Delivery.RECEIVED,
+                           provider_message_id=provider_id,
+                           id=f'{self.name}:{provider_id}')
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError('Invalid normalized inbound payload') from error
+
+
+class TikTokAdapter(MockProvider):
+    status = 'NOT_CONFIGURED'
+
+    def __init__(self):
+        super().__init__(Channel.TIKTOK)
+
+    def send(self, message: Message, now: datetime) -> SendResult:
+        return SendResult(Delivery.BLOCKED, reason=self.status)
+
+    def normalize_inbound(self, payload: Mapping, customer_id: str) -> Message:
+        raise NotImplementedError('TikTok inbound not implemented')
+
+
+PROVIDER_REGISTRY: dict[Channel, CommunicationProvider] = {
+    Channel.SMS: AndroidSmsGateway(),
+    Channel.WHATSAPP: WhatsAppAdapter(),
+    Channel.FACEBOOK: SocialInboundAdapter(Channel.FACEBOOK),
+    Channel.INSTAGRAM: SocialInboundAdapter(Channel.INSTAGRAM),
+    Channel.WEBSITE: WebsiteChatProvider(),
+    Channel.TIKTOK: TikTokAdapter(),
+    Channel.EMAIL: MockProvider(Channel.EMAIL),
+}
+
+
+def get_provider(channel: Channel) -> CommunicationProvider:
+    return PROVIDER_REGISTRY.get(channel, MockProvider(channel))

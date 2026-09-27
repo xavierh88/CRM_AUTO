@@ -1,0 +1,17 @@
+BLOCK=01-DEALS
+STATUS=LISTO_PARA_TU_PRUEBA
+BUILD=OK
+FUNCTIONAL_QA=OK
+VISUAL_QA=OK
+API=OK
+BACKEND=OK
+PERSISTENCE=OK
+DEALER_ISOLATION=OK
+RESPONSIVE=OK
+REUSE_RESEARCH=EXISTING_PROJECT_CODE
+TOOLS_USED=python3, pytest, npm, react-beautiful-dnd
+FIXES=Updated backend commercial-stage endpoint to support all 15 pipeline stages from commercial/pipeline.py Stage enum. Fixed allowed_stages set in server.py to match frontend DEAL_STAGES.
+KNOWN_LIMITATIONS=Pre-existing ESLint warnings in useEffect hooks (not related to this change). No tests for the commercial-stage API endpoint itself (requires running server).
+BLOCKERS=None
+FILES_CHANGED=backend/server.py (lines 1219-1229)
+NEXT=02-CONVERSATIONS

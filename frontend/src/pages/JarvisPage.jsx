@@ -10,13 +10,15 @@ import { ScrollArea } from '../components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Separator } from '../components/ui/separator';
 import { toast } from 'sonner';
+import axios from 'axios';
+
+const JARVIS_VOICE_ENABLED = false;
 import {
-  Bot, Send, Mic, MicOff, Loader2, Sparkles, Zap,
+  Bot, Send, Mic, MicOff, Paperclip, Volume2, VolumeX, Loader2, Sparkles, Zap,
   CheckCircle, XCircle, AlertTriangle, Info, Menu,
   X, Copy, ThumbsUp, ThumbsDown, RefreshCw, Settings,
-  FileText, Users, Calendar, DollarSign, Package, Target,
-  ChevronDown, ChevronUp, LayoutSidebarRight
-} from 'lucide-react';
+  FileText, Users, User, Calendar, DollarSign, Package, Target,
+  ChevronDown, ChevronUp, LayoutSidebarRight, MessageSquare} from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -82,6 +84,322 @@ export default function JarvisPage() {
   const [pendingAction, setPendingAction] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const mediaStreamRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const [mediaRecorderSupported, setMediaRecorderSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(() => {
+    try {
+      return localStorage.getItem('dealer-ai-jarvis-voice-mode') || 'text';
+    } catch {
+      return 'text';
+    }
+  });
+  const [showVoiceMenu, setShowVoiceMenu] = useState(false);
+  const fileInputRef = useRef(null);
+  const [attachedFile, setAttachedFile] = useState(null);
+
+  const changeVoiceMode = (mode) => {
+    setVoiceMode(mode);
+    setShowVoiceMenu(false);
+
+    try {
+      localStorage.setItem('dealer-ai-jarvis-voice-mode', mode);
+    } catch {
+      // Keep current session state if storage is unavailable.
+    }
+
+    const labels = {
+      text: 'Solo texto',
+      voice: 'Voz + texto',
+      conversation: 'Conversación',
+    };
+
+    toast.message('Modo de Jarvis', {
+      description: labels[mode],
+    });
+  };
+
+  const handleJarvisFileSelect = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const maxSize = 15 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+      toast.error('Archivo demasiado grande', {
+        description: 'El límite actual es 15 MB.',
+      });
+      event.target.value = '';
+      return;
+    }
+
+    setAttachedFile(file);
+
+    toast.message('Archivo adjunto', {
+      description: file.name,
+    });
+  };
+
+  const removeJarvisAttachment = () => {
+    setAttachedFile(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const formatJarvisFileSize = (bytes) => {
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 KB';
+
+    if (bytes < 1024 * 1024) {
+      return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+    }
+
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const [speechSupported, setSpeechSupported] = useState(true);
+
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    setMediaRecorderSupported(
+      Boolean(
+        navigator.mediaDevices?.getUserMedia &&
+        window.MediaRecorder
+      )
+    );
+
+    if (!SpeechRecognition) {
+      setSpeechSupported(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = (navigator.language || 'es-US').toLowerCase().startsWith('es')
+      ? 'es-US'
+      : 'en-US';
+
+    recognition.onstart = () => setIsListening(true);
+
+    recognition.onresult = (event) => {
+      let transcript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        transcript += event.results[i][0].transcript;
+      }
+
+      setInput(transcript.trim());
+    };
+
+    recognition.onerror = (event) => {
+      setIsListening(false);
+
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        toast.message("Voice", {
+            description: 'Permite el acceso al micrófono para usar Jarvis por voz.',
+          });
+      } else if (event.error !== 'aborted') {
+        toast.message("Voice", {
+            description: `No pude reconocer la voz: ${event.error}`,
+          });
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      inputRef.current?.focus();
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      recognition.abort();
+      recognitionRef.current = null;
+    };
+  }, []);
+
+  const stopVoiceStream = () => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+  };
+
+  const startMediaRecorderVoice = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      audioChunksRef.current = [];
+
+      const preferredTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/ogg',
+      ];
+
+      const mimeType = preferredTypes.find(
+        (type) => window.MediaRecorder.isTypeSupported?.(type)
+      );
+
+      const recorder = mimeType
+        ? new window.MediaRecorder(stream, { mimeType })
+        : new window.MediaRecorder(stream);
+
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onerror = () => {
+        setIsListening(false);
+        stopVoiceStream();
+        toast.error('Voice error', {
+            description: 'The microphone recording failed.',
+          });
+      };
+
+      recorder.onstop = async () => {
+        setIsListening(false);
+
+        try {
+          const actualType =
+            recorder.mimeType ||
+            audioChunksRef.current[0]?.type ||
+            'audio/webm';
+
+          const blob = new Blob(audioChunksRef.current, {
+            type: actualType,
+          });
+
+          audioChunksRef.current = [];
+          stopVoiceStream();
+
+          if (!blob.size) {
+            throw new Error('Empty recording');
+          }
+
+          const extension = actualType.includes('ogg') ? 'ogg' : 'webm';
+          const formData = new FormData();
+
+          formData.append(
+            'audio',
+            blob,
+            `jarvis-voice.${extension}`
+          );
+
+          toast.message('Transcribing…', {
+            description: 'Jarvis is converting your voice to text.',
+          });
+
+          const response = await axios.post(
+            `${API}/jarvis/transcribe`,
+            formData,
+            {
+              timeout: 120000,
+            }
+          );
+
+          const transcript = response.data?.text?.trim();
+
+          if (!transcript) {
+            throw new Error('No speech detected');
+          }
+
+          setInput(transcript);
+          inputRef.current?.focus();
+
+          toast.message('Voice ready', {
+            description: transcript,
+          });
+        } catch (error) {
+          if (error?.response?.status === 422) {
+            console.info('Jarvis voice: no speech detected');
+            toast.message('No pude escuchar claramente', {
+              description: 'Inténtalo nuevamente.',
+            });
+          } else {
+            console.error('Voice transcription failed:', {
+              url: error?.config?.url,
+              status: error?.response?.status,
+              data: error?.response?.data,
+              message: error?.message,
+            });
+
+            toast.error('Transcription failed', {
+              description:
+                typeof error.response?.data?.detail === 'string'
+                  ? error.response.data.detail
+                  : error.response?.data?.detail
+                    ? JSON.stringify(error.response.data.detail)
+                    : error.message ||
+                      'Jarvis could not understand the recording.',
+            });
+          }
+        } finally {
+          mediaRecorderRef.current = null;
+          stopVoiceStream();
+        }
+      };
+
+      // Emit audio chunks periodically for reliable Firefox/WebM recording.
+      recorder.start(250);
+      setIsListening(true);
+    } catch (error) {
+      console.error('Microphone access failed:', error);
+      setIsListening(false);
+      stopVoiceStream();
+
+      toast.error('Microphone unavailable', {
+            description: error?.name === 'NotAllowedError'
+            ? 'Allow microphone access in your browser and try again.'
+            : 'Jarvis could not access the microphone.',
+          });
+    }
+  };
+
+  const toggleMediaRecorderVoice = async () => {
+    const recorder = mediaRecorderRef.current;
+
+    if (isListening && recorder) {
+      if (recorder.state !== 'inactive') {
+        recorder.stop();
+      }
+      return;
+    }
+
+    await startMediaRecorderVoice();
+  };
+
+  const handleVoiceToggle = () => {
+    if (!speechSupported || !recognitionRef.current || loading) {
+      if (!speechSupported) {
+        toast.message("Voice", {
+            description: 'El reconocimiento de voz no está disponible en este navegador.',
+          });
+      }
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      return;
+    }
+
+    try {
+      recognitionRef.current.start();
+    } catch (error) {
+      console.error('Jarvis voice start failed:', error);
+    }
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -89,6 +407,47 @@ export default function JarvisPage() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+
+  const speakJarvisResponse = async (text) => {
+    if (!text || voiceMode === 'text') return;
+
+    try {
+      const language = /[áéíóúñ¿¡]/i.test(text) ? 'es' : 'en';
+
+      const response = await axios.post(
+        `${API}/jarvis/speak`,
+        {
+          text,
+          language,
+        },
+        {
+          responseType: 'blob',
+        }
+      );
+
+      const audioUrl = URL.createObjectURL(response.data);
+      const audio = new Audio(audioUrl);
+
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      audio.onerror = () => {
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      await audio.play();
+    } catch (error) {
+      console.error('Jarvis TTS playback failed:', error);
+
+      toast.error('No se pudo reproducir la voz de Jarvis', {
+        description:
+          error?.response?.data?.detail ||
+          'La respuesta escrita sigue disponible.',
+      });
+    }
   };
 
   const handleSend = async (e) => {
@@ -102,37 +461,64 @@ export default function JarvisPage() {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API}/jarvis/chat`, { 
-        message: currentInput, 
-        context: { user_id: user.id, is_demo: isDemo }
-      });
+      let response;
+
+      if (attachedFile) {
+        const formData = new FormData();
+        formData.append('file', attachedFile);
+
+        if (currentInput.trim()) {
+          formData.append('message', currentInput.trim());
+        }
+
+        response = await axios.post(`${API}/jarvis/upload`, formData);
+      } else {
+        response = await axios.post(`${API}/jarvis/chat`, {
+          message: currentInput,
+          context: { user_id: user.id, is_demo: isDemo }
+        });
+      }
       
+      if (attachedFile) {
+        setAttachedFile(null);
+
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+
       const botMessage = { 
         id: Date.now() + 1, 
         role: 'assistant', 
         content: response.data.response || response.data.message || 'I understand. Let me help with that.',
         tool_calls: response.data.tool_calls,
+        action: response.data.action || null,
         timestamp: new Date() 
       };
       setMessages(prev => [...prev, botMessage]);
+      
+      if (voiceMode !== 'text') {
+        speakJarvisResponse(botMessage.content);
+      }
       
       if (response.data.requires_confirmation) {
         setPendingAction(response.data.action);
       }
     } catch (error) {
-      const mockResponse = generateMockResponse(currentInput);
-      const botMessage = { 
-        id: Date.now() + 1, 
-        role: 'assistant', 
-        content: mockResponse.content,
-        tool_calls: mockResponse.tool_calls,
-        timestamp: new Date() 
+      console.error('Jarvis chat failed:', error);
+      const status = error?.response?.status;
+      const detail = error?.response?.data?.detail;
+
+      const botMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: detail
+          ? `Jarvis error${status ? ` (${status})` : ''}: ${typeof detail === 'string' ? detail : JSON.stringify(detail)}`
+          : `Jarvis request failed${status ? ` (${status})` : ''}: ${error?.message || 'Unknown error'}`,
+        timestamp: new Date()
       };
+
       setMessages(prev => [...prev, botMessage]);
-      
-      if (mockResponse.requires_confirmation) {
-        setPendingAction(mockResponse.action);
-      }
     } finally {
       setLoading(false);
     }
@@ -395,6 +781,37 @@ export default function JarvisPage() {
 
           {/* Input Area */}
           <div className="border-t border-border p-4">
+            {attachedFile && (
+              <div
+                data-jarvis-attachment-preview
+                className="mb-2 flex items-center justify-between gap-3 rounded-lg border bg-muted/40 px-3 py-2"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <FileText className="h-4 w-4 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-medium">
+                      {attachedFile.name}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {formatJarvisFileSize(attachedFile.size)}
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0"
+                  onClick={removeJarvisAttachment}
+                  title="Quitar archivo"
+                  aria-label="Remove Jarvis attachment"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
             <form onSubmit={handleSend} className="flex gap-2">
               <Input
                 ref={inputRef}
@@ -404,10 +821,112 @@ export default function JarvisPage() {
                 className="flex-1"
                 disabled={loading}
               />
-              <Button type="submit" disabled={loading || !input.trim()} size="lg" className="bg-primary hover:bg-primary/90">
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.webp"
+                onChange={handleJarvisFileSelect}
+              />
+
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                title="Adjuntar archivo"
+                aria-label="Attach file to Jarvis"
+              >
+                <Paperclip className="w-4 h-4" />
+              </Button>
+
+              <div className="relative">
+                <Button
+                  type="button"
+                  variant={voiceMode === 'text' ? 'outline' : 'secondary'}
+                  size="icon"
+                  onClick={() => setShowVoiceMenu((open) => !open)}
+                  title="Modo de voz de Jarvis"
+                  aria-label="Jarvis voice mode"
+                >
+                  {voiceMode === 'text'
+                    ? <VolumeX className="w-4 h-4" />
+                    : <Volume2 className="w-4 h-4" />}
+                </Button>
+
+                {showVoiceMenu && (
+                  <div className="absolute bottom-full right-0 mb-2 w-56 rounded-xl border bg-background p-2 shadow-xl z-50">
+                    <div className="px-2 py-1.5">
+                      <p className="text-sm font-semibold">Voz de Jarvis</p>
+                      <p className="text-xs text-muted-foreground">
+                        Elige cómo quieres que responda.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => changeVoiceMode('text')}
+                      className="w-full rounded-lg px-2 py-2 text-left text-sm hover:bg-muted"
+                    >
+                      {voiceMode === 'text' ? '● ' : '○ '}Solo texto
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => changeVoiceMode('voice')}
+                      className="w-full rounded-lg px-2 py-2 text-left text-sm hover:bg-muted"
+                    >
+                      {voiceMode === 'voice' ? '● ' : '○ '}Voz + texto
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => changeVoiceMode('conversation')}
+                      className="w-full rounded-lg px-2 py-2 text-left text-sm hover:bg-muted"
+                    >
+                      {voiceMode === 'conversation' ? '● ' : '○ '}Conversación
+                    </button>
+
+                    <div className="mt-1 border-t px-2 pt-2 text-xs text-muted-foreground">
+                      Voz natural pendiente de conexión.
+                    </div>
+                  </div>
+                )}
+              </div>
+
+<Button
+                type="button"
+                size="lg"
+                variant={isListening ? "destructive" : "outline"}
+                onClick={mediaRecorderSupported ? toggleMediaRecorderVoice : handleVoiceToggle}
+                disabled={loading || (!mediaRecorderSupported && !speechSupported)}
+                title={
+                  !speechSupported
+                    ? 'Voice recognition unavailable'
+                    : isListening
+                      ? 'Stop listening'
+                      : 'Speak to Jarvis'
+                }
+                aria-label={isListening ? 'Stop listening' : 'Speak to Jarvis'}
+              >
+                {isListening
+                  ? <MicOff className="w-5 h-5 animate-pulse" />
+                  : <Mic className="w-5 h-5" />}
+              </Button>
+
+              <Button type="submit" disabled={loading || (!input.trim() && !attachedFile)} size="lg" className="bg-primary hover:bg-primary/90">
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
               </Button>
             </form>
+
+            {isListening && (
+              <div className="mt-2 flex items-center justify-center gap-2 text-sm text-primary">
+                <Mic className="w-4 h-4 animate-pulse" />
+                <span>Escuchando… habla ahora</span>
+              </div>
+            )}
+
             <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground">
               <span>{isDemo ? t('jarvis.demoNotice') : t('jarvis.poweredBy') || 'Powered by Dealer AI OS'}</span>
               <kbd className="px-2 py-1 bg-muted rounded text-[10px] font-mono">
@@ -442,6 +961,22 @@ function MessageBubble({ message, onFeedback, isDemo }) {
             : 'bg-muted rounded-tl-sm shadow-sm'
         }`}>
           <p className="whitespace-pre-wrap">{message.content}</p>
+
+          {/* Jarvis safe navigation action */}
+          {message.action?.type === 'navigate' && message.action?.url && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => {
+                window.location.href = message.action.url;
+              }}
+            >
+              {message.action.label || 'Abrir'}
+              <span className="ml-2" aria-hidden="true">→</span>
+            </Button>
+          )}
           {message.tool_calls && message.tool_calls.length > 0 && (
             <details className="mt-2">
               <summary className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">

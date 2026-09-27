@@ -1,0 +1,116 @@
+import base64
+import os
+
+import httpx
+
+
+GEMINI_MODEL = os.getenv("GEMINI_VISION_MODEL", "gemini-3.8-flash")
+GEMINI_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/"
+    f"{GEMINI_MODEL}:generateContent"
+)
+
+
+class VisionError(Exception):
+    pass
+
+
+async def analyze_image(
+    image_bytes: bytes,
+    mime_type: str,
+    prompt: str,
+) -> str:
+    api_key = os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
+        raise VisionError("GEMINI_API_KEY is not configured")
+
+    if not mime_type.startswith("image/"):
+        raise VisionError("The supplied file is not an image")
+
+    instruction = (prompt or "").strip()
+
+    if not instruction:
+        instruction = (
+            "Analyze this image carefully. Describe what it contains and "
+            "transcribe any readable text. Respond in the language most "
+            "appropriate for the user."
+        )
+
+    encoded = base64.b64encode(image_bytes).decode("ascii")
+
+    payload = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "inline_data": {
+                            "mime_type": mime_type,
+                            "data": encoded,
+                        }
+                    },
+                    {
+                        "text": instruction
+                    },
+                ],
+            }
+        ]
+    }
+
+    headers = {
+        "x-goog-api-key": api_key,
+        "Content-Type": "application/json",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                GEMINI_URL,
+                headers=headers,
+                json=payload,
+            )
+    except httpx.HTTPError as exc:
+        raise VisionError(
+            f"Gemini connection failed: {type(exc).__name__}"
+        ) from exc
+
+    if response.status_code >= 400:
+        # Do not expose API keys or full upstream payloads.
+        try:
+            upstream = response.json()
+            message = (
+                upstream.get("error", {}).get("message")
+                or f"HTTP {response.status_code}"
+            )
+        except Exception:
+            message = f"HTTP {response.status_code}"
+
+        raise VisionError(f"Gemini Vision error: {message}")
+
+    try:
+        data = response.json()
+
+        candidates = data.get("candidates") or []
+        if not candidates:
+            raise VisionError("Gemini returned no analysis")
+
+        parts = candidates[0].get("content", {}).get("parts", [])
+
+        texts = [
+            part.get("text", "").strip()
+            for part in parts
+            if part.get("text", "").strip()
+        ]
+
+        if not texts:
+            raise VisionError("Gemini returned no text response")
+
+        return "\n".join(texts)
+
+    except VisionError:
+        raise
+    except Exception as exc:
+        raise VisionError(
+            "Gemini returned an unexpected response"
+        ) from exc

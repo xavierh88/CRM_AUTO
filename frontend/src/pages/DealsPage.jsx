@@ -90,7 +90,18 @@ export default function DealsPage() {
 
     if (sourceStage === destStage && sourceIndex === destIndex) return;
 
-    const item = deals.find(d => d.commercial_stage === sourceStage)[sourceIndex];
+    const sourceDeals = deals.filter(d => d.commercial_stage === sourceStage);
+    const item = sourceDeals[sourceIndex];
+
+    if (!item || !item.id) {
+      console.error('Deal drag failed: source deal not found', {
+        sourceStage,
+        sourceIndex,
+        sourceDeals
+      });
+      return;
+    }
+
     const newDeals = [...deals];
     
     // Update the item's stage
@@ -99,11 +110,26 @@ export default function DealsPage() {
       newDeals[itemIndex] = { ...newDeals[itemIndex], commercial_stage: destStage };
       setDeals(newDeals);
       
-      // Optimistically update backend
-      axios.put(`${API}/clients/${item.id}`, { commercial_stage: destStage })
-        .catch(() => {
-          fetchDeals(); // Revert on error
-          toast.error('Failed to update deal stage');
+      // Persist the commercial stage using the dedicated CRM endpoint.
+      axios.patch(`${API}/clients/${item.id}/commercial-stage`, {
+        commercial_stage: destStage
+      })
+        .then((response) => {
+          // Keep the UI synchronized with the persisted backend value.
+          if (response?.data?.commercial_stage) {
+            setDeals(current =>
+              current.map(deal =>
+                deal.id === item.id
+                  ? { ...deal, commercial_stage: response.data.commercial_stage }
+                  : deal
+              )
+            );
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to update deal stage:', error);
+          fetchDeals(); // Revert optimistic update from backend truth.
+          toast.error('No se pudo guardar la etapa del Deal');
         });
     }
   };
@@ -114,7 +140,7 @@ export default function DealsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="deals-v2-page flex items-center justify-center h-64">
         <div className="loading-spinner" />
       </div>
     );
@@ -219,7 +245,16 @@ export default function DealsPage() {
                                     <p className="text-sm text-muted-foreground truncate">{deal.vehicle_interest || 'No vehicle'}</p>
                                     <p className="text-sm font-semibold text-primary mt-1">${(deal.vehicle_price || 0).toLocaleString()}</p>
                                   </div>
-                                  <Button variant="ghost" size="sm" onClick={() => navigate(`/clients/${deal.id}`)} aria-label="View">
+                                  <Button variant="ghost" size="sm" onClick={() => {
+                                      if (!deal.id) return;
+                                      navigate('/clients', {
+                                        state: {
+                                          openClientId: deal.id,
+                                          openClientTab: 'opportunities'
+                                        }
+                                      });
+                                    }}
+                                    disabled={!deal.id} aria-label="View">
                                     <ExternalLink className="w-4 h-4" />
                                   </Button>
                                 </div>
@@ -281,7 +316,16 @@ export default function DealsPage() {
                           {deal.last_contact ? new Date(deal.last_contact).toLocaleDateString() : '-'}
                         </td>
                         <td className="p-4 text-right">
-                          <Button variant="ghost" size="sm" onClick={() => navigate(`/clients/${deal.id}`)}>
+                          <Button variant="ghost" size="sm" onClick={() => {
+                                      if (!deal.id) return;
+                                      navigate('/clients', {
+                                        state: {
+                                          openClientId: deal.id,
+                                          openClientTab: 'opportunities'
+                                        }
+                                      });
+                                    }}
+                                    disabled={!deal.id}>
                             <ExternalLink className="w-4 h-4" />
                           </Button>
                         </td>
