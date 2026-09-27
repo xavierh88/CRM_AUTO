@@ -738,9 +738,9 @@ class AppointmentUpdate(BaseModel):
 class AppointmentResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
-    user_record_id: str
+    user_record_id: Optional[str] = None
     client_id: str
-    salesperson_id: str
+    salesperson_id: Optional[str] = None
     date: Optional[str] = None
     time: Optional[str] = None
     dealer: Optional[str] = None
@@ -1685,7 +1685,18 @@ async def download_client_document(
             content = f.read()
         
         file_ext = file_path.suffix.lower()
-        content_type = 'application/pdf' if file_ext == '.pdf' else f'image/{file_ext[1:]}'
+        content_types = {
+            '.pdf': 'application/pdf',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.webp': 'image/webp',
+            '.doc': 'application/msword',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.xls': 'application/vnd.ms-excel',
+            '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }
+        content_type = content_types.get(file_ext, 'application/octet-stream')
         
         return Response(
             content=content,
@@ -1759,24 +1770,101 @@ async def download_client_document(
     file_path = find_file(file_url)
     if file_path is None:
         raise HTTPException(status_code=404, detail="Document file not found")
-
+    
     with open(file_path, 'rb') as f:
         content = f.read()
     
     file_ext = file_path.suffix.lower()
-    content_type = 'application/pdf'
-    if file_ext in ['.jpg', '.jpeg']:
-        content_type = 'image/jpeg'
-    elif file_ext == '.png':
-        content_type = 'image/png'
-    elif file_ext == '.webp':
-        content_type = 'image/webp'
+    content_types = {
+        '.pdf': 'application/pdf',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.webp': 'image/webp',
+        '.doc': 'application/msword',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.xls': 'application/vnd.ms-excel',
+        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    }
+    content_type = content_types.get(file_ext, 'application/octet-stream')
     
     safe_filename = f"{client.get('first_name', 'client')}_{client.get('last_name', 'doc')}_{doc_type}{file_ext}".replace(' ', '_')
     
     return Response(
         content=content,
         media_type=content_type,
+        headers={"Content-Disposition": f"attachment; filename={safe_filename}"}
+    )
+
+
+@api_router.get("/clients/{client_id}/documents/download-all")
+async def download_all_client_documents(
+    client_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Download all documents for a client as a ZIP file"""
+    import zipfile
+    import io
+    
+    access = CRMAccess(db, current_user)
+    if client_id:
+        await access.require("clients", client_id, "read")
+    
+    client = await db.clients.find_one(await access.query("clients", {"id": client_id}, "read"), {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    await require_document_access(client, current_user, "read")
+    
+    def find_file(path_str):
+        return resolve_document_path(path_str, UPLOAD_DIR)
+    
+    doc_types = ['id', 'income', 'residence']
+    zip_buffer = io.BytesIO()
+    has_files = False
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for doc_type in doc_types:
+            doc_field = f"{doc_type}_documents"
+            documents = client.get(doc_field, [])
+            
+            for doc in documents:
+                file_path = find_file(doc.get("path", ""))
+                if not file_path or not file_path.is_file():
+                    continue
+                
+                file_ext = file_path.suffix.lower()
+                safe_name = doc.get('filename', f'{doc_type}_document')
+                if not safe_name.endswith(file_ext):
+                    safe_name += file_ext
+                
+                arcname = f"{doc_type}/{safe_name}"
+                
+                with open(file_path, 'rb') as f:
+                    zip_file.writestr(arcname, f.read())
+                has_files = True
+            
+            # Also check legacy single file
+            legacy_field = "id_file_url" if doc_type == 'id' else f"{doc_type}_proof_file_url"
+            legacy_file = client.get(legacy_field)
+            if legacy_file and not documents:
+                file_path = find_file(legacy_file)
+                if file_path and file_path.is_file():
+                    file_ext = file_path.suffix.lower()
+                    safe_name = f"{doc_type}_document{file_ext}"
+                    arcname = f"{doc_type}/{safe_name}"
+                    with open(file_path, 'rb') as f:
+                        zip_file.writestr(arcname, f.read())
+                    has_files = True
+    
+    if not has_files:
+        raise HTTPException(status_code=404, detail="No documents found for this client")
+    
+    zip_buffer.seek(0)
+    safe_filename = f"{client.get('first_name', 'client')}_{client.get('last_name', 'doc')}_Documents.zip".replace(' ', '_')
+    
+    return Response(
+        content=zip_buffer.read(),
+        media_type='application/zip',
         headers={"Content-Disposition": f"attachment; filename={safe_filename}"}
     )
 
@@ -2587,6 +2675,63 @@ async def get_deals_history(
         "pages": (total + page_size - 1) // page_size if total else 0
     }
 
+
+@api_router.get("/deals/recent-history")
+async def get_deals_recent_history(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Recent deal history for Deals page dashboard.
+    Returns sold and lost events grouped for quick display.
+    """
+    access = CRMAccess(db, current_user)
+
+    query = await access.query(
+        "commercial_events",
+        {"event_type": {"$in": ["sold", "not_sold"]}},
+        "read"
+    )
+
+    events = await db.commercial_events.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+
+    sold = []
+    lost = []
+
+    for event in events:
+        client_id = event.get("client_id")
+        client = None
+
+        if client_id:
+            client_query = await access.query(
+                "clients",
+                {"id": client_id},
+                "read"
+            )
+            client = await db.clients.find_one(
+                client_query,
+                {"_id": 0}
+            )
+
+        item = {
+            "event_id": event.get("id"),
+            "client_id": client_id,
+            "event_type": event.get("event_type"),
+            "created_at": event.get("created_at"),
+            "actor_name": event.get("actor_name"),
+            "reason": event.get("reason"),
+            "note": event.get("note"),
+            "client": client
+        }
+
+        if event.get("event_type") == "sold":
+            sold.append(item)
+        elif event.get("event_type") == "not_sold":
+            lost.append(item)
+
+    return {"sold": sold, "lost": lost}
 
 
 class EmailReportRequest(BaseModel):

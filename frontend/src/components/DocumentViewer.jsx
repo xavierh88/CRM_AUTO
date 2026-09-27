@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Download, ChevronLeft, ChevronRight, RotateCw, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -43,6 +43,7 @@ export default function DocumentViewer({
   const [docData, setDocData] = useState(null);
   const imgRef = useRef(null);
   const pdfRef = useRef(null);
+  const objectUrlRef = useRef(null);
 
   const currentDoc = documents[currentIndex];
 
@@ -58,6 +59,8 @@ export default function DocumentViewer({
       setLoading(false);
       return;
     }
+
+    let cancelled = false;
 
     const fetchDocument = async () => {
       setLoading(true);
@@ -82,27 +85,38 @@ export default function DocumentViewer({
 
         const blob = await response.blob();
         const objectUrl = URL.createObjectURL(blob);
+        objectUrlRef.current = objectUrl;
         
-        setDocData({
-          url: objectUrl,
-          type: getFileType(currentDoc.filename || currentDoc.original_name, blob.type),
-          mimeType: blob.type,
-          size: blob.size,
-          name: currentDoc.original_name || currentDoc.filename || 'documento'
-        });
+        if (!cancelled) {
+          setDocData({
+            url: objectUrl,
+            type: getFileType(currentDoc.filename || currentDoc.original_name, blob.type),
+            mimeType: blob.type,
+            size: blob.size,
+            name: currentDoc.original_name || currentDoc.filename || 'documento'
+          });
+        } else {
+          URL.revokeObjectURL(objectUrl);
+        }
       } catch (err) {
-        console.error('Document load error:', err);
-        setError('No se pudo cargar el documento');
+        if (!cancelled) {
+          console.error('Document load error:', err);
+          setError('No se pudo cargar el documento');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     fetchDocument();
 
     return () => {
-      if (docData?.url) {
-        URL.revokeObjectURL(docData.url);
+      cancelled = true;
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
       }
     };
   }, [currentDoc]);
@@ -156,19 +170,19 @@ export default function DocumentViewer({
     setZoom(1);
   };
 
-  const goToPrevious = () => {
+  const goToPrevious = useCallback(() => {
     if (currentIndex > 0) setCurrentIndex(prev => prev - 1);
-  };
+  }, [currentIndex]);
 
-  const goToNext = () => {
+  const goToNext = useCallback(() => {
     if (currentIndex < documents.length - 1) setCurrentIndex(prev => prev + 1);
-  };
+  }, [currentIndex, documents.length]);
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = useCallback((e) => {
     if (e.key === 'ArrowLeft') goToPrevious();
     if (e.key === 'ArrowRight') goToNext();
     if (e.key === 'Escape') onClose();
-  };
+  }, [goToPrevious, goToNext, onClose]);
 
   useEffect(() => {
     if (isOpen) {
@@ -179,7 +193,7 @@ export default function DocumentViewer({
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [isOpen]);
+  }, [isOpen, handleKeyDown]);
 
   if (!isOpen) return null;
 
@@ -235,7 +249,7 @@ export default function DocumentViewer({
                  handleZoom(e.deltaY > 0 ? 'out' : 'in');
                }
              }}>
-          
+         
           {loading && (
             <div className="flex flex-col items-center gap-4 text-slate-400">
               <div className="w-10 h-10 border-3 border-slate-700 border-t-cyan-500 rounded-full animate-spin" />

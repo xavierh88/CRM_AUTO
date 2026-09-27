@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   X, Upload, Download, Eye, Trash2, FileText, Image, 
   AlertCircle, CheckCircle, ChevronDown, ChevronUp, MoreHorizontal
@@ -11,9 +11,9 @@ import axios from 'axios';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const CATEGORY_CONFIG = {
-  id: { label: 'Identificación', icon: FileText, color: 'blue' },
-  income: { label: 'Comprobante de Ingresos', icon: FileText, color: 'emerald' },
-  residence: { label: 'Comprobante de Residencia', icon: FileText, color: 'amber' }
+  id: { labelKey: 'documents.id', label: 'Identificación', icon: FileText, color: 'blue' },
+  income: { labelKey: 'documents.income', label: 'Comprobante de Ingresos', icon: FileText, color: 'emerald' },
+  residence: { labelKey: 'documents.residence', label: 'Comprobante de Residencia', icon: FileText, color: 'amber' }
 };
 
 function formatFileSize(bytes) {
@@ -70,13 +70,14 @@ export default function DocumentCategoryDialog({
   const CategoryIcon = config.icon;
   const displayLimit = showAll ? documents.length : Math.min(documents.length, 5);
 
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
+    if (!clientId) return;
     setLoading(true);
     try {
       const response = await axios.get(`${API}/clients/${clientId}/documents/list/${category}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-      setDocuments(response.data.documents || []);
+      setDocuments((response.data.documents || []).map(d => ({ ...d, client_id: clientId, doc_type: category })));
     } catch (err) {
       console.error('Failed to load documents:', err);
       toast.error('Error al cargar documentos');
@@ -84,14 +85,15 @@ export default function DocumentCategoryDialog({
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId, category]);
 
   useEffect(() => {
     if (isOpen) {
       fetchDocuments();
       setShowAll(false);
+      setExpandedDoc(null);
     }
-  }, [isOpen, clientId, category]);
+  }, [isOpen, fetchDocuments]);
 
   const handleUpload = async (files) => {
     if (!files || files.length === 0) return;

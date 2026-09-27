@@ -6,7 +6,16 @@ from fastapi import HTTPException
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_BATCH_BYTES = 25 * 1024 * 1024
 MAX_FILES = 5
-TYPES = {'pdf': 'application/pdf', 'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg'}
+TYPES = {
+    'pdf': 'application/pdf', 
+    'png': 'image/png', 
+    'jpg': 'image/jpeg', 
+    'jpeg': 'image/jpeg',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls': 'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+}
 
 
 async def bounded_read(file, limit=MAX_FILE_BYTES):
@@ -33,14 +42,15 @@ async def validate_documents(files):
         name = safe_filename(file.filename)
         ext = name.rsplit('.', 1)[-1].lower()
         if ext not in TYPES or file.content_type != TYPES[ext]:
-            raise HTTPException(415, 'Only PDF, PNG and JPEG documents are supported')
+            raise HTTPException(415, 'Only PDF, PNG, JPEG, DOC, DOCX, XLS, XLSX documents are supported')
         data = await bounded_read(file)
         total += len(data)
         if total > MAX_BATCH_BYTES:
             raise HTTPException(413, 'Upload batch exceeds size limit')
         valid = ((ext == 'pdf' and data.startswith(b'%PDF-')) or
                  (ext == 'png' and data.startswith(b'\x89PNG\r\n\x1a\n')) or
-                 (ext in {'jpg', 'jpeg'} and data.startswith(b'\xff\xd8\xff')))
+                 (ext in {'jpg', 'jpeg'} and data.startswith(b'\xff\xd8\xff')) or
+                 (ext in {'doc', 'docx', 'xls', 'xlsx'} and len(data) > 0))
         if not valid:
             raise HTTPException(415, 'Document content does not match its type')
         validated.append({'filename': name, 'extension': ext, 'type': TYPES[ext], 'content': data})
