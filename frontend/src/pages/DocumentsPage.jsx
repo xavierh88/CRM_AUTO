@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { Button } from '../components/ui/button';
@@ -95,6 +96,7 @@ function FormatSummary({ documents = [] }) {
 export default function DocumentsPage() {
   const { t } = useTranslation();
   const { user, isAdmin, isBDCManager } = useAuth();
+  const navigate = useNavigate();
   const [clients, setClients] = useState([]);
   const [documentIndex, setDocumentIndex] = useState({});
   const [loading, setLoading] = useState(true);
@@ -193,19 +195,30 @@ export default function DocumentsPage() {
 
   const downloadBlob = async (url, name) => {
     try {
-      const response = await axios.get(url, { responseType: 'blob' });
-      const objectUrl = URL.createObjectURL(response.data);
+      const token = localStorage.getItem('token');
+      const response = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) {
+        let detail = 'Download failed';
+        try {
+          const body = await response.json();
+          if (typeof body?.detail === 'string') detail = body.detail;
+        } catch (_) {}
+        throw new Error(detail);
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = objectUrl;
       anchor.download = name;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
-      URL.revokeObjectURL(objectUrl);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     } catch (error) {
       console.error('Document download failed:', error);
-      const detail = error.response?.data?.detail;
-      toast.error(typeof detail === 'string' ? detail : 'Download failed');
+      toast.error(error.message || 'Download failed');
     }
   };
 
@@ -250,7 +263,7 @@ export default function DocumentsPage() {
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="truncate text-xl font-semibold text-white">{selectedClient.first_name} {selectedClient.last_name}</h1>
+                  <button type="button" onClick={() => navigate('/clients', { state: { openClientId: selectedClient.id, openClientTab: 'summary' } })} className="truncate text-left text-xl font-semibold text-white transition hover:text-cyan-300 hover:underline">{selectedClient.first_name} {selectedClient.last_name}</button>
                   <StatusPill status={CATEGORIES.every((category) => docs[category.id].length) ? 'complete' : total ? 'pending' : 'missing'} />
                 </div>
                 <p className="mt-1 text-sm text-slate-400">{selectedClient.phone || 'No phone'}{selectedClient.email ? ` • ${selectedClient.email}` : ''}</p>
@@ -374,7 +387,7 @@ export default function DocumentsPage() {
                   const counts = CATEGORIES.map((category) => realCount(client, category.id));
                   return (
                     <tr key={client.id} className="hover:bg-slate-900/60">
-                      <td className="px-4 py-4"><p className="font-medium text-slate-100">{client.first_name} {client.last_name}</p><p className="text-xs text-slate-500">{client.phone || 'No phone'}</p></td>
+                      <td className="px-4 py-4"><button type="button" onClick={() => navigate('/clients', { state: { openClientId: client.id, openClientTab: 'summary' } })} className="font-medium text-slate-100 transition hover:text-cyan-300 hover:underline">{client.first_name} {client.last_name}</button><p className="text-xs text-slate-500">{client.phone || 'No phone'}</p></td>
                       {counts.map((count, index) => <td key={CATEGORIES[index].id} className="px-4 py-4"><FormatSummary documents={documentIndex[client.id]?.[CATEGORIES[index].id] || []} /></td>)}
                       <td className="px-4 py-4 text-sm font-semibold text-slate-200">{counts.reduce((a,b) => a+b, 0)}</td>
                       <td className="px-4 py-4"><StatusPill status={realStatus(client)} /></td>
