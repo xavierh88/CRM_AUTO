@@ -132,7 +132,7 @@ export default function DocumentsPage() {
       (statusFilter === 'all' || realStatus(client) === statusFilter);
   }), [clients, search, statusFilter, realStatus]);
 
-  const openClient = async (client) => {
+  const withDocumentMeta = (clientId, type, list) => list.map((doc) => ({ ...doc, client_id: clientId, doc_type: type }));\n\n  const openClient = async (client) => {
     setSelectedClient(client);
     setDetailLoading(true);
     try {
@@ -141,7 +141,7 @@ export default function DocumentsPage() {
           .then((response) => response.data?.documents || [])
           .catch(() => [])
       ));
-      setDocs({ id: results[0], income: results[1], residence: results[2] });
+      setDocs({ id: withDocumentMeta(client.id, 'id', results[0]), income: withDocumentMeta(client.id, 'income', results[1]), residence: withDocumentMeta(client.id, 'residence', results[2]) });
     } finally {
       setDetailLoading(false);
     }
