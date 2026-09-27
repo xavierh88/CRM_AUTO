@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import {useSearchParams, useLocation} from 'react-router-dom';
+import {useSearchParams, useNavigate, useLocation} from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
@@ -15,12 +15,14 @@ import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
 import { 
   Plus, Search, Info, Calendar, ChevronDown, ChevronRight, ChevronLeft, 
-  Send, Trash2, CheckCircle2, XCircle, UserPlus, Phone, RefreshCw, MessageSquare,
+  Send, Trash2, CheckCircle2, XCircle, UserPlus, Phone, RefreshCw, Pencil, MessageSquare,
   X, FileText, MessageCircle, Upload, Download, Home, Mail, Users, Bell, FileSpreadsheet, ClipboardList,
   BriefcaseBusiness, BadgeDollarSign, CalendarCheck2, IdCard, Landmark, House, CircleCheck, CircleDashed, SlidersHorizontal, MoreHorizontal, CreditCard,
-  StickyNote, Edit} from 'lucide-react';
+  StickyNote, Edit, RotateCcw, Check, DollarSign, Loader2, Building2, Car, Wallet, CarFront, Store, BadgeCheck, ShieldCheck} from 'lucide-react';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import SmsInboxDialog from '../components/SmsInboxDialog';
+import DocumentCategoryDialog from '../components/DocumentCategoryDialog';
+import DocumentViewer from '../components/DocumentViewer';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -29,6 +31,7 @@ export default function ClientsPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,6 +40,32 @@ export default function ClientsPage() {
   const [expandedClients, setExpandedClients] = useState({});
   const [userRecords, setUserRecords] = useState({});
   const [appointments, setAppointments] = useState({});
+  const [clientAppointmentsByClient, setClientAppointmentsByClient] = useState({});
+
+  const loadClientAppointments = async (clientId) => {
+    if (!clientId) return;
+
+    try {
+      const res = await axios.get(
+        `${API}/appointments?client_id=${encodeURIComponent(clientId)}`
+      );
+
+      const raw = res.data;
+      const list = Array.isArray(raw)
+        ? raw
+        : Array.isArray(raw?.appointments)
+          ? raw.appointments
+          : [];
+
+      setClientAppointmentsByClient(prev => ({
+        ...prev,
+        [clientId]: list.filter(appt => appt?.client_id === clientId)
+      }));
+    } catch (error) {
+      console.error('Failed to load client appointments:', error);
+    }
+  };
+
   const [cosigners, setCosigners] = useState({});
   const [inboxClient, setInboxClient] = useState(null); // For SMS inbox dialog
   
@@ -91,6 +120,17 @@ export default function ClientsPage() {
   const isAdmin = user?.role === 'admin';
   const isBdcManager = user?.role === 'bdc_manager';
   
+  // Direct appointment form used by Clients -> Citas.
+  const [clientAppointmentForm, setClientAppointmentForm] = useState(null);
+  const [clientAppointmentData, setClientAppointmentData] = useState({
+    date: '',
+    time: '',
+    dealer: '',
+    language: 'en'
+  });
+  const [savingClientAppointment, setSavingClientAppointment] = useState(false);
+  const [commercialEventsByClient, setCommercialEventsByClient] = useState({});
+
   // Fetch config lists on mount
   useEffect(() => {
     const fetchConfigLists = async () => {
@@ -195,6 +235,44 @@ export default function ClientsPage() {
   });
 
   const [isFromNotification, setIsFromNotification] = useState(false);
+
+  // J09 Documents: upload state for the documents tab rendered directly in ClientsPage.
+  const [clientDocumentUploading, setClientDocumentUploading] = useState(null);
+
+  // Document dialogs state
+  const [docCategoryDialog, setDocCategoryDialog] = useState({ open: false, clientId: null, clientName: '', category: null });
+  const [docViewer, setDocViewer] = useState({ open: false, documents: [], initialIndex: 0, clientName: '', docCategory: '' });
+
+  const uploadClientDocument = async (clientId, docType, fileList) => {
+    if (!fileList || fileList.length === 0) return;
+
+    const files = Array.from(fileList);
+    const uploadKey = `${clientId}:${docType}`;
+    setClientDocumentUploading(uploadKey);
+
+    try {
+      const formData = new FormData();
+      formData.append('doc_type', docType);
+
+      for (const file of files) {
+        formData.append('files', file);
+      }
+
+      const response = await axios.post(
+        `${API}/clients/${clientId}/documents/upload`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+
+      toast.success(`${response.data.files?.length || 1} documento(s) subido(s)`);
+      await fetchClients();
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error(error.response?.data?.detail || 'Error al subir documento');
+    } finally {
+      setClientDocumentUploading(null);
+    }
+  };
 
   const fetchClients = async (search = '', fromNotification = false) => {
     try {
@@ -316,7 +394,114 @@ export default function ClientsPage() {
     }
   }, [ownerFilter, sortBy]);
 
+  const saveClientAppointment = async () => {
+    const clientId = clientAppointmentForm?.clientId;
+    const date = String(clientAppointmentData.date || '').trim();
+    const time = String(clientAppointmentData.time || '').trim();
+
+    if (!clientId) {
+      toast.error('No se pudo identificar el cliente');
+      return;
+    }
+
+    if (!date || !time) {
+      toast.error('Por favor complete fecha y hora');
+      return;
+    }
+
+    const payload = {
+      client_id: String(clientId),
+      date,
+      time,
+      dealer: clientAppointmentData.dealer
+        ? String(clientAppointmentData.dealer).trim()
+        : null,
+      language: clientAppointmentData.language || 'es'
+    };
+
+    try {
+      setSavingClientAppointment(true);
+
+      await axios.post(`${API}/appointments`, payload);
+
+      toast.success('Cita guardada exitosamente');
+
+      setClientAppointmentForm(null);
+      setClientAppointmentData({
+        date: '',
+        time: '',
+        dealer: '',
+        language: 'es'
+      });
+
+      await fetchClientRecords(clientId);
+      await loadClientAppointments(clientId);
+      await fetchClients();
+
+    } catch (error) {
+      console.error('Failed to create client appointment:', {
+        status: error?.response?.status,
+        detail: error?.response?.data?.detail,
+        payload
+      });
+
+      const detail = error?.response?.data?.detail;
+      let message = 'No se pudo guardar la cita';
+
+      if (typeof detail === 'string') {
+        message = detail;
+      } else if (Array.isArray(detail)) {
+        message = detail
+          .map((item) => {
+            if (typeof item === 'string') return item;
+
+            const field = Array.isArray(item?.loc)
+              ? item.loc.filter((part) => part !== 'body').join('.')
+              : '';
+
+            const msg = item?.msg || item?.message || 'Error de validación';
+
+            return field ? `${field}: ${msg}` : msg;
+          })
+          .join('; ');
+      } else if (detail && typeof detail === 'object') {
+        message =
+          detail.msg ||
+          detail.message ||
+          JSON.stringify(detail);
+      }
+
+      toast.error(String(message));
+
+    } finally {
+      setSavingClientAppointment(false);
+    }
+  };
+
+  const loadCommercialEvents = async (clientId) => {
+    if (!clientId) return;
+
+    try {
+      const response = await axios.get(
+        `${API}/clients/${clientId}/commercial-events`
+      );
+
+      setCommercialEventsByClient((prev) => ({
+        ...prev,
+        [clientId]: Array.isArray(response.data) ? response.data : [],
+      }));
+    } catch (error) {
+      console.error('Error loading commercial events:', error);
+      setCommercialEventsByClient((prev) => ({
+        ...prev,
+        [clientId]: [],
+      }));
+    }
+  };
+
   const fetchClientRecords = async (clientId) => {
+    await loadCommercialEvents(clientId);
+    await loadClientAppointments(clientId);
     try {
       const [recordsRes, cosignersRes] = await Promise.all([
         axios.get(`${API}/user-records?client_id=${clientId}`),
@@ -407,9 +592,10 @@ export default function ClientsPage() {
         });
       });
       
-      if (!userRecords[clientId]) {
-        fetchClientRecords(clientId);
-      }
+      // Always refresh the opened client's operational data.
+      // This keeps Clients synchronized with changes made from Deals,
+      // including commercial stage changes and commercial history events.
+      fetchClientRecords(clientId);
     } else {
       setExpandedClients(prev => ({ ...prev, [clientId]: false }));
     }
@@ -657,8 +843,9 @@ export default function ClientsPage() {
               <span className="hidden sm:inline">Exportar Excel</span>
               <span className="sm:hidden">Excel</span>
             </Button>
-          )}
-          <Dialog open={showAddClient} onOpenChange={setShowAddClient}>
+            )}
+
+        <Dialog open={showAddClient} onOpenChange={setShowAddClient}>
             <DialogTrigger asChild>
               <Button className="flex-1 sm:flex-none whitespace-nowrap bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold border border-cyan-400 shadow-sm" data-testid="add-client-btn">
                 <Plus className="w-4 h-4 mr-1 sm:mr-2" />
@@ -1296,6 +1483,80 @@ export default function ClientsPage() {
                         </div>
                       )}
 
+                        {getClientTab(client.id) === 'summary' && (
+                          <div
+                            className="mb-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4"
+                            data-testid="client-commercial-history"
+                          >
+                            <h4 className="text-sm font-semibold text-white">
+                              Historial comercial
+                            </h4>
+
+                            <p className="mt-1 text-xs text-slate-400">
+                              Información comercial conservada desde el Lead.
+                            </p>
+
+                            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                              <div>
+                                <p className="text-xs text-slate-500">Fuente original</p>
+                                <p className="mt-1 text-sm text-slate-200">
+                                  {client.source || 'Sin fuente registrada'}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-xs text-slate-500">Captado inicialmente por</p>
+                                <p className="mt-1 text-sm text-slate-200">
+                                  {client.captured_by_name || 'Sin registrar'}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-xs text-slate-500">Vehículo de interés</p>
+                                <p className="mt-1 text-sm text-slate-200">
+                                  {client.vehicle_interest || 'Sin registrar'}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-xs text-slate-500">Vendedor asignado</p>
+                                <p className="mt-1 text-sm text-slate-200">
+                                  {salespersons.find(
+                                    (sp) => sp.id === client.assigned_salesperson
+                                  )?.name ||
+                                    salespersons.find(
+                                      (sp) => sp.id === client.assigned_salesperson
+                                    )?.email ||
+                                    (client.assigned_salesperson ? 'Vendedor asignado' : 'Sin asignar')}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-xs text-slate-500">Próximo seguimiento</p>
+                                <p className="mt-1 text-sm text-slate-200">
+                                  {client.follow_up_date || 'Sin programar'}
+                                </p>
+                              </div>
+
+                              <div className="md:col-span-2 xl:col-span-3">
+                                <p className="text-xs text-slate-500">Notas de seguimiento</p>
+                                <p className="mt-1 whitespace-pre-wrap text-sm text-slate-300">
+                                  {client.follow_up_notes || 'Sin notas de seguimiento'}
+                                </p>
+                              </div>
+
+                              <div className="md:col-span-2 xl:col-span-3">
+                                <p className="text-xs text-slate-500">Notas del Lead</p>
+                                <p className="mt-1 whitespace-pre-wrap text-sm text-slate-300">
+                                  {client.notes || 'Sin notas del Lead'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+
+
                       {getClientTab(client.id) === 'opportunities' && (
                         <div className="mb-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1389,14 +1650,101 @@ export default function ClientsPage() {
                               variant="outline"
                               size="sm"
                               className="border-slate-700 bg-slate-900 text-slate-200"
-                              onClick={() => openAppointmentForm(null)}
+                              onClick={() => {
+                                  setClientAppointmentForm({ clientId: client.id });
+                                  setClientAppointmentData({
+                                    date: '',
+                                    time: '',
+                                    dealer: '',
+                                    language: 'en'
+                                  });
+                                }}
                             >
                               <Plus className="mr-2 h-4 w-4" />
                               Agendar cita
                             </Button>
                           </div>
+
+                            {clientAppointmentForm?.clientId === client.id && (
+                              <div className="mb-4 rounded-xl border border-slate-700 bg-slate-950/70 p-4">
+                                <h5 className="mb-3 font-medium text-white">Nueva cita</h5>
+
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <div>
+                                    <label className="mb-1 block text-xs text-slate-400">Fecha</label>
+                                    <Input
+                                      type="date"
+                                      value={clientAppointmentData.date}
+                                      onChange={(e) => setClientAppointmentData({
+                                        ...clientAppointmentData,
+                                        date: e.target.value
+                                      })}
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="mb-1 block text-xs text-slate-400">Hora</label>
+                                    <Input
+                                      type="time"
+                                      value={clientAppointmentData.time}
+                                      onChange={(e) => setClientAppointmentData({
+                                        ...clientAppointmentData,
+                                        time: e.target.value
+                                      })}
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="mb-1 block text-xs text-slate-400">Dealer</label>
+                                    <Input
+                                      value={clientAppointmentData.dealer}
+                                      placeholder="Dealer"
+                                      onChange={(e) => setClientAppointmentData({
+                                        ...clientAppointmentData,
+                                        dealer: e.target.value
+                                      })}
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="mb-1 block text-xs text-slate-400">Idioma</label>
+                                    <select
+                                      className="h-10 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-white"
+                                      value={clientAppointmentData.language}
+                                      onChange={(e) => setClientAppointmentData({
+                                        ...clientAppointmentData,
+                                        language: e.target.value
+                                      })}
+                                    >
+                                      <option value="en">English</option>
+                                      <option value="es">Español</option>
+                                    </select>
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 flex justify-end gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={savingClientAppointment}
+                                    onClick={() => setClientAppointmentForm(null)}
+                                  >
+                                    Cancelar
+                                  </Button>
+
+                                  <Button
+                                    type="button"
+                                    disabled={savingClientAppointment}
+                                    onClick={saveClientAppointment}
+                                  >
+                                    {savingClientAppointment ? 'Guardando...' : 'Solo Guardar'}
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+
                           {(() => {
-                            const clientAppointments = Object.values(appointments).filter(a => a && a.client_id === client.id);
+                            const clientAppointments = clientAppointmentsByClient[client.id] || [];
                             if (clientAppointments.length === 0) {
                               return (
                                 <p className="text-sm text-slate-400 italic">No hay citas registradas para este cliente</p>
@@ -1421,7 +1769,9 @@ export default function ClientsPage() {
                                         )}
                                       </div>
                                       <div className="flex items-center gap-1">
-                                        <Button size="sm" variant="ghost" onClick={() => openAppointmentForm(appt.user_record_id)}>
+                                        <Button size="sm" variant="ghost" onClick={() => navigate(
+                                      `/appointments?appointment_id=${encodeURIComponent(appt.id)}`
+                                    )}>
                                           <Calendar className="w-3.5 h-3.5" />
                                         </Button>
                                         <Button size="sm" variant="ghost" onClick={() => sendAppointmentSMS(client.id, appt.id)}>
@@ -1629,26 +1979,37 @@ export default function ClientsPage() {
                               { type: 'residence', label: 'Comprobante de Residencia', ready: client.residence_proof_uploaded, icon: House, color: 'amber' },
                             ].map(({ type, label, ready, icon: DocIcon, color }) => (
                               <div key={type} className="flex items-center justify-between bg-slate-950/60 border border-slate-800 rounded-lg p-3">
-                                <div className="flex items-center gap-3">
-                                  <div className={`w-9 h-9 rounded-lg bg-${color}-500/15 border border-${color}-500/30 flex items-center justify-center`}>
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className={`w-9 h-9 rounded-lg bg-${color}-500/15 border border-${color}-500/30 flex items-center justify-center flex-shrink-0`}>
                                     <DocIcon className={`w-4 h-4 text-${color}-400`} />
                                   </div>
-                                  <div>
-                                    <p className="font-medium text-slate-100">{label}</p>
-                                    <p className="text-xs text-slate-400">
-                                      {ready ? 'Documento subido y verificado' : 'Pendiente de subida'}
+                                  <div className="min-w-0">
+                                    <p className="font-medium text-slate-100 truncate">{label}</p>
+                                    <p className="text-xs text-slate-400 truncate">
+                                      {ready ? 'Documentos subidos' : 'Pendiente de subida'}
                                     </p>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-shrink-0">
                                   <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                                    ready ? `bg-${color}-500/20 text-${color}-400` : 'bg-slate-9000/20 text-slate-400'
+                                    ready ? `bg-${color}-500/20 text-${color}-400` : 'bg-slate-900/20 text-slate-400'
                                   }`}>
                                     {ready ? 'Completo' : 'Pendiente'}
                                   </span>
-                                  <Button size="sm" variant="outline" className="h-8 border-slate-700 text-slate-300 hover:bg-slate-700">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 border-slate-700 text-slate-300 hover:bg-slate-700 whitespace-nowrap"
+                                    onClick={() => setDocCategoryDialog({ 
+                                      open: true, 
+                                      clientId: client.id, 
+                                      clientName: `${client.first_name} ${client.last_name}`, 
+                                      category: type 
+                                    })}
+                                  >
                                     <Upload className="w-3.5 h-3.5 mr-1" />
-                                    Subir
+                                    {ready ? 'Ver archivos' : 'Subir'}
                                   </Button>
                                 </div>
                               </div>
@@ -1719,50 +2080,9 @@ export default function ClientsPage() {
                         </div>
                       )}
 
-                      
-{getClientTab(client.id) === 'history' && (
-<div className="mb-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
-  <h4 className="font-semibold text-white mb-4">
-    Historial comercial J09
-  </h4>
-
-  <div className="space-y-3">
-
-    <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
-      <p className="text-sm text-slate-200">
-        Estado comercial
-      </p>
-      <p className="text-xs text-slate-400 mt-1">
-        {client.commercial_stage || 'Sin estado'}
-      </p>
-    </div>
-
-    <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
-      <p className="text-sm text-slate-200">
-        Fuente del cliente
-      </p>
-      <p className="text-xs text-slate-400 mt-1">
-        {client.source || 'No registrada'}
-      </p>
-    </div>
-
-    <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
-      <p className="text-sm text-slate-200">
-        Conversión / seguimiento
-      </p>
-      <p className="text-xs text-slate-400 mt-1">
-        Sistema preparado para eventos comerciales J09
-      </p>
-    </div>
-
-  </div>
-</div>
-)}
-
-{getClientTab(client.id) === 'history' && (
+                      {getClientTab(client.id) === 'history' && (
                         <div className="mb-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
-                          
-<h4 className="font-semibold text-white mb-4">Historial y actividad</h4>
+                          <h4 className="font-semibold text-white mb-4">Historial y actividad</h4>
                           <div className="space-y-3">
                             {/* Client creation */}
                             <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
@@ -1847,6 +2167,84 @@ export default function ClientsPage() {
                               </div>
                             )}
                             
+                            {/* Structured commercial lifecycle */}
+                            {(commercialEventsByClient[client.id] || []).length > 0 && (
+                              <div
+                                className="space-y-2"
+                                data-testid="commercial-events-timeline"
+                              >
+                                {(commercialEventsByClient[client.id] || []).map((event) => {
+                                  const eventLabels = {
+                                    lead_captured: 'Lead captado',
+                                    ai_followup: 'Seguimiento por IA',
+                                    salesperson_assigned: 'Vendedor asignado',
+                                    salesperson_reassigned: 'Lead reasignado',
+                                    sales_attempt: 'Intento de venta',
+                                    not_sold: 'No vendido',
+                                    reengaged: 'Cliente retomado',
+                                    sold: 'Venta realizada',
+                                  };
+
+                                  return (
+                                    <div
+                                      key={event.id}
+                                      className="bg-slate-950/60 border border-blue-900/50 rounded-lg p-3"
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+                                          <Bell className="w-4 h-4 text-blue-400" />
+                                        </div>
+
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <p className="text-sm font-medium text-slate-200">
+                                              {eventLabels[event.event_type] || event.event_type}
+                                            </p>
+
+                                            {event.created_at && (
+                                              <span className="text-[11px] text-slate-500">
+                                                {new Date(event.created_at).toLocaleString()}
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          {event.actor_name && (
+                                            <p className="text-xs text-slate-400 mt-1">
+                                              Responsable: {event.actor_name}
+                                            </p>
+                                          )}
+
+                                          {event.channel && (
+                                            <p className="text-xs text-slate-400 mt-1">
+                                              Canal: {event.channel}
+                                            </p>
+                                          )}
+
+                                          {event.result && (
+                                            <p className="text-xs text-slate-400 mt-1">
+                                              Resultado: {event.result}
+                                            </p>
+                                          )}
+
+                                          {event.reason && (
+                                            <p className="text-xs text-slate-400 mt-1">
+                                              Motivo: {event.reason}
+                                            </p>
+                                          )}
+
+                                          {event.note && (
+                                            <p className="text-xs text-slate-300 mt-2 whitespace-pre-wrap">
+                                              {event.note}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
                             {/* Documents */}
                             {(client.id_uploaded || client.income_proof_uploaded || client.residence_proof_uploaded) && (
                               <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
@@ -1984,6 +2382,7 @@ export default function ClientsPage() {
           onSendDocsEmail={() => sendDocumentsEmail(selectedClient)}
           onRefresh={fetchClients}
           isAdmin={isAdmin}
+          salespersons={salespersons}
         />
       )}
 
@@ -2214,6 +2613,29 @@ export default function ClientsPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Document Category Dialog */}
+      <DocumentCategoryDialog
+        isOpen={docCategoryDialog.open}
+        onClose={() => setDocCategoryDialog({ open: false, clientId: null, clientName: '', category: null })}
+        clientId={docCategoryDialog.clientId}
+        clientName={docCategoryDialog.clientName}
+        category={docCategoryDialog.category}
+        onUploadComplete={() => fetchClients()}
+        onPreview={(documents, index, clientName, docCategory) => 
+          setDocViewer({ open: true, documents, initialIndex: index, clientName, docCategory })
+        }
+      />
+
+      {/* Document Viewer */}
+      <DocumentViewer
+        isOpen={docViewer.open}
+        onClose={() => setDocViewer({ open: false, documents: [], initialIndex: 0, clientName: '', docCategory: '' })}
+        documents={docViewer.documents}
+        initialIndex={docViewer.initialIndex}
+        clientName={docViewer.clientName}
+        docCategory={docViewer.docCategory}
+      />
     </div>
   );
 }
@@ -2278,7 +2700,9 @@ const [showAppointmentForm, setShowAppointmentForm] = useState(null); // record_
     }
     try {
       const response = await axios.post(`${API}/appointments`, {
-        user_record_id: showAppointmentForm,
+        ...(showAppointmentForm !== '__client_new__'
+            ? { user_record_id: showAppointmentForm }
+            : {}),
         client_id: clientId,
         date: appointmentData.date,
         time: appointmentData.time,
@@ -2472,7 +2896,19 @@ const [showAppointmentForm, setShowAppointmentForm] = useState(null); // record_
       onRefresh();
       toast.success('Record updated');
     } catch (error) {
-      toast.error('Failed to update record');
+      const apiDetail = error?.response?.data?.detail;
+      const message =
+        typeof apiDetail === 'string'
+          ? apiDetail
+          : Array.isArray(apiDetail)
+            ? apiDetail.map(item => `${(item.loc || []).join('.')}: ${item.msg}`).join(' | ')
+            : error?.response?.data?.message || error?.message || 'Error desconocido';
+
+      console.error('Record update failed:', error?.response?.data || error);
+
+      toast.error(`No se pudo guardar: ${message}`, {
+        duration: 10000
+      });
     }
   };
 
@@ -2483,7 +2919,7 @@ const [showAppointmentForm, setShowAppointmentForm] = useState(null); // record_
         record_status: status
       });
       onRefresh();
-      const statusText = status === 'completed' ? 'Completado' : status === 'no_show' ? 'No-Show' : 'Sin estado';
+      const statusText = status === 'completed' ? 'Completado' : status === 'no_show' ? 'No se presentó' : 'Sin estado';
       toast.success(`Record marcado como ${statusText}`);
     } catch (error) {
       toast.error('Error al actualizar el estado del record');
@@ -3489,7 +3925,7 @@ function RecordCard({
 
   if (isEditing) {
     return (
-      <div className={`bg-white rounded-lg border p-4 ${isPurple ? 'border-purple-200' : 'border-blue-200'}`}>
+      <div className={`bg-slate-900/95 rounded-xl border p-4 shadow-lg ${isPurple ? 'border-purple-500/30' : 'border-blue-500/30'}`}>
         <h5 className="font-medium text-slate-700 mb-3">Edit Record</h5>
         
         {/* ID Section */}
@@ -3989,79 +4425,89 @@ function RecordCard({
   }
 
   return (
-    <div className={`bg-white rounded-lg border p-3 sm:p-4 ${isPurple ? 'border-purple-200' : 'border-slate-200'}`}>
+    <div className={`rounded-xl border p-3 sm:p-4 bg-slate-900/95 shadow-lg ${isPurple ? 'border-purple-500/30' : 'border-blue-500/30'}`}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
         <div className="flex flex-wrap items-center gap-1 sm:gap-2">
           <span className={`text-sm font-medium ${isPurple ? 'text-purple-600' : 'text-blue-600'}`}>
-            Record
+            Registro
           </span>
-          <span className="text-xs text-slate-400">by {record.salesperson_name}</span>
+          <span className="text-xs text-slate-400">·</span>
+          <span className="text-xs text-slate-500 font-medium">{record.salesperson_name || 'Sin asignar'}</span>
           {/* Record completion status badge */}
           {record.record_status === 'completed' && (
-            <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs font-medium">
-              ✓
+            <span className="bg-emerald-500/10 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1">
+              <Check className="w-3 h-3" />
+              Completado
             </span>
           )}
           {record.record_status === 'no_show' && (
-            <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-xs font-medium">
-              ✗
+            <span className="bg-amber-500/10 text-amber-700 border border-amber-200 px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1">
+              <X className="w-3 h-3" />
+              No se presentó
             </span>
           )}
           {record.finance_status && record.finance_status !== 'no' && (
             record.record_status === 'completed' ? (
-              <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-xs font-medium uppercase">
-                SOLD
+              <span className="bg-amber-500/10 text-amber-700 border border-amber-200 px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1">
+                <DollarSign className="w-3 h-3" />
+                Vendido
               </span>
             ) : (
-              <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-xs font-medium uppercase">
-                Working
+              <span className="bg-blue-500/10 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                En proceso
               </span>
             )
           )}
           {/* Show collaborator badge if exists */}
           {record.collaborator_name && (
-            <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-xs font-medium flex items-center gap-1">
+            <span className="bg-purple-500/10 text-purple-700 border border-purple-200 px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1">
               <Users className="w-3 h-3" />
+              Colaborador
             </span>
           )}
         </div>
         <div className="flex items-center gap-1 flex-wrap">
           {/* Email Report button - Admin Only */}
           {isAdmin && (
-            <Button size="sm" variant="ghost" onClick={() => setShowEmailDialog(true)} title="Enviar Reporte por Email" className="h-7 w-7 p-0">
+            <Button size="sm" variant="ghost" onClick={() => setShowEmailDialog(true)} title="Enviar Reporte por Email" className="h-8 w-8 rounded-lg border border-red-200 bg-red-50 p-0 text-red-600 hover:bg-red-100 hover:text-red-700">
               <Mail className="w-4 h-4 text-green-500" />
             </Button>
           )}
           {/* Comments button with counter */}
-          <Button size="sm" variant="ghost" onClick={openCommentsDialog} title="Comentarios" className="relative h-7 w-7 p-0">
-            <MessageCircle className="w-4 h-4 text-blue-400" />
-            {commentsCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                {commentsCount}
-              </span>
-            )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={openCommentsDialog}
+            title="Comentarios"
+            className="relative h-9 px-3 gap-2 rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span className="hidden lg:inline">Comentarios</span>
+            
           </Button>
           {/* Edit button - available to all */}
-          <Button size="sm" variant="ghost" onClick={() => onEdit(record)} title="Edit" className="h-7 w-7 p-0">
-            <RefreshCw className="w-4 h-4 text-slate-400" />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onEdit(record)}
+            title="Editar registro"
+            className="h-8 px-3 gap-1.5 rounded-lg border-slate-600 bg-slate-800/80 text-slate-200 hover:bg-slate-700 hover:text-white"
+          >
+            <Pencil className="w-4 h-4" />
+            <span className="hidden lg:inline">Editar</span>
           </Button>
           {/* Delete button - only for owner */}
           {isOwner && (
-            <Button size="sm" variant="ghost" onClick={() => onDelete(record.id)} title="Delete" className="h-7 w-7 p-0">
-              <Trash2 className="w-4 h-4 text-red-400" />
-            </Button>
-          )}
-          {appointments[record.id] ? (
-            <div className="flex items-center gap-1">
-              {getStatusBadge(appointments[record.id].status)}
-              <Button size="sm" variant="ghost" onClick={() => onOpenAppointmentForm(record.id)} title="Editar Cita" className="h-7 w-7 p-0">
-                <Calendar className="w-4 h-4 text-purple-500" />
-              </Button>
-            </div>
-          ) : (
-            <Button size="sm" variant="outline" onClick={() => onOpenAppointmentForm(record.id)} className="h-7 px-2 text-xs">
-              <Calendar className="w-3 h-3 mr-1" />
-              Cita
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onDelete(record.id)}
+              title="Eliminar registro"
+              className="h-9 px-3 gap-2 rounded-xl border border-red-400/40 bg-red-500/15 text-red-300 hover:bg-red-500/25 hover:text-red-200"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="hidden lg:inline">Eliminar</span>
             </Button>
           )}
         </div>
@@ -4069,67 +4515,90 @@ function RecordCard({
 
       {/* Comments Dialog */}
       {showComments && (
-        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <div className="flex items-center justify-between mb-3">
-            <h6 className="font-medium text-blue-700 flex items-center gap-2">
-              <MessageCircle className="w-4 h-4" />
-              Comentarios ({comments.length})
-            </h6>
-            <Button size="sm" variant="ghost" onClick={() => setShowComments(false)} className="h-6 w-6 p-0">
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-
-          {/* Add Comment - Solo comentarios, sin recordatorio */}
-          <div className="flex gap-2 mb-3">
-            <Input
-              placeholder="Escribir comentario..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addComment()}
-              className="flex-1 h-8 text-sm"
-            />
-            <Button size="sm" onClick={addComment} disabled={!newComment.trim()}>
-              Agregar
-            </Button>
-          </div>
-
-          {/* Comments List */}
-          {loadingComments ? (
-            <p className="text-sm text-slate-400">Cargando...</p>
-          ) : comments.length === 0 ? (
-            <p className="text-sm text-slate-400 italic">No hay comentarios aún</p>
-          ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {comments.map((comment) => (
-                <div key={comment.id} className="bg-white rounded p-2 border border-blue-100">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm text-slate-700">{comment.comment}</p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        <span className="font-medium text-blue-600">{comment.user_name}</span>
-                        {' • '}
-                        {new Date(comment.created_at).toLocaleString('es-ES', { 
-                          day: '2-digit', month: 'short', year: 'numeric', 
-                          hour: '2-digit', minute: '2-digit' 
-                        })}
-                      </p>
-                    </div>
-                    {(comment.user_id === currentUserId) && (
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        onClick={() => deleteComment(comment.id)}
-                        className="h-6 w-6 p-0"
-                      >
-                        <Trash2 className="w-3 h-3 text-red-400" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
+        <div className="mb-4">
+          <div className="rounded-xl border border-slate-200/50 bg-slate-900/95 shadow-lg overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50">
+              <h6 className="font-medium text-slate-100 flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-blue-400" />
+                Comentarios
+                <span className="ml-2 inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-blue-500/20 px-1.5 text-[10px] font-bold text-blue-300">
+                  {comments.length}
+                </span>
+              </h6>
+              <Button size="sm" variant="ghost" onClick={() => setShowComments(false)} className="h-8 w-8 p-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50">
+                <X className="w-4 h-4" />
+              </Button>
             </div>
-          )}
+
+            {/* Add Comment */}
+            <div className="p-4 border-b border-slate-700/50">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Escribir comentario..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && addComment()}
+                  className="flex-1 h-10 text-sm bg-slate-800/50 border-slate-700 text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:ring-blue-500/20"
+                />
+                <Button 
+                  size="sm" 
+                  onClick={addComment} 
+                  disabled={!newComment.trim() || loadingComments}
+                  className="h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Agregar
+                </Button>
+              </div>
+            </div>
+
+            {/* Comments List */}
+            <div className="max-h-64 overflow-y-auto p-2">
+              {loadingComments ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
+                </div>
+              ) : comments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <MessageSquare className="w-10 h-10 text-slate-600 mb-2" />
+                  <p className="text-sm text-slate-500">No hay comentarios aún</p>
+                  <p className="text-xs text-slate-400 mt-1">Sé el primero en agregar uno</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="rounded-lg border border-slate-700/50 bg-slate-800/50 p-3 hover:bg-slate-800 transition-colors">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-slate-200 whitespace-pre-wrap">{comment.comment}</p>
+                          <p className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-1">
+                            <span className="font-medium text-blue-300">{comment.user_name}</span>
+                            <span className="text-slate-600">•</span>
+                            <span>{new Date(comment.created_at).toLocaleString('es-ES', { 
+                              day: '2-digit', month: 'short', year: 'numeric', 
+                              hour: '2-digit', minute: '2-digit' 
+                            })}</span>
+                          </p>
+                        </div>
+                        {(comment.user_id === currentUserId) && (
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => deleteComment(comment.id)}
+                            className="h-7 w-7 p-0 text-slate-500 hover:text-red-400 hover:bg-red-500/10"
+                            title="Eliminar comentario"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -4199,181 +4668,261 @@ function RecordCard({
         </div>
       )}
 
-      {/* Checklist - New format */}
-      <div className="flex gap-3 mb-3 flex-wrap">
-        {record.has_id && (
-          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs">
-            <span>✓</span> ID: {record.id_type || 'Sí'}
-          </div>
-        )}
-        {record.has_poi && (
-          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs">
-            <span>✓</span> POI: {record.poi_type || 'Sí'}
-          </div>
-        )}
-        {record.ssn && (
-          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs">
-            <span>✓</span> SSN
-          </div>
-        )}
-        {record.itin && (
-          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs">
-            <span>✓</span> ITIN
-          </div>
-        )}
-        {record.employment_type && (
-          <div className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded text-xs">
-            <span>✓</span> {record.employment_type}
-            {record.employment_company_name && `: ${record.employment_company_name}`}
-            {(record.employment_time_years || record.employment_time_months) && 
-              ` (${record.employment_time_years || 0}y ${record.employment_time_months || 0}m)`}
-          </div>
-        )}
-        {/* Legacy support for self_employed */}
-        {!record.employment_type && record.self_employed && (
-          <div className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded text-xs">
-            <span>✓</span> Self Employed
-          </div>
-        )}
-        {record.has_por && (
-          <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs">
-            <span>✓</span> POR: {(record.por_types || []).join(', ') || 'Sí'}
-          </div>
-        )}
-        {/* Legacy fields for old records */}
-        {!record.has_id && record.dl && (
-          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs">
-            <span>✓</span> DL
-          </div>
-        )}
-        {!record.has_poi && record.checks && (
-          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs">
-            <span>✓</span> CHECKS
-          </div>
-        )}
-      </div>
+      {/* Resultados Guardados - Modern Card Layout */}
+      {(() => {
+        const sections = [
+          {
+            title: 'Identificación',
+            icon: CreditCard,
+            color: 'blue',
+            items: [
+              { condition: record.has_id, label: 'ID', value: record.id_type || 'Sí', icon: IdCard },
+              { condition: record.ssn, label: 'SSN', value: 'Verificado', icon: BadgeCheck },
+              { condition: record.itin, label: 'ITIN', value: 'Verificado', icon: BadgeCheck },
+              { condition: !record.has_id && record.dl, label: 'DL (Legado)', value: 'Sí', icon: CreditCard },
+            ]
+          },
+          {
+            title: 'Ingresos y Empleo',
+            icon: BriefcaseBusiness,
+            color: 'emerald',
+            items: [
+              { condition: record.has_poi, label: 'POI', value: record.poi_type || 'Sí', icon: DollarSign },
+              { condition: !record.has_poi && record.checks, label: 'Checks (Legado)', value: 'Sí', icon: DollarSign },
+              { condition: record.employment_type, label: 'Tipo Empleo', value: record.employment_type, icon: BriefcaseBusiness },
+              { condition: record.employment_company_name, label: 'Empresa', value: record.employment_company_name, icon: Building2 },
+              { condition: record.employment_time_years !== undefined || record.employment_time_months !== undefined, label: 'Antigüedad', value: `${record.employment_time_years || 0}a ${record.employment_time_months || 0}m`, icon: CalendarCheck2 },
+              { condition: record.income_frequency, label: 'Frecuencia Ingreso', value: record.income_frequency, icon: DollarSign },
+              { condition: record.net_income_amount, label: 'Ingreso Neto', value: `$${record.net_income_amount}`, icon: DollarSign },
+              { condition: !record.employment_type && record.self_employed, label: 'Empleo', value: 'Independiente', icon: BriefcaseBusiness },
+            ]
+          },
+          {
+            title: 'Residencia',
+            icon: House,
+            color: 'amber',
+            items: [
+              { condition: record.has_por, label: 'POR', value: (record.por_types || []).join(', ') || 'Sí', icon: House },
+            ]
+          },
+          {
+            title: 'Banco y Financiamiento',
+            icon: Landmark,
+            color: 'purple',
+            items: [
+              { condition: record.bank, label: 'Banco', value: record.bank, icon: Landmark },
+              { condition: record.bank_deposit_type, label: 'Tipo Depósito', value: record.bank_deposit_type, icon: CreditCard },
+              { condition: record.bank_deposit_type === 'Deposito Directo' && record.direct_deposit_amount, label: 'Depósito Directo', value: `$${record.direct_deposit_amount}`, icon: DollarSign },
+              { condition: record.auto, label: 'Auto', value: record.auto, icon: Car },
+              { condition: record.credit, label: 'Credit Score', value: record.credit, icon: BadgeDollarSign },
+              { condition: record.auto_loan, label: 'Auto Loan', value: record.auto_loan, icon: Car },
+              { condition: record.auto_loan_status, label: 'Estado Préstamo', value: record.auto_loan_status, icon: Car },
+              { condition: record.auto_loan_bank, label: 'Banco Préstamo', value: record.auto_loan_bank, icon: Landmark },
+              { condition: record.auto_loan_amount, label: 'Monto Préstamo', value: `$${record.auto_loan_amount}`, icon: DollarSign },
+              { condition: record.finance_status && record.finance_status !== 'no', label: 'Financiamiento', value: record.finance_status, icon: BadgeDollarSign },
+            ]
+          },
+          {
+            title: 'Down Payment y Trade-in',
+            icon: Wallet,
+            color: 'orange',
+            items: [
+              { condition: record.down_payment_type, label: 'Tipo Down Payment', value: record.down_payment_type, icon: Wallet },
+              { condition: record.down_payment_cash, label: 'Cash', value: `$${record.down_payment_cash}`, icon: DollarSign },
+              { condition: record.down_payment_card, label: 'Tarjeta', value: `$${record.down_payment_card}`, icon: CreditCard },
+              { condition: record.trade_make, label: 'Trade-in', value: `${record.trade_make} ${record.trade_model} ${record.trade_year}`, icon: CarFront },
+              { condition: record.trade_title, label: 'Título', value: record.trade_title, icon: FileText },
+              { condition: record.trade_miles, label: 'Millas', value: `${record.trade_miles} mi`, icon: Car },
+              { condition: record.trade_estimated_value, label: 'Valor Estimado', value: `$${record.trade_estimated_value}`, icon: DollarSign },
+              { condition: record.down_payment && !record.down_payment_type, label: 'Down Payment (Legado)', value: `$${record.down_payment}`, icon: Wallet },
+            ]
+          },
+          {
+            title: 'Dealer y Vehículo',
+            icon: Store,
+            color: 'indigo',
+            items: [
+              { condition: record.dealer, label: 'Dealer', value: record.dealer, icon: Store },
+              { condition: record.vehicle_make, label: 'Vehículo', value: `${record.vehicle_make} ${record.vehicle_year || ''}`, icon: Car },
+              { condition: record.sale_month && record.sale_day && record.sale_year, label: 'Fecha Venta', value: `${record.sale_month}/${record.sale_day}/${record.sale_year}`, icon: Calendar },
+            ]
+          },
+        ];
 
-      {/* Details */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
-        {record.auto && <div><span className="text-slate-400">Auto:</span> {record.auto}</div>}
-        {record.credit && <div><span className="text-slate-400">Credit:</span> {record.credit}</div>}
-        {record.bank && (
-          <div>
-            <span className="text-slate-400">Bank:</span> {record.bank}
-            {record.bank_deposit_type && <span className="text-xs text-slate-400"> ({record.bank_deposit_type})</span>}
-          </div>
-        )}
-        {record.auto_loan && <div><span className="text-slate-400">Auto Loan:</span> {record.auto_loan}</div>}
-        {record.dealer && <div><span className="text-slate-400">Dealer:</span> {record.dealer}</div>}
-        {/* Down Payment - supports multiple selections with TOTAL */}
-        {record.down_payment_type && (
-          <div>
-            <span className="text-slate-400">Down:</span> {record.down_payment_type}
-            {record.down_payment_type.includes('Cash') && record.down_payment_cash && ` (Cash: $${record.down_payment_cash})`}
-            {record.down_payment_type.includes('Tarjeta') && record.down_payment_card && ` (Tarjeta: $${record.down_payment_card})`}
-            {record.down_payment_type.includes('Trade') && record.trade_estimated_value && ` (Trade: $${record.trade_estimated_value})`}
-            {/* Show TOTAL if there are multiple values */}
-            {(() => {
-              const cash = parseFloat(String(record.down_payment_cash || '0').replace(/[$,]/g, '')) || 0;
-              const card = parseFloat(String(record.down_payment_card || '0').replace(/[$,]/g, '')) || 0;
-              const trade = parseFloat(String(record.trade_estimated_value || '0').replace(/[$,]/g, '')) || 0;
-              const total = cash + card + trade;
-              if (total > 0) {
-                return <span className="ml-2 font-semibold text-green-600">= Total: ${total.toLocaleString()}</span>;
-              }
-              return null;
-            })()}
-          </div>
-        )}
-        {/* Direct Deposit Amount */}
-        {record.bank_deposit_type === 'Deposito Directo' && record.direct_deposit_amount && (
-          <div>
-            <span className="text-slate-400">Depósito Directo:</span> ${record.direct_deposit_amount}
-          </div>
-        )}
-        {/* Legacy down_payment for old records */}
-        {!record.down_payment_type && record.down_payment && <div><span className="text-slate-400">Down:</span> ${record.down_payment}</div>}
-      </div>
+        const hasAnyData = sections.some(s => s.items.some(i => i.condition));
+        if (!hasAnyData) return null;
 
-      {/* Trade-in Details - supports multi-select */}
-      {record.down_payment_type && record.down_payment_type.includes('Trade') && record.trade_make && (
-        <div className="mt-2 p-2 bg-slate-50 rounded text-xs">
-          <span className="font-medium">Trade:</span> {record.trade_make} {record.trade_model} {record.trade_year}
-          {record.trade_title && ` • ${record.trade_title}`}
-          {record.trade_miles && ` • ${record.trade_miles} mi`}
-          {record.trade_estimated_value && ` • Est: $${record.trade_estimated_value}`}
-        </div>
-      )}
-
-      {/* Vehicle info for financed/lease */}
-      {(record.finance_status === 'financiado' || record.finance_status === 'lease') && record.vehicle_make && (
-        <div className="mt-3 pt-3 border-t border-slate-100">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded font-medium">
-              {record.vehicle_make} {record.vehicle_year}
-            </span>
-            {record.sale_month && record.sale_day && record.sale_year && (
-              <span className="text-slate-400">
-                Sold: {record.sale_month}/{record.sale_day}/{record.sale_year}
-              </span>
+        return (
+          <div className="mt-3 space-y-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Resultados registrados</span>
+            <div className="space-y-2">
+              {sections.map((section, si) => {
+                const validItems = section.items.filter(i => i.condition);
+                if (validItems.length === 0) return null;
+                return (
+                  <div key={si} className={`rounded-xl border p-3 ${section.color === 'blue' ? 'border-blue-200/50 bg-blue-500/5' : section.color === 'emerald' ? 'border-emerald-200/50 bg-emerald-500/5' : section.color === 'amber' ? 'border-amber-200/50 bg-amber-500/5' : section.color === 'purple' ? 'border-purple-200/50 bg-purple-500/5' : section.color === 'orange' ? 'border-orange-200/50 bg-orange-500/5' : 'border-indigo-200/50 bg-indigo-500/5'}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <section.icon className={`w-4 h-4 text-${section.color}-600`} />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">{section.title}</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 ml-6">
+                      {validItems.map((item, ii) => (
+                        <div key={ii} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-950/55 border border-slate-700/70 hover:bg-slate-900/80 transition-colors shadow-sm">
+                          <item.icon className={`w-3.5 h-3.5 text-${section.color}-500 flex-shrink-0`} />
+                          <div className="min-w-0">
+                            <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider block">{item.label}</span>
+                            <span className="text-sm font-medium text-slate-100 truncate block">{item.value}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Down Payment Total */}
+            {record.down_payment_type && (
+              <div className="mt-2 p-3 rounded-xl border border-green-200/50 bg-green-500/5">
+                {(() => {
+                  const cash = parseFloat(String(record.down_payment_cash || '0').replace(/[$,]/g, '')) || 0;
+                  const card = parseFloat(String(record.down_payment_card || '0').replace(/[$,]/g, '')) || 0;
+                  const trade = parseFloat(String(record.trade_estimated_value || '0').replace(/[$,]/g, '')) || 0;
+                  const total = cash + card + trade;
+                  if (total === 0) return null;
+                  return (
+                    <div className="flex items-center gap-3">
+                      <Wallet className="w-5 h-5 text-green-600" />
+                      <div className="flex-1">
+                        <span className="text-[10px] font-medium text-green-700 uppercase tracking-wider">Total Down Payment</span>
+                        <span className="text-lg font-bold text-green-800">${total.toLocaleString()}</span>
+                      </div>
+                      <div className="text-xs text-green-600 flex flex-wrap gap-2">
+                        {cash > 0 && <span>Cash: ${cash.toLocaleString()}</span>}
+                        {card > 0 && <span>Tarjeta: ${card.toLocaleString()}</span>}
+                        {trade > 0 && <span>Trade: ${trade.toLocaleString()}</span>}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
             )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
-      {/* Record Status Actions - Always show on all records */}
-      <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100">
-        {!record.record_status ? (
-          <>
-            {/* Only admin can mark as completed (SOLD) */}
-            {isAdmin && (
-              <Button size="sm" variant="outline" className="text-emerald-600 hover:bg-emerald-50 text-xs"
-                onClick={() => onMarkRecordStatus(record.id, 'completed')}>
-                ✓ Completado
-              </Button>
-            )}
-            <Button size="sm" variant="outline" className="text-slate-500 hover:bg-slate-50 text-xs"
-              onClick={() => onMarkRecordStatus(record.id, 'no_show')}>
-              ✗ No-Show
-            </Button>
-          </>
-        ) : (
-          <>
-            <span className={`text-xs font-medium flex items-center gap-1 ${record.record_status === 'completed' ? 'text-emerald-600' : 'text-slate-500'}`}>
-              {record.record_status === 'completed' ? '✅ Completado' : '❌ No-Show'}
-            </span>
-            {record.commission_locked && !isAdmin ? (
-              <span className="text-xs text-amber-600 flex items-center gap-1">
-                🔒 Bloqueado
-              </span>
-            ) : (
-              isAdmin && (
-                <Button size="sm" variant="outline" className="text-slate-400 hover:bg-slate-50 text-xs"
-                  onClick={() => onMarkRecordStatus(record.id, null)}>
-                  ↩ Desmarcar
-                </Button>
-              )
-            )}
-          </>
-        )}
-        {/* Show commission info if available (admin only view) */}
-        {isAdmin && record.commission_percentage && record.commission_value && (
-          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">
-            💰 {record.commission_percentage}%
+      {/* Resultado Comercial - Modern Dark Theme */}
+      <div className="mt-3 pt-3 border-t border-slate-700/70">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex-shrink-0">
+            Resultado comercial
           </span>
-        )}
+          <div className="flex flex-wrap items-center gap-2">
+            {!record.record_status ? (
+              <>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="h-9 rounded-xl border-emerald-200 bg-emerald-50/50 px-3 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
+                  onClick={() => onMarkRecordStatus(record.id, 'completed')}
+                  disabled={!isAdmin}
+                  title={!isAdmin ? 'Solo administradores pueden marcar como completado' : ''}
+                >
+                  <Check className="w-3 h-3 mr-1" />
+                  Completado
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="h-9 rounded-xl border-amber-200 bg-amber-50/50 px-3 text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+                  onClick={() => onMarkRecordStatus(record.id, 'no_show')}
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  No se presentó
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-9 rounded-xl border-slate-700 bg-slate-900/80 px-3 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+                  onClick={() => onMarkRecordStatus(record.id, null)}
+                >
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  Sin estado
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-200
+                  {record.record_status === 'completed' 
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' 
+                    : 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                  }">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    Estado actual
+                  </span>
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold
+                    {record.record_status === 'completed' 
+                      ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' 
+                      : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                    }">
+                    <span className="flex items-center justify-center w-5 h-5 rounded-full
+                      {record.record_status === 'completed' 
+                        ? 'bg-emerald-500 text-white' 
+                        : 'bg-amber-500 text-white'
+                      }">
+                      {record.record_status === 'completed' ? (
+                        <Check className="w-3 h-3" />
+                      ) : (
+                        <X className="w-3 h-3" />
+                      )}
+                    </span>
+                    {record.record_status === 'completed' ? 'Completado' : 'No se presentó'}
+                  </span>
+                </div>
+                {record.commission_locked && !isAdmin ? (
+                  <span className="text-xs text-amber-600 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" />
+                    Bloqueado por comisión
+                  </span>
+                ) : (
+                  isAdmin && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="h-8 rounded-lg border-slate-700 bg-slate-900/80 px-3 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+                      onClick={() => onMarkRecordStatus(record.id, null)}
+                      title="Cambiar estado"
+                    >
+                      <RotateCcw className="w-3 h-3 mr-1" />
+                      Cambiar
+                    </Button>
+                  )
+                )}
+              </>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Commission info if available (admin only view) */}
+      {isAdmin && record.commission_percentage && record.commission_value && (
+        <div className="mt-2 pt-2 border-t border-slate-200/50">
+          <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50/50 px-3 py-1 text-xs font-semibold text-amber-700">
+            <BadgeDollarSign className="w-3 h-3 mr-1" />
+            Comisión {record.commission_percentage}%
+          </span>
+        </div>
+      )}
 
       {/* Appointment Actions - Only show if has appointment */}
       {appointments[record.id] && appointments[record.id].status === 'scheduled' && (
         <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100">
-          <Button size="sm" variant="outline" className="text-emerald-600 hover:bg-emerald-50 text-xs"
+          <Button size="sm" variant="outline" className="h-9 rounded-xl border-emerald-200 bg-emerald-50 px-3 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
             onClick={() => updateAppointmentStatus(appointments[record.id].id, 'cumplido')}>
             ✓ Cumplido
           </Button>
-          <Button size="sm" variant="outline" className="text-slate-600 hover:bg-slate-50 text-xs"
+          <Button size="sm" variant="outline" className="h-9 rounded-xl border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
             onClick={() => updateAppointmentStatus(appointments[record.id].id, 'no_show')}>
-            ✗ No-Show
+            No se presentó
           </Button>
         </div>
       )}
@@ -4383,6 +4932,8 @@ function RecordCard({
 
 // Co-Signers Section Component
 function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
+  const { i18n } = useTranslation();
+  const isSpanish = (i18n?.language || '').toLowerCase().startsWith('es');
   const { t } = useTranslation();
   const [showAdd, setShowAdd] = useState(false);
   const [addMode, setAddMode] = useState('search'); // 'search' or 'new'
@@ -4623,14 +5174,16 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
       {cosigners.length > 0 && (
         <div className="space-y-2 mb-3">
           {cosigners.map((relation) => (
-            <div key={relation.id} className="bg-white rounded-lg border border-purple-200 overflow-hidden">
+            <div key={relation.id} className="rounded-lg border border-purple-200/50 bg-purple-500/5 overflow-hidden">
               {/* Co-signer Header - Clickable */}
               <div 
-                className="flex items-center justify-between p-3 cursor-pointer hover:bg-purple-50 transition-colors"
+                className="flex items-center justify-between p-3 cursor-pointer hover:bg-purple-500/10 transition-colors"
                 onClick={() => viewCosignerProfile(relation.cosigner)}
               >
                 <div className="flex items-center gap-3">
-                  <span className="cosigner-badge">CO-SIGNER</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-purple-500/10 text-purple-700 border border-purple-200">
+                    {t('cosigner.title')}
+                  </span>
                   <div>
                     <span className="font-medium text-purple-700 hover:underline">
                       {relation.cosigner?.first_name} {relation.cosigner?.last_name}
@@ -4647,6 +5200,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                     size="sm" 
                     variant="ghost" 
                     onClick={(e) => { e.stopPropagation(); removeCosigner(relation.id); }}
+                    title={t('common.delete')}
                   >
                     <Trash2 className="w-4 h-4 text-slate-400" />
                   </Button>
@@ -4655,36 +5209,36 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
 
               {/* Co-signer Profile Expanded View */}
               {viewingCosigner?.id === relation.cosigner?.id && (
-                <div className="border-t border-purple-200 bg-purple-50/50 p-4">
+                <div className="border-t border-purple-200/50 bg-purple-500/5 p-4">
                   {/* Profile Header */}
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h5 className="font-semibold text-purple-800">
-                        Perfil: {viewingCosigner.first_name} {viewingCosigner.last_name}
+                        {t('cosigner.profile')}: {viewingCosigner.first_name} {viewingCosigner.last_name}
                       </h5>
                       <p className="text-sm text-slate-500">
-                        {viewingCosigner.phone} • {viewingCosigner.email || 'Sin email'}
+                        {viewingCosigner.phone} • {viewingCosigner.email || t('common.none')}
                       </p>
                       {viewingCosigner.address && (
                         <p className="text-xs text-slate-400">{viewingCosigner.address}</p>
                       )}
                     </div>
-                    <Button size="sm" variant="ghost" onClick={closeCosignerProfile}>
+                    <Button size="sm" variant="ghost" onClick={closeCosignerProfile} title={t('common.close')}>
                       <X className="w-4 h-4" />
                     </Button>
                   </div>
 
                   {/* Co-signer Records Section */}
-                  <div className="bg-white rounded-lg border border-purple-200 p-3">
+                  <div className="rounded-lg border border-purple-200/50 bg-white/50 p-3">
                     <div className="flex items-center justify-between mb-3">
                       <h6 className="font-medium text-slate-700 flex items-center gap-2">
                         <FileText className="w-4 h-4" />
-                        Records ({cosignerRecords.length})
+                        {t('cosigner.records')} ({cosignerRecords.length})
                       </h6>
                       {!showRecordForm && (
                         <Button size="sm" variant="outline" onClick={openRecordForm}>
                           <Plus className="w-3 h-3 mr-1" />
-                          Agregar Record
+                          {t('cosigner.addRecord')}
                         </Button>
                       )}
                     </div>
@@ -4753,14 +5307,14 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                                   </div>
                                   <div className="flex items-center gap-1">
                                     <Checkbox checked={editCosignerRecordData.self_employed} onCheckedChange={(c) => setEditCosignerRecordData({ ...editCosignerRecordData, self_employed: c })} />
-                                    <Label className="text-xs">Self Employed</Label>
+                                    <Label className="text-xs">{t('cosigner.selfEmployed')}</Label>
                                   </div>
                                 </div>
 
                                 {/* Bank Row */}
                                 <div className="grid grid-cols-2 gap-2 mb-3">
                                   <Select value={editCosignerRecordData.bank} onValueChange={(v) => setEditCosignerRecordData({ ...editCosignerRecordData, bank: v })}>
-                                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Bank" /></SelectTrigger>
+                                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder={t('cosigner.bank')} /></SelectTrigger>
                                     <SelectContent className="max-h-48">
                                       {configLists?.banks?.map((b) => (
                                         <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
@@ -4768,7 +5322,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                                     </SelectContent>
                                   </Select>
                                   <Select value={editCosignerRecordData.bank_deposit_type} onValueChange={(v) => setEditCosignerRecordData({ ...editCosignerRecordData, bank_deposit_type: v, direct_deposit_amount: v !== 'Deposito Directo' ? '' : editCosignerRecordData.direct_deposit_amount })}>
-                                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Tipo Depósito" /></SelectTrigger>
+                                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder={t('cosigner.depositType')} /></SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value="Deposito Directo">Deposito Directo</SelectItem>
                                       <SelectItem value="No deposito directo">No deposito directo</SelectItem>
@@ -4779,28 +5333,28 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                                 {/* Direct Deposit Amount */}
                                 {editCosignerRecordData.bank_deposit_type === 'Deposito Directo' && (
                                   <div className="mb-3">
-                                    <Input placeholder="Monto Depósito Directo $" value={editCosignerRecordData.direct_deposit_amount || ''} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, direct_deposit_amount: e.target.value })} className="h-8 text-sm max-w-xs" />
+                                    <Input placeholder={t('cosigner.depositAmount')} value={editCosignerRecordData.direct_deposit_amount || ''} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, direct_deposit_amount: e.target.value })} className="h-8 text-sm max-w-xs" />
                                   </div>
                                 )}
 
                                 {/* Credit & Auto */}
                                 <div className="grid grid-cols-3 gap-2 mb-3">
-                                  <Input placeholder="Credit" value={editCosignerRecordData.credit} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, credit: e.target.value })} className="h-8 text-sm" />
+                                  <Input placeholder={t('cosigner.credit')} value={editCosignerRecordData.credit} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, credit: e.target.value })} className="h-8 text-sm" />
                                   <Select value={editCosignerRecordData.auto} onValueChange={(v) => setEditCosignerRecordData({ ...editCosignerRecordData, auto: v })}>
-                                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Auto" /></SelectTrigger>
+                                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder={t('cosigner.auto')} /></SelectTrigger>
                                     <SelectContent className="max-h-48">
                                       {configLists?.cars?.map((c) => (
                                         <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
-                                  <Input placeholder="Auto Loan" value={editCosignerRecordData.auto_loan} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, auto_loan: e.target.value })} className="h-8 text-sm" />
+                                  <Input placeholder={t('cosigner.autoLoan')} value={editCosignerRecordData.auto_loan} onChange={(e) => setEditCosignerRecordData({ ...editCosignerRecordData, auto_loan: e.target.value })} className="h-8 text-sm" />
                                 </div>
 
                                 {/* Down Payment - Multi-select */}
                                 <div className="mb-3">
                                   <div className="flex items-center gap-2 mb-2">
-                                    <span className="text-xs text-slate-500">Down (puede seleccionar varios):</span>
+                                    <span className="text-xs text-slate-500">{t('cosigner.downPayment')} (múltiple):</span>
                                     {['Cash', 'Tarjeta', 'Trade'].map((type) => (
                                       <div key={type} className="flex items-center gap-1">
                                         <Checkbox
@@ -4833,8 +5387,8 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
 
                                 {/* Action Buttons */}
                                 <div className="flex gap-2 pt-2">
-                                  <Button size="sm" variant="outline" onClick={cancelEditCosignerRecord}>Cancelar</Button>
-                                  <Button size="sm" onClick={saveEditCosignerRecord}>Guardar Cambios</Button>
+                                  <Button size="sm" variant="outline" onClick={cancelEditCosignerRecord}>{t('common.cancel')}</Button>
+                                  <Button size="sm" onClick={saveEditCosignerRecord}>{t('common.save')}</Button>
                                 </div>
                               </div>
                             ) : (
@@ -4846,22 +5400,22 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                                     {rec.has_poi && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">POI: {rec.poi_type}</span>}
                                     {rec.ssn && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">SSN</span>}
                                     {rec.itin && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">ITIN</span>}
-                                    {rec.self_employed && <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-xs">Self Employed</span>}
+                                    {rec.self_employed && <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-xs">{t('cosigner.selfEmployed')}</span>}
                                   </div>
                                   <div className="text-slate-500 text-xs space-y-0.5">
                                     <div>
-                                      {rec.bank && `Bank: ${rec.bank}`}
+                                      {rec.bank && `Banco: ${rec.bank}`}
                                       {rec.bank_deposit_type && ` (${rec.bank_deposit_type})`}
                                       {rec.bank_deposit_type === 'Deposito Directo' && rec.direct_deposit_amount && ` - $${rec.direct_deposit_amount}`}
                                     </div>
                                     <div>
-                                      {rec.credit && `Credit: ${rec.credit}`}
+                                      {rec.credit && `Crédito: ${rec.credit}`}
                                       {rec.auto && ` • Auto: ${rec.auto}`}
-                                      {rec.auto_loan && ` • Auto Loan: $${rec.auto_loan}`}
+                                      {rec.auto_loan && ` • Préstamo Auto: $${rec.auto_loan}`}
                                     </div>
                                     {rec.down_payment_type && (
                                       <div>
-                                        Down: {rec.down_payment_type}
+                                        Enganche: {rec.down_payment_type}
                                         {rec.down_payment_type.includes('Cash') && rec.down_payment_cash && ` (Cash: $${rec.down_payment_cash})`}
                                         {rec.down_payment_type.includes('Tarjeta') && rec.down_payment_card && ` (Tarjeta: $${rec.down_payment_card})`}
                                       </div>
@@ -4955,7 +5509,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                           </div>
                           <div className="flex items-center gap-1">
                             <Checkbox checked={newCosignerRecord.self_employed} onCheckedChange={(c) => setNewCosignerRecord({ ...newCosignerRecord, self_employed: c })} id="cs-se" />
-                            <Label htmlFor="cs-se" className="text-xs">Self Employed</Label>
+                            <Label htmlFor="cs-se" className="text-xs">{t('cosigner.selfEmployed')}</Label>
                           </div>
                         </div>
 
@@ -4994,7 +5548,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                         <div className="grid grid-cols-2 gap-2">
                           <Select value={newCosignerRecord.bank} onValueChange={(v) => setNewCosignerRecord({ ...newCosignerRecord, bank: v })}>
                             <SelectTrigger className="h-8 text-sm">
-                              <SelectValue placeholder="Bank" />
+                              <SelectValue placeholder={t('cosigner.bank')} />
                             </SelectTrigger>
                             <SelectContent className="max-h-48">
                               {configLists?.banks?.map((b) => (
@@ -5004,7 +5558,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                           </Select>
                           <Select value={newCosignerRecord.bank_deposit_type} onValueChange={(v) => setNewCosignerRecord({ ...newCosignerRecord, bank_deposit_type: v, direct_deposit_amount: v !== 'Deposito Directo' ? '' : newCosignerRecord.direct_deposit_amount })}>
                             <SelectTrigger className="h-8 text-sm">
-                              <SelectValue placeholder="Tipo Depósito" />
+                              <SelectValue placeholder={t('cosigner.depositType')} />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="Deposito Directo">Deposito Directo</SelectItem>
@@ -5016,16 +5570,16 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                         {/* Direct Deposit Amount */}
                         {newCosignerRecord.bank_deposit_type === 'Deposito Directo' && (
                           <div>
-                            <Input placeholder="Monto Depósito Directo $" value={newCosignerRecord.direct_deposit_amount || ''} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, direct_deposit_amount: e.target.value })} className="h-8 text-sm max-w-xs" />
+                            <Input placeholder={t('cosigner.depositAmount')} value={newCosignerRecord.direct_deposit_amount || ''} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, direct_deposit_amount: e.target.value })} className="h-8 text-sm max-w-xs" />
                           </div>
                         )}
 
                         {/* Credit & Auto */}
                         <div className="grid grid-cols-3 gap-2">
-                          <Input placeholder="Credit" value={newCosignerRecord.credit} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, credit: e.target.value })} className="h-8 text-sm" />
+                          <Input placeholder={t('cosigner.credit')} value={newCosignerRecord.credit} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, credit: e.target.value })} className="h-8 text-sm" />
                           <Select value={newCosignerRecord.auto} onValueChange={(v) => setNewCosignerRecord({ ...newCosignerRecord, auto: v })}>
                             <SelectTrigger className="h-8 text-sm">
-                              <SelectValue placeholder="Auto" />
+                              <SelectValue placeholder={t('cosigner.auto')} />
                             </SelectTrigger>
                             <SelectContent className="max-h-48">
                               {configLists?.cars?.map((c) => (
@@ -5033,13 +5587,13 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                               ))}
                             </SelectContent>
                           </Select>
-                          <Input placeholder="Auto Loan" value={newCosignerRecord.auto_loan} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, auto_loan: e.target.value })} className="h-8 text-sm" />
+                          <Input placeholder={t('cosigner.autoLoan')} value={newCosignerRecord.auto_loan} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, auto_loan: e.target.value })} className="h-8 text-sm" />
                         </div>
 
                         {/* Down Payment - Multi-select */}
                         <div>
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs text-slate-500">Down (puede seleccionar varios):</span>
+                            <span className="text-xs text-slate-500">{t('cosigner.downPayment')} (múltiple):</span>
                             {['Cash', 'Tarjeta', 'Trade'].map((type) => (
                               <div key={type} className="flex items-center gap-1">
                                 <Checkbox
@@ -5073,21 +5627,21 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                         {/* Trade-in details compact */}
                         {(newCosignerRecord.down_payment_types || []).includes('Trade') && (
                           <div className="grid grid-cols-3 gap-2 p-2 bg-white rounded border text-xs">
-                            <Input placeholder="Make" value={newCosignerRecord.trade_make} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_make: e.target.value })} className="h-7 text-xs" />
-                            <Input placeholder="Model" value={newCosignerRecord.trade_model} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_model: e.target.value })} className="h-7 text-xs" />
-                            <Input placeholder="Year" value={newCosignerRecord.trade_year} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_year: e.target.value })} className="h-7 text-xs" />
-                            <Input placeholder="Miles" value={newCosignerRecord.trade_miles} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_miles: e.target.value })} className="h-7 text-xs" />
-                            <Input placeholder="Est. Value" value={newCosignerRecord.trade_estimated_value} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_estimated_value: e.target.value })} className="h-7 text-xs" />
+                            <Input placeholder={t('cosigner.tradeMake')} value={newCosignerRecord.trade_make} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_make: e.target.value })} className="h-7 text-xs" />
+                            <Input placeholder={t('cosigner.tradeModel')} value={newCosignerRecord.trade_model} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_model: e.target.value })} className="h-7 text-xs" />
+                            <Input placeholder={t('cosigner.tradeYear')} value={newCosignerRecord.trade_year} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_year: e.target.value })} className="h-7 text-xs" />
+                            <Input placeholder={t('cosigner.tradeMiles')} value={newCosignerRecord.trade_miles} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_miles: e.target.value })} className="h-7 text-xs" />
+                            <Input placeholder={t('cosigner.tradeValue')} value={newCosignerRecord.trade_estimated_value} onChange={(e) => setNewCosignerRecord({ ...newCosignerRecord, trade_estimated_value: e.target.value })} className="h-7 text-xs" />
                           </div>
                         )}
 
                         {/* Action Buttons */}
                         <div className="flex gap-2 pt-2">
                           <Button size="sm" variant="outline" onClick={() => { setShowRecordForm(false); setNewCosignerRecord(null); }}>
-                            Cancelar
+                            {t('common.cancel')}
                           </Button>
                           <Button size="sm" onClick={saveCosignerRecord}>
-                            Guardar Record
+                            {t('cosigner.addRecord')}
                           </Button>
                         </div>
                       </div>
@@ -5140,7 +5694,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                     <p className="font-medium">{foundClient.first_name} {foundClient.last_name}</p>
                     <p className="text-sm text-slate-400">{foundClient.phone}</p>
                   </div>
-                  <Button size="sm" onClick={linkCosigner} data-testid="link-cosigner-btn">Link</Button>
+                  <Button size="sm" onClick={linkCosigner} data-testid="link-cosigner-btn">{t('cosigner.link')}</Button>
                 </div>
               )}
             </>
@@ -5148,7 +5702,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="form-label">{t('clients.firstName')} *</Label>
+                  <Label className="form-label">{t('cosigner.firstName')} *</Label>
                   <Input
                     value={newCosigner.first_name}
                     onChange={(e) => setNewCosigner({ ...newCosigner, first_name: e.target.value })}
@@ -5156,7 +5710,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                   />
                 </div>
                 <div>
-                  <Label className="form-label">{t('clients.lastName')} *</Label>
+                  <Label className="form-label">{t('cosigner.lastName')} *</Label>
                   <Input
                     value={newCosigner.last_name}
                     onChange={(e) => setNewCosigner({ ...newCosigner, last_name: e.target.value })}
@@ -5165,7 +5719,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                 </div>
               </div>
               <div>
-                <Label className="form-label">{t('clients.phone')} *</Label>
+                <Label className="form-label">{t('cosigner.phone')} *</Label>
                 <Input
                   type="tel"
                   value={newCosigner.phone}
@@ -5175,7 +5729,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                 />
               </div>
               <div>
-                <Label className="form-label">{t('clients.email')}</Label>
+                <Label className="form-label">{t('cosigner.email')}</Label>
                 <Input
                   type="email"
                   value={newCosigner.email}
@@ -5183,15 +5737,15 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
                 />
               </div>
               <div>
-                <Label className="form-label">{t('clients.address')}</Label>
+                <Label className="form-label">{t('cosigner.address')}</Label>
                 <AddressAutocomplete
                   value={newCosigner.address}
                   onChange={(value) => setNewCosigner({ ...newCosigner, address: value })}
-                  placeholder="Start typing an address..."
+                  placeholder={t('cosigner.address')}
                 />
               </div>
               <div>
-                <Label className="form-label">{t('clients.apartment')}</Label>
+                <Label className="form-label">{t('cosigner.apartment')}</Label>
                 <Input
                   value={newCosigner.apartment}
                   onChange={(e) => setNewCosigner({ ...newCosigner, apartment: e.target.value })}
@@ -5215,7 +5769,7 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
 
 // Client Info Modal Component
 
-function ClientInfoModal({ client, onClose, onRefresh }) {
+function ClientInfoModal({ client, onClose, onRefresh, salespersons = [] }) {
   const { i18n } = useTranslation();
   const isSpanish = (i18n?.language || '').toLowerCase().startsWith('es');
 
@@ -5293,33 +5847,8 @@ function ClientInfoModal({ client, onClose, onRefresh }) {
     noDocuments: 'No documents'
   };
 
-
-  const [commercialEvents, setCommercialEvents] = useState([]);
-  const [loadingCommercialEvents, setLoadingCommercialEvents] = useState(false);
-
-  useEffect(() => {
-    if (!client?.id) return;
-
-    const loadCommercialEvents = async () => {
-      try {
-        setLoadingCommercialEvents(true);
-
-        const response = await axios.get(
-          `${API}/clients/${client.id}/commercial-events`
-        );
-
-        setCommercialEvents(response.data || []);
-      } catch (error) {
-        console.error("Error loading commercial events", error);
-      } finally {
-        setLoadingCommercialEvents(false);
-      }
-    };
-
-    loadCommercialEvents();
-  }, [client?.id]);
-
   const [isEditing, setIsEditing] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const [clientDocs, setClientDocs] = useState({
     id_uploaded: client?.id_uploaded || false,
@@ -5571,16 +6100,19 @@ function ClientInfoModal({ client, onClose, onRefresh }) {
             </div>
 
             {!isEditing && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditing(true)}
-                className="shrink-0"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                {labels.edit}
-              </Button>
-            )}
+              <div className="flex flex-wrap items-center gap-2">
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                    className="shrink-0"
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    {labels.edit}
+                  </Button>
+                </div>
+              )}
           </div>
         </DialogHeader>
 
@@ -5614,7 +6146,22 @@ function ClientInfoModal({ client, onClose, onRefresh }) {
         </div>
 
 
-        <div className="py-5 border-t border-slate-800">
+                  {/* Lead lifecycle information preserved */}
+          <div className="py-5 border-t border-slate-800">
+            <h3 className="font-semibold text-base mb-4 text-slate-200">
+              {labels.commercialHistory}
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {field(labels.vehicleInterest, 'vehicle_interest')}
+              {field(labels.assignedSalesperson, 'assigned_salesperson')}
+              {field(labels.followUpDate, 'follow_up_date', 'date')}
+              {field(labels.followUpNotes, 'follow_up_notes')}
+              {field(labels.leadNotes, 'notes')}
+            </div>
+          </div>
+
+<div className="py-5 border-t border-slate-800">
           <div className="flex items-center gap-2 mb-4">
             <IdCard className="w-4 h-4 text-slate-400" />
             <h3 className="font-semibold text-base text-slate-200">
@@ -5937,6 +6484,9 @@ function ClientInfoModal({ client, onClose, onRefresh }) {
             </Button>
           )}
         </div>
+
+          )}
+        
       </DialogContent>
     </Dialog>
   );
