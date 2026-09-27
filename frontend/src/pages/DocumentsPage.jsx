@@ -7,7 +7,7 @@ import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
 import {
   AlertCircle, CheckCircle2, ChevronRight, Download, Eye, File, FileImage,
-  FileText, Loader2, Search, Upload, X
+  FileText, FileSpreadsheet, Loader2, Search, Upload, X
 } from 'lucide-react';
 import DocumentViewer from '../components/DocumentViewer';
 
@@ -66,13 +66,29 @@ function StatusPill({ status }) {
   );
 }
 
-function CountBadge({ count }) {
+function FormatSummary({ documents = [] }) {
+  if (!documents.length) {
+    return <span className="text-xs font-medium text-slate-500">0 files</span>;
+  }
+  const groups = documents.reduce((acc, doc) => {
+    const ext = fileExt(doc);
+    acc[ext] = (acc[ext] || 0) + 1;
+    return acc;
+  }, {});
   return (
-    <span className={`inline-flex min-w-[42px] items-center justify-center rounded-md border px-2 py-1 text-xs font-semibold ${
-      count ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300' : 'border-slate-800 bg-slate-950 text-slate-500'
-    }`}>
-      {count}
-    </span>
+    <div className="flex flex-wrap gap-1.5">
+      {Object.entries(groups).map(([format, count]) => {
+        const Icon = ['XLS', 'XLSX'].includes(format) ? FileSpreadsheet
+          : ['PNG', 'JPG', 'JPEG', 'WEBP'].includes(format) ? FileImage
+          : FileText;
+        return (
+          <span key={format} className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs font-semibold text-slate-200">
+            <Icon className="h-3.5 w-3.5 text-cyan-400" />
+            {count} {format}
+          </span>
+        );
+      })}
+    </div>
   );
 }
 
@@ -186,8 +202,10 @@ export default function DocumentsPage() {
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(objectUrl);
-    } catch {
-      toast.error('Download failed');
+    } catch (error) {
+      console.error('Document download failed:', error);
+      const detail = error.response?.data?.detail;
+      toast.error(typeof detail === 'string' ? detail : 'Download failed');
     }
   };
 
@@ -233,7 +251,7 @@ export default function DocumentsPage() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="truncate text-xl font-semibold text-white">{selectedClient.first_name} {selectedClient.last_name}</h1>
-                  <StatusPill status={overallStatus(selectedClient)} />
+                  <StatusPill status={CATEGORIES.every((category) => docs[category.id].length) ? 'complete' : total ? 'pending' : 'missing'} />
                 </div>
                 <p className="mt-1 text-sm text-slate-400">{selectedClient.phone || 'No phone'}{selectedClient.email ? ` • ${selectedClient.email}` : ''}</p>
                 <p className="text-xs text-slate-500">{selectedClient.assigned_salesperson || selectedClient.salesperson_name || 'Unassigned salesperson'}{selectedClient.vehicle_interest ? ` • ${selectedClient.vehicle_interest}` : ''}</p>
@@ -243,10 +261,7 @@ export default function DocumentsPage() {
               <Button variant="outline" onClick={downloadAll} disabled={!total}>
                 <Download className="mr-2 h-4 w-4" /> Download All (ZIP)
               </Button>
-              <label>
-                <input type="file" multiple className="hidden" onChange={(e) => upload('id', e.target.files)} />
-                
-              </label>
+
             </div>
           </div>
         </section>
@@ -274,7 +289,7 @@ export default function DocumentsPage() {
                       <StatusPill status={list.length ? 'complete' : 'missing'} />
                     </div>
                     <label className="mt-3 block">
-                      <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden" onChange={(e) => upload(category.id, e.target.files)} />
+                      <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" className="hidden" onChange={(e) => upload(category.id, e.target.files)} />
                       <Button asChild variant="outline" size="sm" className="w-full"><span>{uploading === category.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}Upload more</span></Button>
                     </label>
                   </div>
@@ -360,7 +375,7 @@ export default function DocumentsPage() {
                   return (
                     <tr key={client.id} className="hover:bg-slate-900/60">
                       <td className="px-4 py-4"><p className="font-medium text-slate-100">{client.first_name} {client.last_name}</p><p className="text-xs text-slate-500">{client.phone || 'No phone'}</p></td>
-                      {counts.map((count, index) => <td key={CATEGORIES[index].id} className="px-4 py-4"><div className="space-y-1"><CountBadge count={count} /><div className="flex flex-wrap gap-1">{[...new Set((documentIndex[client.id]?.[CATEGORIES[index].id] || []).map(fileExt))].map((format) => <span key={format} className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">{format}</span>)}</div></div></td>)}
+                      {counts.map((count, index) => <td key={CATEGORIES[index].id} className="px-4 py-4"><FormatSummary documents={documentIndex[client.id]?.[CATEGORIES[index].id] || []} /></td>)}
                       <td className="px-4 py-4 text-sm font-semibold text-slate-200">{counts.reduce((a,b) => a+b, 0)}</td>
                       <td className="px-4 py-4"><StatusPill status={realStatus(client)} /></td>
                       <td className="px-4 py-4 text-right"><Button variant="ghost" size="sm" onClick={() => openClient(client)}>View <ChevronRight className="ml-1 h-4 w-4" /></Button></td>
