@@ -74,9 +74,19 @@ export default function DocumentViewer({
         }
 
         const token = localStorage.getItem('token');
-        const response = await fetch(url, {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        let response;
+        try {
+          response = await fetch(url, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            cache: 'no-store',
+            credentials: 'same-origin',
+            signal: controller.signal
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
 
         if (!response.ok) {
           let detail = 'Failed to load document';
@@ -109,7 +119,10 @@ export default function DocumentViewer({
       } catch (err) {
         if (!cancelled) {
           console.error('Document load error:', err);
-          setError(err.message || 'No se pudo cargar el documento');
+          const message = err?.name === 'AbortError'
+            ? 'La carga del documento excedió 30 segundos'
+            : (err.message || 'No se pudo cargar el documento');
+          setError(message);
         }
       } finally {
         if (!cancelled) {
