@@ -213,10 +213,12 @@ export default function DocumentsPage() {
       const anchor = document.createElement('a');
       anchor.href = objectUrl;
       anchor.download = name;
+      anchor.style.display = 'none';
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 3000);
+      toast.success('Download started');
     } catch (error) {
       console.error('Document download failed:', error);
       toast.error(error.message || 'Download failed');
