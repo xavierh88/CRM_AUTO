@@ -8,7 +8,7 @@ import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import axios from 'axios';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = '/api';
 
 const CATEGORY_CONFIG = {
   id: { labelKey: 'documents.id', label: 'Identificación', icon: FileText, color: 'blue' },
@@ -147,17 +147,20 @@ export default function DocumentCategoryDialog({
         responseType: 'blob'
       });
 
-      const blob = new Blob([response.data]);
-      const downloadUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = doc.original_name || doc.filename || `documento_${category}`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(downloadUrl);
-      
-      toast.success('Descarga iniciada');
+      const blob = new Blob([response.data], { type: response.data?.type || doc.type || 'application/octet-stream' });
+      const reader = new FileReader();
+      reader.onload = () => {
+        const link = document.createElement('a');
+        link.href = reader.result;
+        link.download = doc.original_name || doc.filename || `documento_${category}`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast.success('Descarga iniciada');
+      };
+      reader.onerror = () => toast.error('Error al preparar la descarga');
+      reader.readAsDataURL(blob);
     } catch (err) {
       toast.error('Error al descargar');
     }
@@ -225,7 +228,7 @@ export default function DocumentCategoryDialog({
             <label className="cursor-pointer flex-1 sm:flex-none">
               <input 
                 type="file" 
-                accept=".pdf,.jpg,.jpeg,.png,.webp" 
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" 
                 multiple
                 className="sr-only" 
                 onChange={(e) => e.target.files?.length && handleUpload(e.target.files)} 
