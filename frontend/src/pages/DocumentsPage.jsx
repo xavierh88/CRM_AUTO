@@ -79,7 +79,7 @@ function CountBadge({ count }) {
 export default function DocumentsPage() {
   const { t } = useTranslation();
   const { user, isAdmin, isBDCManager } = useAuth();
-  const [clients, setClients] = useState([]);
+  const [clients, setClients] = useState([]);\n  const [documentIndex, setDocumentIndex] = useState({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -95,7 +95,17 @@ export default function DocumentsPage() {
       const params = new URLSearchParams({ exclude_sold: 'false', sort_by: 'name' });
       if (!isAdmin && !isBDCManager && user?.id) params.append('salesperson_id', user.id);
       const response = await axios.get(`${API}/clients?${params.toString()}`);
-      setClients(Array.isArray(response.data) ? response.data : []);
+      const loadedClients = Array.isArray(response.data) ? response.data : [];
+      setClients(loadedClients);
+      const entries = await Promise.all(loadedClients.map(async (client) => {
+        const results = await Promise.all(CATEGORIES.map((category) =>
+          axios.get(`${API}/clients/${client.id}/documents/list/${category.id}`)
+            .then((res) => res.data?.documents || [])
+            .catch(() => [])
+        ));
+        return [client.id, { id: results[0], income: results[1], residence: results[2] }];
+      }));
+      setDocumentIndex(Object.fromEntries(entries));
     } catch (error) {
       console.error(error);
       toast.error('Unable to load clients');
@@ -107,12 +117,20 @@ export default function DocumentsPage() {
 
   useEffect(() => { fetchClients(); }, [fetchClients]);
 
+  const realCount = useCallback((client, type) => documentIndex[client.id]?.[type]?.length || 0, [documentIndex]);
+  const realStatus = useCallback((client) => {
+    const counts = CATEGORIES.map((category) => realCount(client, category.id));
+    if (counts.every(Boolean)) return 'complete';
+    if (counts.some(Boolean)) return 'pending';
+    return 'missing';
+  }, [realCount]);
+
   const filtered = useMemo(() => clients.filter((client) => {
     const term = search.trim().toLowerCase();
     const haystack = `${client.first_name || ''} ${client.last_name || ''} ${client.phone || ''}`.toLowerCase();
     return (!term || haystack.includes(term)) &&
-      (statusFilter === 'all' || overallStatus(client) === statusFilter);
-  }), [clients, search, statusFilter]);
+      (statusFilter === 'all' || realStatus(client) === statusFilter);
+  }), [clients, search, statusFilter, realStatus]);
 
   const openClient = async (client) => {
     setSelectedClient(client);
@@ -224,7 +242,7 @@ export default function DocumentsPage() {
               </Button>
               <label>
                 <input type="file" multiple className="hidden" onChange={(e) => upload('id', e.target.files)} />
-                <Button asChild className="bg-cyan-500 text-slate-950 hover:bg-cyan-400"><span><Upload className="mr-2 h-4 w-4" /> Upload Document</span></Button>
+                
               </label>
             </div>
           </div>
@@ -335,13 +353,13 @@ export default function DocumentsPage() {
               </thead>
               <tbody className="divide-y divide-slate-800">
                 {filtered.map((client) => {
-                  const counts = CATEGORIES.map((category) => countFor(client, category.id));
+                  const counts = CATEGORIES.map((category) => realCount(client, category.id));
                   return (
                     <tr key={client.id} className="hover:bg-slate-900/60">
                       <td className="px-4 py-4"><p className="font-medium text-slate-100">{client.first_name} {client.last_name}</p><p className="text-xs text-slate-500">{client.phone || 'No phone'}</p></td>
-                      {counts.map((count, index) => <td key={CATEGORIES[index].id} className="px-4 py-4"><CountBadge count={count} /></td>)}
+                      {counts.map((count, index) => <td key={CATEGORIES[index].id} className="px-4 py-4"><div className="space-y-1"><CountBadge count={count} /><div className="flex flex-wrap gap-1">{[...new Set((documentIndex[client.id]?.[CATEGORIES[index].id] || []).map(fileExt))].map((format) => <span key={format} className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">{format}</span>)}</div></div></td>)}
                       <td className="px-4 py-4 text-sm font-semibold text-slate-200">{counts.reduce((a,b) => a+b, 0)}</td>
-                      <td className="px-4 py-4"><StatusPill status={overallStatus(client)} /></td>
+                      <td className="px-4 py-4"><StatusPill status={realStatus(client)} /></td>
                       <td className="px-4 py-4 text-right"><Button variant="ghost" size="sm" onClick={() => openClient(client)}>View <ChevronRight className="ml-1 h-4 w-4" /></Button></td>
                     </tr>
                   );
@@ -353,7 +371,7 @@ export default function DocumentsPage() {
 
           <div className="space-y-3 md:hidden">
             {filtered.map((client) => {
-              const counts = CATEGORIES.map((category) => countFor(client, category.id));
+              const counts = CATEGORIES.map((category) => realCount(client, category.id));
               return (
                 <button key={client.id} type="button" onClick={() => openClient(client)} className="w-full rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-left">
                   <div className="flex items-start justify-between gap-3">
@@ -361,7 +379,7 @@ export default function DocumentsPage() {
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-500/10 font-semibold text-cyan-300">{client.first_name?.[0]}{client.last_name?.[0]}</div>
                       <div className="min-w-0"><p className="truncate font-semibold text-slate-100">{client.first_name} {client.last_name}</p><p className="text-xs text-slate-500">{counts.reduce((a,b) => a+b, 0)} total files</p></div>
                     </div>
-                    <StatusPill status={overallStatus(client)} />
+                    <StatusPill status={realStatus(client)} />
                   </div>
                   <div className="mt-4 grid grid-cols-3 gap-2">
                     {CATEGORIES.map((category, index) => <div key={category.id} className="rounded-lg border border-slate-800 bg-slate-900/70 p-2"><p className="text-[11px] text-slate-500">{category.short}</p><p className="mt-1 text-sm font-semibold text-cyan-300">{counts[index]}</p></div>)}
