@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import {useSearchParams, useLocation} from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
@@ -17,14 +17,15 @@ import {
   Plus, Search, Info, Calendar, ChevronDown, ChevronRight, ChevronLeft, 
   Send, Trash2, CheckCircle2, XCircle, UserPlus, Phone, RefreshCw, MessageSquare,
   X, FileText, MessageCircle, Upload, Download, Home, Mail, Users, Bell, FileSpreadsheet, ClipboardList,
-  BriefcaseBusiness, BadgeDollarSign, CalendarCheck2, IdCard, Landmark, House, CircleCheck, CircleDashed, SlidersHorizontal, MoreHorizontal, CreditCard
-} from 'lucide-react';
+  BriefcaseBusiness, BadgeDollarSign, CalendarCheck2, IdCard, Landmark, House, CircleCheck, CircleDashed, SlidersHorizontal, MoreHorizontal, CreditCard,
+  StickyNote, Edit} from 'lucide-react';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import SmsInboxDialog from '../components/SmsInboxDialog';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function ClientsPage() {
+  const location = useLocation();
   const { t } = useTranslation();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -62,6 +63,19 @@ export default function ClientsPage() {
   
   // Status filter for client colors
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // Active section inside each expanded Client 360 profile.
+  const [clientTabs, setClientTabs] = useState({});
+  const [opportunityAddRequests, setOpportunityAddRequests] = useState({});
+
+  const getClientTab = (clientId) => clientTabs[clientId] || 'summary';
+
+  const setClientTab = (clientId, tab) => {
+    setClientTabs((prev) => ({
+      ...prev,
+      [clientId]: tab,
+    }));
+  };
   const [summaryFilter, setSummaryFilter] = useState('all');
   
   // Owner filter (mine, others, all)
@@ -220,9 +234,67 @@ export default function ClientsPage() {
     }
   };
 
-  // Read search parameter from URL (when coming from Agenda or Notifications)
+  // Read navigation parameters from URL.
+  // Jarvis can open an exact authorized client by client_id.
   useEffect(() => {
+    const directClientId = searchParams.get('client_id');
     const urlSearch = searchParams.get('search');
+
+    if (directClientId) {
+      let cancelled = false;
+
+      const openDirectClient = async () => {
+        setLoading(true);
+
+        try {
+          const response = await axios.get(
+            `${API}/clients/${encodeURIComponent(directClientId)}`
+          );
+
+          if (cancelled) return;
+
+          const directClient = response.data;
+
+          // Jarvis navigation should keep the user in Clients,
+          // showing the exact authorized client as the filtered result.
+          const directClientName = [
+            directClient.first_name,
+            directClient.last_name
+          ].filter(Boolean).join(' ').trim();
+
+          setSearchTerm(
+            directClientName ||
+            directClient.phone ||
+            directClient.email ||
+            ''
+          );
+
+          setOwnerFilter('all');
+          setIsFromNotification(true);
+          setSelectedClient(null);
+          setClients([directClient]);
+
+        } catch (error) {
+          if (cancelled) return;
+
+          if (error?.response?.status === 404) {
+            toast.error('Cliente no encontrado o sin acceso');
+          } else {
+            toast.error('No se pudo abrir la ficha del cliente');
+          }
+        } finally {
+          if (!cancelled) {
+            setLoading(false);
+          }
+        }
+      };
+
+      openDirectClient();
+
+      return () => {
+        cancelled = true;
+      };
+    }
     
     // If there's a search in the URL, it's coming from a notification or agenda link
     // Always use from_notification=true to bypass ownership filters
@@ -296,11 +368,50 @@ export default function ClientsPage() {
     }
   };
 
+  const openClientConversations = (client) => {
+    if (!client?.id) return;
+
+    // Mantener solamente este cliente abierto.
+    setExpandedClients({ [client.id]: true });
+
+    // Seleccionar directamente la pestaña Conversaciones.
+    setClientTabs(prev => ({
+      ...prev,
+      [client.id]: 'conversations'
+    }));
+  };
+
   const toggleClientExpand = (clientId) => {
     const isExpanding = !expandedClients[clientId];
-    setExpandedClients(prev => ({ ...prev, [clientId]: isExpanding }));
-    if (isExpanding && !userRecords[clientId]) {
-      fetchClientRecords(clientId);
+    
+    if (isExpanding) {
+      // Preserve scroll position before expanding
+      const scrollY = window.scrollY;
+      const clientElement = document.querySelector(`[data-client-id="${clientId}"]`);
+      const clientRect = clientElement ? clientElement.getBoundingClientRect() : null;
+      
+      setExpandedClients({ [clientId]: true });
+      
+      // Restore scroll position after layout update
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (clientRect && clientElement) {
+            const newRect = clientElement.getBoundingClientRect();
+            const diff = newRect.top - clientRect.top;
+            if (Math.abs(diff) > 4) {
+              window.scrollTo({ top: scrollY + diff, behavior: 'auto' });
+            }
+          } else if (Math.abs(window.scrollY - scrollY) > 8) {
+            window.scrollTo({ top: scrollY, behavior: 'auto' });
+          }
+        });
+      });
+      
+      if (!userRecords[clientId]) {
+        fetchClientRecords(clientId);
+      }
+    } else {
+      setExpandedClients(prev => ({ ...prev, [clientId]: false }));
     }
   };
 
@@ -383,16 +494,12 @@ export default function ClientsPage() {
     }
   };
 
-  // Search with debounce
+  // Client text search is handled locally by filteredClients.
+  // Do not replace the authorized client collection on every keystroke:
+  // backend partial searches such as "Casey P" can otherwise remove a
+  // client that the local full-name filter correctly matches.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchTerm) {
-        fetchClients(searchTerm);
-      } else {
-        fetchClients();
-      }
-    }, 300);
-    return () => clearTimeout(timer);
+    setCurrentPage(1);
   }, [searchTerm, statusFilter, summaryFilter]);
 
   // Resilient client search + status filtering
@@ -409,7 +516,56 @@ export default function ClientsPage() {
   const normalizedSearch = normalizeSearchText(searchTerm);
   const searchedPhone = normalizePhone(searchTerm);
 
+  
+  /* DEAL_NAVIGATION_TARGET_V2 */
+  useEffect(() => {
+    const targetId = location.state?.openClientId;
+    const targetTab = location.state?.openClientTab;
+
+    if (
+      !targetId ||
+      !Array.isArray(clients) ||
+      clients.length === 0
+    ) {
+      return;
+    }
+
+    const targetClient = clients.find(
+      (client) => String(client.id) === String(targetId)
+    );
+
+    if (!targetClient) {
+      return;
+    }
+
+    setExpandedClients({
+      [targetClient.id]: true
+    });
+
+    setClientTabs((current) => ({
+      ...current,
+      [targetClient.id]: targetTab || 'opportunities'
+    }));
+
+  }, [
+    location.state?.openClientId,
+    location.state?.openClientTab,
+    clients
+  ]);
+
   const filteredClients = clients.filter((client) => {
+    // Exact navigation from Jarvis has priority over stale visual filters.
+    // The client itself was already fetched through the authorized
+    // /clients/{client_id} endpoint.
+    const directClientId = searchParams.get('client_id');
+
+    if (
+      directClientId &&
+      String(client.id) === String(directClientId)
+    ) {
+      return true;
+    }
+
     const matchesStatus =
       statusFilter === 'all' || client.status_color === statusFilter;
 
@@ -486,7 +642,7 @@ export default function ClientsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Clientes</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Clientes</h1>
           <p className="text-slate-500 mt-1 text-sm">{clients.length} total clients</p>
         </div>
         <div className="flex gap-2 flex-wrap w-full sm:w-auto">
@@ -504,21 +660,21 @@ export default function ClientsPage() {
           )}
           <Dialog open={showAddClient} onOpenChange={setShowAddClient}>
             <DialogTrigger asChild>
-              <Button className="bg-slate-900 hover:bg-slate-800 flex-1 sm:flex-none text-xs sm:text-sm" data-testid="add-client-btn">
+              <Button className="flex-1 sm:flex-none whitespace-nowrap bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold border border-cyan-400 shadow-sm" data-testid="add-client-btn">
                 <Plus className="w-4 h-4 mr-1 sm:mr-2" />
                 {t('clients.addNew')}
               </Button>
             </DialogTrigger>
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{t('clients.addNew')}</DialogTitle>
-              <p className="text-sm text-slate-500">Enter client information below</p>
+              <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-white">{t('clients.addNew')}</DialogTitle>
+              <p className="text-sm text-slate-400">Enter client information below</p>
             </DialogHeader>
             <form onSubmit={handleAddClient} className="space-y-4 py-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="form-label">{t('clients.firstName')}</Label>
-                  <Input
+                  <Input className="border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-400 focus-visible:ring-cyan-500"
                     value={newClient.first_name}
                     onChange={(e) => setNewClient({ ...newClient, first_name: e.target.value })}
                     required
@@ -527,7 +683,7 @@ export default function ClientsPage() {
                 </div>
                 <div>
                   <Label className="form-label">{t('clients.lastName')}</Label>
-                  <Input
+                  <Input className="border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-400 focus-visible:ring-cyan-500"
                     value={newClient.last_name}
                     onChange={(e) => setNewClient({ ...newClient, last_name: e.target.value })}
                     required
@@ -537,7 +693,7 @@ export default function ClientsPage() {
               </div>
               <div>
                 <Label className="form-label">{t('clients.phone')}</Label>
-                <Input
+                <Input className="border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-400 focus-visible:ring-cyan-500"
                   type="tel"
                   value={newClient.phone}
                   onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
@@ -551,7 +707,7 @@ export default function ClientsPage() {
               </div>
               <div>
                 <Label className="form-label">{t('clients.email')}</Label>
-                <Input
+                <Input className="border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-400 focus-visible:ring-cyan-500"
                   type="email"
                   value={newClient.email}
                   onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
@@ -560,7 +716,7 @@ export default function ClientsPage() {
               </div>
               <div>
                 <Label className="form-label">Date of Birth</Label>
-                <Input
+                <Input className="border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-400 focus-visible:ring-cyan-500"
                   type="date"
                   value={newClient.date_of_birth}
                   onChange={(e) => setNewClient({ ...newClient, date_of_birth: e.target.value })}
@@ -578,7 +734,7 @@ export default function ClientsPage() {
               </div>
               <div>
                 <Label className="form-label">{t('clients.apartment')}</Label>
-                <Input
+                <Input className="border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-400 focus-visible:ring-cyan-500"
                   value={newClient.apartment}
                   onChange={(e) => setNewClient({ ...newClient, apartment: e.target.value })}
                   data-testid="client-apartment"
@@ -589,7 +745,7 @@ export default function ClientsPage() {
                 <Label className="form-label">Time at Address</Label>
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <Input
+                    <Input className="border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-400 focus-visible:ring-cyan-500"
                       type="number"
                       placeholder="Years"
                       value={newClient.time_at_address_years}
@@ -599,7 +755,7 @@ export default function ClientsPage() {
                     />
                   </div>
                   <div className="flex-1">
-                    <Input
+                    <Input className="border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-400 focus-visible:ring-cyan-500"
                       type="number"
                       placeholder="Months"
                       value={newClient.time_at_address_months}
@@ -629,7 +785,7 @@ export default function ClientsPage() {
               {newClient.housing_type === 'Renta' && (
                 <div>
                   <Label className="form-label">Rent Amount</Label>
-                  <Input
+                  <Input className="border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-400 focus-visible:ring-cyan-500"
                     placeholder="$"
                     value={newClient.rent_amount}
                     onChange={(e) => setNewClient({ ...newClient, rent_amount: e.target.value })}
@@ -641,7 +797,7 @@ export default function ClientsPage() {
               {isAdmin && (
                 <>
                   <div className="border-t pt-4 mt-4">
-                    <p className="text-sm font-medium text-slate-700 mb-3">ID Information (Admin Only)</p>
+                    <p className="text-sm font-medium text-slate-200 mb-3">ID Information (Admin Only)</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label className="form-label">ID Type</Label>
@@ -658,7 +814,7 @@ export default function ClientsPage() {
                       </div>
                       <div>
                         <Label className="form-label">ID Number</Label>
-                        <Input
+                        <Input className="border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-400 focus-visible:ring-cyan-500"
                           value={newClient.id_number}
                           onChange={(e) => setNewClient({ ...newClient, id_number: e.target.value })}
                           placeholder="Enter ID number"
@@ -667,7 +823,7 @@ export default function ClientsPage() {
                     </div>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-700 mb-3">SSN/ITIN Information (Admin Only)</p>
+                    <p className="text-sm font-medium text-slate-200 mb-3">SSN/ITIN Information (Admin Only)</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label className="form-label">SSN/ITIN Type</Label>
@@ -683,7 +839,7 @@ export default function ClientsPage() {
                       </div>
                       <div>
                         <Label className="form-label">SSN/ITIN Number</Label>
-                        <Input
+                        <Input className="border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-400 focus-visible:ring-cyan-500"
                           value={newClient.ssn}
                           onChange={(e) => setNewClient({ ...newClient, ssn: e.target.value })}
                           placeholder="XXX-XX-XXXX"
@@ -722,17 +878,17 @@ export default function ClientsPage() {
               key={key}
               type="button"
               onClick={() => setSummaryFilter(key)}
-              className={`text-left rounded-xl border p-3 sm:p-4 transition-all bg-white hover:border-slate-400 hover:shadow-sm ${active ? 'border-slate-900 ring-1 ring-slate-900 shadow-sm' : 'border-slate-200'}`}
+              className={`text-left rounded-xl border p-3 sm:p-4 transition-all bg-slate-800/50 hover:border-slate-600 hover:shadow-sm ${active ? 'border-slate-900 ring-1 ring-blue-500/30 shadow-sm' : 'border-slate-700'}`}
               aria-pressed={active}
               data-testid={`clients-summary-${key}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-slate-500">{label}</p>
-                  <p className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">{value}</p>
+                  <p className="text-xs sm:text-sm font-medium text-slate-400">{label}</p>
+                  <p className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-white">{value}</p>
                   <p className="hidden sm:block mt-1 text-xs text-slate-400">{helper}</p>
                 </div>
-                <span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${active ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                <span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${active ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-400'}`}>
                   <Icon className="w-4 h-4" />
                 </span>
               </div>
@@ -747,7 +903,7 @@ export default function ClientsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             placeholder="Buscar por nombre, teléfono o email..."
-            className="pl-10 w-full lg:max-w-xl bg-white"
+            className="pl-10 w-full lg:max-w-xl bg-slate-800 border-slate-700 text-white placeholder-slate-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             data-testid="search-clients"
@@ -757,16 +913,16 @@ export default function ClientsPage() {
         <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
           {[
             { key: 'all', label: 'Todos', active: 'bg-slate-900 text-white border-slate-900' },
-            { key: 'green', label: 'Recientes', active: 'bg-blue-500 text-white border-blue-500' },
-            { key: 'orange', label: '+3 días', active: 'bg-amber-100 text-amber-800 border-amber-200' },
-            { key: 'red', label: '+7 días', active: 'bg-rose-100 text-rose-700 border-rose-200' },
+            { key: 'green', label: 'Recientes', active: 'bg-blue-500/20 text-blue-400 border-blue-500' },
+            { key: 'orange', label: '+3 días', active: 'bg-amber-500/20 text-amber-400 border-amber-500' },
+            { key: 'red', label: '+7 días', active: 'bg-rose-500/20 text-rose-400 border-rose-500' },
           ].map((item) => (
             <button
               key={item.key}
               type="button"
               onClick={() => setStatusFilter(item.key)}
               className={`shrink-0 h-9 px-3 rounded-lg border text-xs sm:text-sm font-medium transition-colors ${
-                statusFilter === item.key ? item.active : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                statusFilter === item.key ? item.active : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
               }`}
               aria-pressed={statusFilter === item.key}
             >
@@ -775,13 +931,13 @@ export default function ClientsPage() {
           ))}
 
           <details className="relative shrink-0">
-            <summary className="list-none cursor-pointer h-9 w-9 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600" title="Filtros avanzados">
+            <summary className="list-none cursor-pointer h-9 w-9 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400" title="Filtros avanzados">
               <SlidersHorizontal className="w-4 h-4" />
             </summary>
-            <div className="absolute right-0 z-30 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-xl space-y-3">
+            <div className="absolute right-0 z-30 mt-2 w-72 rounded-xl border border-slate-700 bg-slate-800 p-3 shadow-xl space-y-3">
               {(isAdmin || isBdcManager) && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 mb-1.5">Dueño</p>
+                  <p className="text-xs font-semibold text-slate-400 mb-1.5">Dueño</p>
                   <Select value={ownerFilter} onValueChange={setOwnerFilter}>
                     <SelectTrigger className="w-full h-9" data-testid="owner-filter"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -796,7 +952,7 @@ export default function ClientsPage() {
                 </div>
               )}
               <div>
-                <p className="text-xs font-semibold text-slate-500 mb-1.5">Ordenar</p>
+                <p className="text-xs font-semibold text-slate-400 mb-1.5">Ordenar</p>
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="w-full h-9" data-testid="sort-filter"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -866,31 +1022,31 @@ export default function ClientsPage() {
                       ? 'Activo'
                       : 'Nuevo';
             const clientStatusClass = client.is_sold
-              ? 'bg-emerald-100 text-emerald-700'
+              ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800'
               : statusColor === 'green'
-                ? 'bg-emerald-100 text-emerald-700'
+                ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800'
                 : statusColor === 'orange'
-                  ? 'bg-blue-100 text-blue-700'
+                  ? 'bg-blue-950/40 text-blue-400 border-blue-800'
                   : statusColor === 'red'
-                    ? 'bg-rose-100 text-rose-700'
-                    : 'bg-slate-100 text-slate-600';
+                    ? 'bg-rose-950/40 text-rose-400 border-rose-800'
+                    : 'bg-slate-800 text-slate-400 border-slate-700';
 
             return (
-            <Card key={client.id} className="dashboard-card overflow-hidden border-slate-200" data-testid={`client-card-${client.id}`} data-client-id={client.id}>
-              <Collapsible open={expandedClients[client.id]} onOpenChange={() => toggleClientExpand(client.id)}>
-                <CollapsibleTrigger asChild>
-                  <div className="group w-full cursor-pointer px-3 py-3 sm:px-4 hover:bg-slate-50/70 transition-colors" role="button" tabIndex={0}>
+            <Card key={client.id} className="dashboard-card overflow-hidden" data-testid={`client-card-${client.id}`} data-client-id={client.id}>
+              <Collapsible open={!!expandedClients[client.id]} onOpenChange={() => toggleClientExpand(client.id)}>
+                <CollapsibleTrigger asChild data-client-row-trigger="true">
+                  <div className="group w-full cursor-pointer px-3 py-3 sm:px-4 hover:bg-slate-800/50 transition-colors" role="button" tabIndex={0}>
                     <div className="grid grid-cols-[auto_minmax(0,1fr)] xl:grid-cols-[minmax(240px,1.35fr)_minmax(145px,.7fr)_minmax(260px,1.1fr)_minmax(145px,.7fr)_auto] gap-3 xl:gap-5 items-center">
                       <div className="col-span-2 xl:col-span-1 flex items-center gap-3 min-w-0">
-                        <div className="w-11 h-11 shrink-0 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-700 font-bold">
+                        <div className="w-11 h-11 shrink-0 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 font-bold">
                           {(client.first_name || '?').charAt(0)}{(client.last_name || '').charAt(0)}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 min-w-0">
-                            <h3 className="font-semibold text-slate-900 truncate">{client.first_name} {client.last_name}</h3>
+                            <h3 className="font-semibold text-white truncate">{client.first_name} {client.last_name}</h3>
                             <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold ${clientStatusClass}`}>{clientStatusLabel}</span>
                           </div>
-                          <div className="mt-0.5 text-xs sm:text-sm text-slate-500 space-y-0.5">
+                          <div className="mt-0.5 text-xs sm:text-sm text-slate-400 space-y-0.5">
                             {client.phone && <div className="truncate">{client.phone}</div>}
                             {client.email && <div className="truncate">{client.email}</div>}
                             {client.address && <div className="hidden sm:flex items-center gap-1 truncate"><Home className="w-3 h-3 shrink-0" />{client.address}</div>}
@@ -900,23 +1056,23 @@ export default function ClientsPage() {
 
                       <div className="col-span-2 sm:col-span-1 xl:col-span-1">
                         <div className="flex items-center justify-between gap-2 mb-1.5">
-                          <span className="text-[11px] font-medium text-slate-500">Progreso CRM</span>
-                          <span className="text-[11px] font-semibold text-slate-700">{progress}%</span>
+                          <span className="text-[11px] font-medium text-slate-400">Progreso CRM</span>
+                          <span className="text-[11px] font-semibold text-slate-200">{progress}%</span>
                         </div>
-                        <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full ${progress >= 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-blue-500' : 'bg-slate-400'}`} style={{ width: `${progress}%` }} />
+                        <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${progress >= 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-blue-500' : 'bg-slate-9000'}`} style={{ width: `${progress}%` }} />
                         </div>
                       </div>
 
                       <div className="col-span-2 sm:col-span-1 xl:col-span-1 min-w-0">
-                        <p className="hidden xl:block text-[11px] font-medium text-slate-500 mb-1.5">Documentos</p>
+                        <p className="hidden xl:block text-[11px] font-medium text-slate-400 mb-1.5">Documentos</p>
                         <div className="flex flex-wrap gap-1.5">
                           {[
                             { label: 'ID', ready: client.id_uploaded, icon: IdCard },
                             { label: 'Ingresos', ready: client.income_proof_uploaded, icon: Landmark },
                             { label: 'Residencia', ready: client.residence_proof_uploaded, icon: House },
                           ].map(({ label, ready, icon: DocIcon }) => (
-                            <span key={label} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] sm:text-[11px] font-medium ${ready ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-slate-500 border-slate-200'}`}>
+                            <span key={label} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] sm:text-[11px] font-medium ${ready ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
                               {ready ? <CircleCheck className="w-3 h-3" /> : <DocIcon className="w-3 h-3" />}
                               {label}
                             </span>
@@ -925,22 +1081,33 @@ export default function ClientsPage() {
                       </div>
 
                       <div className="hidden md:block xl:col-span-1 min-w-0">
-                        <p className="text-[11px] font-medium text-slate-500 mb-1">Último contacto</p>
-                        <p className="text-xs text-slate-700 truncate">{client.last_record_date ? formatDate(client.last_record_date) : 'Sin actividad'}</p>
+                        <p className="text-[11px] font-medium text-slate-400 mb-1">Último contacto</p>
+                        <p className="text-xs text-slate-300 truncate">{client.last_record_date ? formatDate(client.last_record_date) : 'Sin actividad'}</p>
                       </div>
 
                       <div className="col-span-2 xl:col-span-1 flex items-center justify-between xl:justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center gap-1">
-                          <Button variant="outline" size="sm" className="h-8 px-2.5 bg-white text-slate-700" onClick={(e) => { e.stopPropagation(); setSelectedClient(client); }} data-testid={`client-info-btn-${client.id}`}><Info className="w-3.5 h-3.5 sm:mr-1.5" /><span>Perfil</span></Button>
-                          <Button variant="outline" size="sm" className="h-8 px-2.5 bg-white text-slate-700" onClick={(e) => { e.stopPropagation(); setInboxClient(client); }}><MessageSquare className="w-3.5 h-3.5 sm:mr-1.5" /><span className="hidden sm:inline">Mensajes</span></Button>
-                          <Button variant="outline" size="sm" className="h-8 px-2.5 bg-white text-slate-700" onClick={(e) => { e.stopPropagation(); toggleClientExpand(client.id); }}>{expandedClients[client.id] ? <ChevronDown className="w-3.5 h-3.5 sm:mr-1.5" /> : <ChevronRight className="w-3.5 h-3.5 sm:mr-1.5" />}<span>CRM</span></Button>
+                        <div className="flex items-center gap-1 flex-wrap justify-start lg:justify-end max-w-full">
+                          <Button variant="outline" size="sm" className="h-8 px-2.5 bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700" onClick={(e) => { e.stopPropagation(); setSelectedClient(client); }} data-testid={`client-info-btn-${client.id}`}><Info className="w-3.5 h-3.5 sm:mr-1.5" /><span>Perfil</span></Button>
+                          <Button variant="outline" size="sm" className="h-8 px-2.5 bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700" onClick={(e) => { e.stopPropagation(); openClientConversations(client); }}><MessageSquare className="w-3.5 h-3.5 sm:mr-1.5" /><span className="hidden sm:inline">Mensajes</span></Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2.5 bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700 hover:text-white"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openClientNotes(client);
+                            }}
+                          >
+                            <StickyNote className="w-3.5 h-3.5 sm:mr-1.5" />
+                            <span>Notas</span>
+                          </Button>
                         </div>
                         <details className="relative">
-                          <summary className="list-none cursor-pointer h-8 w-8 rounded-md border border-slate-200 bg-white flex items-center justify-center text-slate-600"><MoreHorizontal className="w-4 h-4" /></summary>
-                          <div className="absolute right-0 z-30 mt-2 min-w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
-                            {isAdmin && <button type="button" onClick={() => openPrequalifyInfo(client)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-700 hover:bg-slate-50"><CreditCard className="w-4 h-4" />Precalificación</button>}
-                            <button type="button" onClick={() => openClientNotes(client)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-700 hover:bg-slate-50"><Bell className="w-4 h-4" />Notas</button>
-                            {isAdmin && <button type="button" onClick={() => deleteClient(client.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" />Eliminar</button>}
+                          <summary className="list-none cursor-pointer h-8 w-8 rounded-md border border-slate-700 bg-slate-800 flex items-center justify-center text-slate-400"><MoreHorizontal className="w-4 h-4" /></summary>
+                          <div className="absolute right-0 z-30 mt-2 min-w-44 rounded-xl border border-slate-700 bg-slate-800 p-1.5 shadow-xl">
+                            {isAdmin && <button type="button" onClick={() => openPrequalifyInfo(client)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-200 hover:bg-slate-700"><CreditCard className="w-4 h-4" />Precalificación</button>}
+                            <button type="button" onClick={() => openClientNotes(client)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-200 hover:bg-slate-700"><Bell className="w-4 h-4" />Notas</button>
+                            {isAdmin && <button type="button" onClick={() => deleteClient(client.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-rose-400 hover:bg-rose-950/30"><Trash2 className="w-4 h-4" />Eliminar</button>}
                           </div>
                         </details>
                       </div>
@@ -948,26 +1115,787 @@ export default function ClientsPage() {
                   </div>
                 </CollapsibleTrigger>
               <CollapsibleContent>
-                  <div className="client-crm-expanded border-t border-slate-700/80 p-3 sm:p-4 lg:p-5 bg-slate-950 text-slate-100">
-                    {/* User Records */}
-                    <UserRecordsSection 
-                      clientId={client.id}
-                      records={userRecords[client.id] || []}
-                      appointments={appointments}
-                      onRefresh={() => { fetchClientRecords(client.id); fetchClients(); }}
-                      sendAppointmentSMS={sendAppointmentSMS}
-                      sendAppointmentEmail={sendAppointmentEmail}
-                      configLists={configLists}
-                      salespersons={salespersons}
-                    />
+                  <div className="client-crm-expanded border-t border-slate-700/80 bg-slate-950 text-slate-100">
 
-                    {/* Co-Signers */}
-                    <CoSignersSection 
-                      clientId={client.id}
-                      cosigners={cosigners[client.id] || []}
-                      onRefresh={() => { fetchClientRecords(client.id); fetchClients(); }}
-                      configLists={configLists}
-                    />
+                    {/* CLIENT 360 HEADER */}
+                    <div className="px-4 pt-4 sm:px-5 sm:pt-5">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="truncate text-base font-semibold text-white sm:text-lg">
+                              {client.first_name} {client.last_name}
+                            </h3>
+
+                            <span className={`inline-flex rounded-md px-2 py-1 text-[11px] font-semibold ${clientStatusClass}`}>
+                              {clientStatusLabel}
+                            </span>
+                          </div>
+
+                          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+                            {client.phone && (
+                              <span className="inline-flex items-center gap-1.5">
+                                <Phone className="h-3.5 w-3.5" />
+                                {client.phone}
+                              </span>
+                            )}
+
+                            {client.email && (
+                              <span className="inline-flex items-center gap-1.5">
+                                <Mail className="h-3.5 w-3.5" />
+                                {client.email}
+                              </span>
+                            )}
+
+                            <span>CRM {progress}%</span>
+                            <span>{docsUploaded}/3 documentos</span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          
+
+                          {isAdmin && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white"
+                              onClick={() => openPrequalifyInfo(client)}
+                            >
+                              <CreditCard className="mr-1.5 h-3.5 w-3.5" />
+                              Precalificación
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* CLIENT 360 TABS */}
+                      <div className="mt-4 overflow-x-auto">
+                        <div className="flex min-w-max items-center gap-1 border-b border-slate-800">
+                          {[
+                            ['summary', 'Resumen'],
+                            ['opportunities', 'Oportunidades'],
+                            ['finance', 'Financiamiento'],
+                            ['appointments', 'Citas'],
+                            ['conversations', 'Conversaciones'],
+                            ['documents', 'Documentos'],
+                            ['notes', 'Notas'],
+                            ['history', 'Historial'],
+                          ].map(([key, label]) => {
+                            const active = getClientTab(client.id) === key;
+
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => setClientTab(client.id, key)}
+                                className={`relative whitespace-nowrap px-3 py-2.5 text-xs font-medium transition-colors sm:text-sm ${
+                                  active
+                                    ? 'text-blue-400'
+                                    : 'text-slate-400 hover:text-slate-200'
+                                }`}
+                              >
+                                {label}
+
+                                {active && (
+                                  <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-blue-500" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CLIENT 360 CONTENT */}
+                    <div className="p-3 sm:p-4 lg:p-5">
+
+                      {getClientTab(client.id) === 'summary' && (
+                        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+
+                          <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                              Contacto
+                            </p>
+
+                            <div className="mt-3 space-y-2">
+                              <p className="flex items-center gap-2 text-sm text-slate-200">
+                                <Phone className="h-4 w-4 text-slate-400" />
+                                {client.phone || 'Sin teléfono'}
+                              </p>
+
+                              <p className="flex items-center gap-2 break-all text-sm text-slate-400">
+                                <Mail className="h-4 w-4 shrink-0 text-slate-400" />
+                                {client.email || 'Sin email'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                              Progreso CRM
+                            </p>
+
+                            <div className="mt-3">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-slate-400">{clientStatusLabel}</span>
+                                <span className="font-semibold text-slate-200">{progress}%</span>
+                              </div>
+
+                              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    progress >= 100
+                                      ? 'bg-emerald-500'
+                                      : progress >= 50
+                                        ? 'bg-blue-500'
+                                        : 'bg-slate-600'
+                                  }`}
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                                Documentos
+                              </p>
+
+                              <span className="text-xs text-slate-400">
+                                {docsUploaded}/3
+                              </span>
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {[
+                                ['ID', client.id_uploaded],
+                                ['Ingresos', client.income_proof_uploaded],
+                                ['Residencia', client.residence_proof_uploaded],
+                              ].map(([label, ready]) => (
+                                <span
+                                  key={label}
+                                  className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs ${
+                                    ready
+                                      ? 'border-emerald-800 bg-emerald-950/40 text-emerald-400'
+                                      : 'border-slate-700 bg-slate-950 text-slate-400'
+                                  }`}
+                                >
+                                  {ready ? (
+                                    <CircleCheck className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <CircleDashed className="h-3.5 w-3.5" />
+                                  )}
+                                  {label}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {getClientTab(client.id) === 'opportunities' && (
+                        <div className="mb-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-semibold text-white">
+                                Oportunidades
+                              </h4>
+                              <p className="mt-1 text-xs text-slate-400">
+                                Vehículos, negociación y seguimiento comercial del cliente.
+                              </p>
+                            </div>
+
+                            <div className="flex shrink-0 items-center gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="h-9 bg-blue-600 px-3 text-white hover:bg-blue-500"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+
+                                  setOpportunityAddRequests((prev) => ({
+                                    ...prev,
+                                    [client.id]: (prev[client.id] || 0) + 1,
+                                  }));
+                                }}
+                                data-testid="opportunities-tab-add-btn"
+                              >
+                                <Plus className="mr-1.5 h-4 w-4" />
+                                Agregar
+                              </Button>
+                            </div>
+                          </div>
+
+                        </div>
+                      )}
+
+                      {getClientTab(client.id) === 'opportunities' && (
+                          <UserRecordsSection 
+                          clientId={client.id}
+                          records={userRecords[client.id] || []}
+                          appointments={appointments}
+                          onRefresh={() => { fetchClientRecords(client.id); fetchClients(); }}
+                          sendAppointmentSMS={sendAppointmentSMS}
+                          sendAppointmentEmail={sendAppointmentEmail}
+                          configLists={configLists}
+                          salespersons={salespersons}
+                                                  externalAddRequest={opportunityAddRequests[client.id] || 0}
+/>
+                        )}
+
+                      {getClientTab(client.id) === 'finance' && (
+                        <div className="mb-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <h4 className="font-semibold text-white">
+                                Financiamiento y precalificación
+                              </h4>
+
+                              <p className="mt-1 text-xs text-slate-400">
+                                Empleo, ingresos, banco, depósito, préstamo, down payment, co-signer y precalificación.
+                              </p>
+                            </div>
+
+                            {isAdmin && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="border-slate-700 bg-slate-900 text-slate-200"
+                                onClick={() => openPrequalifyInfo(client)}
+                              >
+                                <CreditCard className="mr-2 h-4 w-4" />
+                                Ver precalificación
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {getClientTab(client.id) === 'appointments' && (
+                        <div className="mb-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                          <div className="flex items-center justify-between gap-3 mb-4">
+                            <div>
+                              <h4 className="font-semibold text-white">Citas</h4>
+                              <p className="mt-1 text-xs text-slate-400">
+                                Agenda, confirmación y resultado de citas relacionadas con este cliente.
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="border-slate-700 bg-slate-900 text-slate-200"
+                              onClick={() => openAppointmentForm(null)}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Agendar cita
+                            </Button>
+                          </div>
+                          {(() => {
+                            const clientAppointments = Object.values(appointments).filter(a => a && a.client_id === client.id);
+                            if (clientAppointments.length === 0) {
+                              return (
+                                <p className="text-sm text-slate-400 italic">No hay citas registradas para este cliente</p>
+                              );
+                            }
+                            return (
+                              <div className="space-y-3">
+                                {clientAppointments.map((appt) => (
+                                  <div key={appt.id} className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                                          appt.status === 'scheduled' ? 'bg-blue-500/20 text-blue-400' :
+                                          appt.status === 'cumplido' ? 'bg-emerald-500/20 text-emerald-400' :
+                                          appt.status === 'no_show' ? 'bg-rose-500/20 text-rose-400' :
+                                          'bg-slate-9000/20 text-slate-400'
+                                        }`}>
+                                          {appt.status}
+                                        </span>
+                                        {appt.dealer && (
+                                          <span className="text-xs text-slate-400">{appt.dealer}</span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Button size="sm" variant="ghost" onClick={() => openAppointmentForm(appt.user_record_id)}>
+                                          <Calendar className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <Button size="sm" variant="ghost" onClick={() => sendAppointmentSMS(client.id, appt.id)}>
+                                          <MessageSquare className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <Button size="sm" variant="ghost" onClick={() => sendAppointmentEmail(client.id, appt.id)}>
+                                          <Mail className="w-3.5 h-3.5" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    <div className="text-sm text-slate-300">
+                                      <span className="font-medium">{formatDate(appt.date)}</span>
+                                      <span className="mx-2 text-slate-400">•</span>
+                                      <span>{appt.time}</span>
+                                      {appt.language && (
+                                        <>
+                                          <span className="mx-2 text-slate-400">•</span>
+                                          <span className="text-xs px-2 py-0.5 bg-slate-800 rounded">{appt.language === 'es' ? 'ES' : 'EN'}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {getClientTab(client.id) === 'conversations' && (
+                        <div className="mb-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                          <div className="mb-4">
+                            <h4 className="font-semibold text-white">Conversaciones</h4>
+                            <p className="mt-1 text-xs text-slate-400">
+                              Mensajería del cliente organizada por canal.
+                            </p>
+                          </div>
+
+                          <div className="space-y-3">
+
+                            {/* SMS / PHONE GATEWAY */}
+                            <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <MessageSquare className="h-4 w-4 text-blue-400" />
+                                    <span className="text-sm font-medium text-slate-200">
+                                      SMS / Teléfono
+                                    </span>
+                                    <span
+                                      className="inline-block h-2 w-2 rounded-full bg-slate-9000"
+                                      aria-hidden="true"
+                                    />
+                                    <span className="text-xs text-slate-400">
+                                      Gateway no configurado
+                                    </span>
+                                  </div>
+                                  <p className="mt-2 text-xs text-slate-400">
+                                    Historial y mensajes SMS del cliente. El estado cambiará cuando
+                                    el gateway Android/teléfono esté conectado al CRM.
+                                  </p>
+                                </div>
+
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="shrink-0 border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800"
+                                  onClick={() => setInboxClient(client)}
+                                >
+                                  <MessageSquare className="mr-2 h-4 w-4" />
+                                  Abrir mensajes
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* WHATSAPP */}
+                            <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <MessageSquare className="h-4 w-4 text-emerald-400" />
+                                    <span className="text-sm font-medium text-slate-200">
+                                      WhatsApp Business
+                                    </span>
+                                    <span className="inline-block h-2 w-2 rounded-full bg-slate-9000" />
+                                    <span className="text-xs text-slate-400">No configurado</span>
+                                  </div>
+                                  <p className="mt-2 text-xs text-slate-400">
+                                    Mensajes de WhatsApp del cliente cuando se conecte el canal oficial.
+                                  </p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled
+                                  title="WhatsApp todavía no está configurado"
+                                  className="shrink-0 border-slate-800 bg-slate-900 text-slate-400"
+                                >
+                                  Abrir mensajes
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* FACEBOOK */}
+                            <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <MessageSquare className="h-4 w-4 text-blue-400" />
+                                    <span className="text-sm font-medium text-slate-200">
+                                      Facebook Messenger
+                                    </span>
+                                    <span className="inline-block h-2 w-2 rounded-full bg-slate-9000" />
+                                    <span className="text-xs text-slate-400">No configurado</span>
+                                  </div>
+                                  <p className="mt-2 text-xs text-slate-400">
+                                    Las conversaciones conservarán Facebook Messenger como canal de origen.
+                                  </p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled
+                                  title="Facebook Messenger todavía no está configurado"
+                                  className="shrink-0 border-slate-800 bg-slate-900 text-slate-400"
+                                >
+                                  Abrir mensajes
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* INSTAGRAM */}
+                            <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <MessageSquare className="h-4 w-4 text-pink-400" />
+                                    <span className="text-sm font-medium text-slate-200">
+                                      Instagram DM
+                                    </span>
+                                    <span className="inline-block h-2 w-2 rounded-full bg-slate-9000" />
+                                    <span className="text-xs text-slate-400">No configurado</span>
+                                  </div>
+                                  <p className="mt-2 text-xs text-slate-400">
+                                    Los mensajes conservarán Instagram como canal de origen.
+                                  </p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled
+                                  title="Instagram todavía no está configurado"
+                                  className="shrink-0 border-slate-800 bg-slate-900 text-slate-400"
+                                >
+                                  Abrir mensajes
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* TIKTOK */}
+                            <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <MessageSquare className="h-4 w-4 text-cyan-400" />
+                                    <span className="text-sm font-medium text-slate-200">
+                                      TikTok DM
+                                    </span>
+                                    <span className="inline-block h-2 w-2 rounded-full bg-slate-9000" />
+                                    <span className="text-xs text-slate-400">No configurado</span>
+                                  </div>
+                                  <p className="mt-2 text-xs text-slate-400">
+                                    Preparado para mensajería Business cuando la integración y permisos
+                                    oficiales estén disponibles.
+                                  </p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled
+                                  title="TikTok todavía no está configurado"
+                                  className="shrink-0 border-slate-800 bg-slate-900 text-slate-400"
+                                >
+                                  Abrir mensajes
+                                </Button>
+                              </div>
+                            </div>
+
+                          </div>
+                        </div>
+                      )}
+
+                      {getClientTab(client.id) === 'documents' && (
+                        <div className="mb-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                          <h4 className="font-semibold text-white mb-4">Documentos</h4>
+                          <div className="space-y-3">
+                            {[
+                              { type: 'id', label: 'Identificación', ready: client.id_uploaded, icon: IdCard, color: 'blue' },
+                              { type: 'income', label: 'Comprobante de Ingresos', ready: client.income_proof_uploaded, icon: Landmark, color: 'emerald' },
+                              { type: 'residence', label: 'Comprobante de Residencia', ready: client.residence_proof_uploaded, icon: House, color: 'amber' },
+                            ].map(({ type, label, ready, icon: DocIcon, color }) => (
+                              <div key={type} className="flex items-center justify-between bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-9 h-9 rounded-lg bg-${color}-500/15 border border-${color}-500/30 flex items-center justify-center`}>
+                                    <DocIcon className={`w-4 h-4 text-${color}-400`} />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-slate-100">{label}</p>
+                                    <p className="text-xs text-slate-400">
+                                      {ready ? 'Documento subido y verificado' : 'Pendiente de subida'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                                    ready ? `bg-${color}-500/20 text-${color}-400` : 'bg-slate-9000/20 text-slate-400'
+                                  }`}>
+                                    {ready ? 'Completo' : 'Pendiente'}
+                                  </span>
+                                  <Button size="sm" variant="outline" className="h-8 border-slate-700 text-slate-300 hover:bg-slate-700">
+                                    <Upload className="w-3.5 h-3.5 mr-1" />
+                                    Subir
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="mt-4 text-xs text-slate-400 text-center">
+                            Los documentos subidos aparecen en el perfil del cliente y pueden enviarse por SMS/Email.
+                          </p>
+                        </div>
+                      )}
+
+                      {getClientTab(client.id) === 'notes' && (
+                        <div className="mb-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                          <div className="flex items-center justify-between gap-3 mb-4">
+                            <div>
+                              <h4 className="font-semibold text-white">Notas</h4>
+                              <p className="mt-1 text-xs text-slate-400">
+                                Notas y seguimiento comercial.
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="border-slate-700 bg-slate-900 text-slate-200"
+                              onClick={() => openClientNotes(client)}
+                            >
+                              <Bell className="mr-2 h-4 w-4" />
+                              Gestionar notas
+                            </Button>
+                          </div>
+                          {clientNotes.length > 0 ? (
+                            <div className="space-y-3 max-h-96 overflow-y-auto">
+                              {clientNotes.slice(0, 10).map((note) => (
+                                <div key={note.id} className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                                  <p className="text-sm text-slate-200 mb-2">{note.comment}</p>
+                                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                                    <span className="flex items-center gap-1">
+                                      <UserPlus className="w-3 h-3" />
+                                      {note.user_name}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Calendar className="w-3 h-3" />
+                                      {new Date(note.created_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                    {note.reminder_at && (
+                                      <span className={`flex items-center gap-1 ${note.reminder_sent ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                        <Bell className="w-3 h-3" />
+                                        {note.reminder_sent ? 'Recordatorio enviado' : 'Recordatorio pendiente'}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                              {clientNotes.length > 10 && (
+                                <p className="text-center text-xs text-slate-400">
+                                  Y {clientNotes.length - 10} nota(s) más... Haz clic en "Gestionar notas" para ver todas.
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-center py-8 text-slate-400">
+                              <Bell className="w-12 h-12 mx-auto mb-3 text-slate-200" />
+                              <p className="text-sm">No hay notas para este cliente</p>
+                              <p className="text-xs mt-1">Agrega la primera nota desde "Gestionar notas"</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {getClientTab(client.id) === 'history' && (
+                        <div className="mb-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                          <h4 className="font-semibold text-white mb-4">Historial y actividad</h4>
+                          <div className="space-y-3">
+                            {/* Client creation */}
+                            <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                              <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+                                  <UserPlus className="w-4 h-4 text-blue-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm text-slate-200">Cliente creado</p>
+                                  <p className="text-xs text-slate-400 mt-1">
+                                    {client.created_at ? new Date(client.created_at).toLocaleString('es-ES') : 'Fecha no disponible'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Last activity */}
+                            {client.last_record_date && (
+                              <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                                <div className="flex items-start gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
+                                    <RefreshCw className="w-4 h-4 text-emerald-400" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-slate-200">Última actividad CRM</p>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                      {formatDate(client.last_record_date)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Opportunities count */}
+                            {(client.opportunity_count > 0 || client.last_record_date) && (
+                              <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                                <div className="flex items-start gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-purple-500/15 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
+                                    <BriefcaseBusiness className="w-4 h-4 text-purple-400" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-slate-200">Oportunidades registradas</p>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                      {client.opportunity_count || '1'} oportunidad(es) en el sistema
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Sales */}
+                            {client.is_sold && (
+                              <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                                <div className="flex items-start gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                                    <BadgeDollarSign className="w-4 h-4 text-amber-400" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-slate-200">Venta completada</p>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                      Cliente marcado como vendido
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Appointments */}
+                            {client.appointment_count > 0 && (
+                              <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                                <div className="flex items-start gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+                                    <CalendarCheck2 className="w-4 h-4 text-blue-400" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-slate-200">Citas registradas</p>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                      {client.appointment_count} cita(s) en total
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Documents */}
+                            {(client.id_uploaded || client.income_proof_uploaded || client.residence_proof_uploaded) && (
+                              <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                                <div className="flex items-start gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
+                                    <FileText className="w-4 h-4 text-emerald-400" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-slate-200">Documentos subidos</p>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                      {[
+                                        client.id_uploaded && 'ID',
+                                        client.income_proof_uploaded && 'Ingresos',
+                                        client.residence_proof_uploaded && 'Residencia'
+                                      ].filter(Boolean).join(', ')}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Notes */}
+                            {clientNotes.length > 0 && (
+                              <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                                <div className="flex items-start gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                                    <Bell className="w-4 h-4 text-amber-400" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-slate-200">Notas agregadas</p>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                      {clientNotes.length} nota(s) en el historial
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Prequalification */}
+                            {client.prequalify_submitted_at && (
+                              <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                                <div className="flex items-start gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-purple-500/15 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
+                                    <CreditCard className="w-4 h-4 text-purple-400" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-slate-200">Precalificación enviada</p>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                      {new Date(client.prequalify_submitted_at).toLocaleString('es-ES')}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {(!client.last_record_date && !client.is_sold && client.appointment_count === 0 && clientNotes.length === 0) && (
+                              <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                                <div className="flex items-start gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-slate-9000/15 border border-slate-500/30 flex items-center justify-center flex-shrink-0">
+                                    <Info className="w-4 h-4 text-slate-400" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-slate-200">Sin actividad registrada</p>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                      Este cliente no tiene actividad CRM reciente
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/*
+                        The original operational CRM remains mounted while
+                        its capabilities are progressively organized into
+                        the new tabs. No functionality is removed here.
+                      */}
+                      {getClientTab(client.id) === 'finance' && (
+                        <div className="mt-4">
+                          <CoSignersSection
+                            clientId={client.id}
+                            cosigners={cosigners[client.id] || []}
+                            onRefresh={() => { fetchClientRecords(client.id); fetchClients(); }}
+                            configLists={configLists}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
@@ -980,7 +1908,7 @@ export default function ClientsPage() {
       {/* Pagination */}
       {filteredClients.length > 0 && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
-          <p className="text-xs sm:text-sm text-slate-500">
+          <p className="text-xs sm:text-sm text-slate-400">
             Mostrando {indexOfFirstClient + 1}-{Math.min(indexOfLastClient, filteredClients.length)} de {filteredClients.length} clientes
           </p>
           <div className="flex flex-wrap items-center gap-2">
@@ -1008,8 +1936,8 @@ export default function ClientsPage() {
 
       {/* Client Info Modal */}
       {selectedClient && (
-        <ClientInfoModal 
-          client={selectedClient} 
+        <ClientInfoModal
+          client={selectedClient}
           onClose={() => setSelectedClient(null)}
           onSendDocsSMS={() => sendDocumentsSMS(selectedClient.id)}
           onSendDocsEmail={() => sendDocumentsEmail(selectedClient)}
@@ -1029,10 +1957,10 @@ export default function ClientsPage() {
       {/* Client Notes Dialog */}
       {notesClient && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4" onClick={() => setNotesClient(null)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-slate-900 rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="flex items-center justify-between p-3 sm:p-4 border-b bg-amber-50 rounded-t-xl">
-              <div className="min-w-0">
+            <div className="notes-v2-header-shell flex items-center justify-between p-3 sm:p-4 border-b bg-amber-50 rounded-t-xl">
+              <div className="bg-slate-900 border-slate-800 text-slate-100 min-w-0">
                 <h3 className="font-semibold text-base sm:text-lg text-amber-800 flex items-center gap-2">
                   <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                   Notas / Reseñas
@@ -1049,23 +1977,22 @@ export default function ClientsPage() {
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Escribir una nota o reseña..."
+                      className="flex-1 border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-400 focus-visible:ring-cyan-500"                    placeholder="Escribir una nota o reseña..."
                     value={newClientNote}
                     onChange={(e) => setNewClientNote(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && addClientNote()}
-                    className="flex-1"
                   />
                   <Button onClick={addClientNote} disabled={!newClientNote.trim()} className="flex-shrink-0">
                     Agregar
                   </Button>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Label className="text-xs text-slate-500 whitespace-nowrap">🔔 Recordatorio:</Label>
+                  <Label className="text-xs text-slate-400 whitespace-nowrap">🔔 Recordatorio:</Label>
                   <Input
+                      className="flex-1 text-sm h-8 border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-400 focus-visible:ring-cyan-500"
                     type="datetime-local"
                     value={noteReminderAt}
                     onChange={(e) => setNoteReminderAt(e.target.value)}
-                    className="flex-1 text-sm h-8"
                     data-testid="note-reminder-input"
                   />
                   {noteReminderAt && (
@@ -1091,8 +2018,8 @@ export default function ClientsPage() {
               ) : (
                 <div className="space-y-3">
                   {clientNotes.map((note) => (
-                    <div key={note.id} className="bg-slate-50 rounded-lg p-3 border">
-                      <p className="text-slate-700 text-sm sm:text-base">{note.comment}</p>
+                    <div key={note.id} className="bg-slate-900 rounded-lg p-3 border">
+                      <p className="text-slate-200 text-sm sm:text-base">{note.comment}</p>
                       {note.reminder_at && (
                         <p className="text-xs mt-1 flex items-center gap-1">
                           <span className={note.reminder_sent ? "text-green-500" : "text-amber-500"}>
@@ -1135,13 +2062,13 @@ export default function ClientsPage() {
       {/* Prequalify Info Modal */}
       {prequalifyInfoClient && (
         <Dialog open={!!prequalifyInfoClient} onOpenChange={() => { setPrequalifyInfoClient(null); setPrequalifyData(null); }}>
-          <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto border border-slate-700 bg-slate-950 text-slate-100 shadow-2xl">
+            <DialogHeader className="border-b border-slate-800 bg-slate-900 px-5 py-4">
               <DialogTitle className="flex items-center gap-2">
                 <ClipboardList className="w-5 h-5 text-purple-600" />
                 Información de Precalificación
               </DialogTitle>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-slate-400">
                 {prequalifyInfoClient.first_name} {prequalifyInfoClient.last_name}
               </p>
             </DialogHeader>
@@ -1151,22 +2078,22 @@ export default function ClientsPage() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
               </div>
             ) : !prequalifyData?.found ? (
-              <div className="text-center py-8 text-slate-500">
+              <div className="text-center py-8 text-slate-400">
                 <ClipboardList className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                 <p>No se encontró información de precalificación para este cliente</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {/* Personal Info */}
-                <div className="p-3 bg-slate-50 rounded-lg">
-                  <h4 className="font-medium text-slate-700 mb-2">Información Personal</h4>
+                <div className="p-3 bg-slate-900 rounded-lg">
+                  <h4 className="font-medium text-slate-200 mb-2">Información Personal</h4>
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div><span className="text-slate-500">Nombre:</span> {prequalifyData.prequalify.firstName} {prequalifyData.prequalify.lastName}</div>
-                    <div><span className="text-slate-500">Teléfono:</span> {prequalifyData.prequalify.phone}</div>
-                    <div><span className="text-slate-500">Email:</span> {prequalifyData.prequalify.email || 'N/A'}</div>
-                    <div><span className="text-slate-500">Fecha Nac:</span> {prequalifyData.prequalify.dateOfBirth || 'N/A'}</div>
-                    <div><span className="text-slate-500">Tipo ID:</span> {prequalifyData.prequalify.idType || 'N/A'}</div>
-                    <div><span className="text-slate-500">Número ID:</span> {prequalifyData.prequalify.idNumber || 'N/A'}</div>
+                    <div><span className="text-slate-400">Nombre:</span> {prequalifyData.prequalify.firstName} {prequalifyData.prequalify.lastName}</div>
+                    <div><span className="text-slate-400">Teléfono:</span> {prequalifyData.prequalify.phone}</div>
+                    <div><span className="text-slate-400">Email:</span> {prequalifyData.prequalify.email || 'N/A'}</div>
+                    <div><span className="text-slate-400">Fecha Nac:</span> {prequalifyData.prequalify.dateOfBirth || 'N/A'}</div>
+                    <div><span className="text-slate-400">Tipo ID:</span> {prequalifyData.prequalify.idType || 'N/A'}</div>
+                    <div><span className="text-slate-400">Número ID:</span> {prequalifyData.prequalify.idNumber || 'N/A'}</div>
                   </div>
                 </div>
 
@@ -1190,7 +2117,7 @@ export default function ClientsPage() {
                   {prequalifyData.prequalify.employments && prequalifyData.prequalify.employments.length > 0 ? (
                     <div className="space-y-3">
                       {prequalifyData.prequalify.employments.map((emp, index) => (
-                        <div key={index} className={`p-2 rounded ${index === 0 ? 'bg-emerald-100' : 'bg-white border border-emerald-200'}`}>
+                        <div key={index} className={`p-2 rounded ${index === 0 ? 'bg-emerald-100' : 'bg-slate-900 border border-emerald-200'}`}>
                           <div className="text-xs font-semibold text-emerald-700 mb-1">
                             Empleo {index + 1} {emp.employmentType && `(${emp.employmentType})`}
                           </div>
@@ -1215,7 +2142,7 @@ export default function ClientsPage() {
                     </div>
                   )}
                   
-                  <div className="mt-2 p-2 bg-white rounded border border-emerald-200">
+                  <div className="mt-2 p-2 bg-slate-900 rounded border border-emerald-200">
                     <span className="text-emerald-700 font-medium">Down Payment Estimado: {prequalifyData.prequalify.estimatedDownPayment || 'N/A'}</span>
                   </div>
                 </div>
@@ -1251,14 +2178,14 @@ export default function ClientsPage() {
 }
 
 // User Records Section Component
-function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAppointmentSMS, sendAppointmentEmail, configLists, salespersons }) {
+function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAppointmentSMS, sendAppointmentEmail, configLists, salespersons , externalAddRequest}) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [showAddRecord, setShowAddRecord] = useState(false);
   const [showNewOpportunity, setShowNewOpportunity] = useState(false);
   const [addingToOpportunity, setAddingToOpportunity] = useState(null);
-  const [showAppointmentForm, setShowAppointmentForm] = useState(null); // record_id to show form for
+const [showAppointmentForm, setShowAppointmentForm] = useState(null); // record_id to show form for
   const [appointmentData, setAppointmentData] = useState({
     date: '', time: '', dealer: '', language: 'en'
   });
@@ -1605,6 +2532,55 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
   
   // Get the highest opportunity number and check if current user can create more
   const maxOpportunity = Math.max(...Object.keys(opportunityGroups).map(Number), 0);
+
+  // Opportunity summary derived from the same real records rendered below.
+  const opportunityNumbers = Object.keys(opportunityGroups)
+    .map(Number)
+    .filter(Boolean);
+
+  const opportunitySummary = opportunityNumbers.reduce(
+    (summary, oppNum) => {
+      const oppRecords = opportunityGroups[oppNum] || [];
+
+      const hasCompleted = oppRecords.some(
+        (record) => record.record_status === 'completed'
+      );
+
+      const allNoShow =
+        oppRecords.length > 0 &&
+        oppRecords.every((record) => record.record_status === 'no_show');
+
+      summary.total += 1;
+
+      if (hasCompleted) {
+        summary.won += 1;
+      } else if (allNoShow) {
+        summary.lost += 1;
+      } else {
+        summary.active += 1;
+      }
+
+      return summary;
+    },
+    { total: 0, active: 0, won: 0, lost: 0 }
+  );
+
+  const lastExternalAddRequest = useRef(externalAddRequest);
+
+  useEffect(() => {
+    if (
+      externalAddRequest > 0 &&
+      externalAddRequest !== lastExternalAddRequest.current
+    ) {
+      const nextOpportunity = Math.min(5, maxOpportunity + 1);
+      setAddingToOpportunity(nextOpportunity);
+      setShowNewOpportunity(true);
+      setShowAddRecord(false);
+      lastExternalAddRequest.current = externalAddRequest;
+    }
+  }, [externalAddRequest, maxOpportunity]);
+
+
   const myMaxOpportunity = Math.max(...Object.keys(myOpportunityGroups).map(Number), 0);
   const latestRecordInMyLastOpp = myOpportunityGroups[myMaxOpportunity]?.[0];
   const canCreateNewOpportunity = myMaxOpportunity < 5 && latestRecordInMyLastOpp && 
@@ -1612,122 +2588,184 @@ function UserRecordsSection({ clientId, records, appointments, onRefresh, sendAp
 
   const opportunityColors = ['blue', 'purple', 'emerald', 'amber', 'rose'];
   
-  // Auto-expand the latest opportunity with records, or first if none
-  const defaultExpanded = maxOpportunity > 0 ? maxOpportunity : 1;
-  const currentExpanded = expandedOpportunity ?? defaultExpanded;
+  // Opportunities stay compact until the user explicitly opens one.
+  const currentExpanded = expandedOpportunity;
 
   return (
-    <div className="mb-4 client-crm-workspace">
-      <div className="mb-4 rounded-xl border border-slate-700 bg-slate-900/80 p-3 sm:p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-400">CRM del cliente</p>
-            <h4 className="mt-1 text-base sm:text-lg font-semibold text-white">Oportunidades, citas y financiamiento</h4>
-            <p className="mt-1 text-xs sm:text-sm text-slate-400">Toda la información operativa se mantiene aquí, reorganizada para escritorio y móvil.</p>
-          </div>
-          <span className="inline-flex self-start sm:self-auto rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-xs text-slate-300">{records.length} registros</span>
+    <div className="client-crm-workspace">
+
+      {/* Real opportunity summary */}
+      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="rounded-xl border border-slate-700/80 bg-slate-900/55 px-3 py-3">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+            Total
+          </p>
+          <p className="mt-1 text-xl font-semibold text-white">
+            {opportunitySummary.total}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-3 py-3">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-blue-400">
+            Activas
+          </p>
+          <p className="mt-1 text-xl font-semibold text-blue-300">
+            {opportunitySummary.active}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-3">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-400">
+            Ganadas
+          </p>
+          <p className="mt-1 text-xl font-semibold text-emerald-300">
+            {opportunitySummary.won}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 px-3 py-3">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-rose-400">
+            Perdidas
+          </p>
+          <p className="mt-1 text-xl font-semibold text-rose-300">
+            {opportunitySummary.lost}
+          </p>
         </div>
       </div>
-      {/* Render each opportunity (1-5) */}
-      {[1, 2, 3, 4, 5].map((oppNum) => {
-        const oppRecords = opportunityGroups[oppNum] || [];
-        const isFirst = oppNum === 1;
-        const shouldShow = isFirst || oppRecords.length > 0 || (showNewOpportunity && oppNum === maxOpportunity + 1);
-        const isExpanded = currentExpanded === oppNum;
-        
-        if (!shouldShow) return null;
 
-        return (
-          <div key={oppNum} className={`mb-3 rounded-xl border border-slate-700 bg-slate-900/70 overflow-hidden ${oppNum > 1 ? 'mt-4' : ''}`}>
-            {/* Collapsible Header */}
-            <div 
-              className={`flex items-center justify-between gap-3 p-3 sm:p-4 cursor-pointer transition-colors ${isExpanded ? 'bg-slate-800' : 'bg-slate-900 hover:bg-slate-800'}`}
-              onClick={() => toggleOpportunity(oppNum)}
+      {/* Existing opportunities - compact CRM cards */}
+      {Object.keys(opportunityGroups)
+        .map(Number)
+        .sort((a, b) => a - b)
+        .map((oppNum) => {
+          const oppRecords = opportunityGroups[oppNum] || [];
+          const isExpanded = currentExpanded === oppNum;
+
+          const completedCount = oppRecords.filter(
+            (record) => record.record_status === 'completed'
+          ).length;
+
+          const noShowCount = oppRecords.filter(
+            (record) => record.record_status === 'no_show'
+          ).length;
+
+          const opportunityState =
+            completedCount > 0
+              ? 'Ganada'
+              : noShowCount === oppRecords.length && oppRecords.length > 0
+                ? 'Perdida'
+                : 'Activa';
+
+          return (
+            <div
+              key={oppNum}
+              className="mb-3 overflow-hidden rounded-xl border border-slate-700/80 bg-slate-900/55"
             >
-              <h4 className="font-semibold text-slate-100 flex items-center gap-2 min-w-0">
-                <span className={`w-6 h-6 ${isFirst ? 'bg-blue-600' : oppNum === 2 ? 'bg-purple-600' : oppNum === 3 ? 'bg-emerald-600' : oppNum === 4 ? 'bg-amber-600' : 'bg-rose-600'} text-white rounded-full flex items-center justify-center text-xs`}>
-                  {oppNum}
-                </span>
-                {isFirst ? 'Oportunidad #1' : `Nueva Oportunidad #${oppNum}`}
-                <span className="hidden sm:inline text-xs text-slate-400 font-normal">
-                  ({oppRecords.length} record{oppRecords.length !== 1 ? 's' : ''})
-                </span>
-              </h4>
-              <div className="flex items-center gap-2">
-                {isExpanded && (
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={(e) => { e.stopPropagation(); setShowAddRecord(true); setAddingToOpportunity(oppNum); }}
-                    data-testid={`add-record-btn-${oppNum}`}
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add
-                  </Button>
-                )}
-                {isExpanded ? (
-                  <ChevronDown className="w-5 h-5 text-slate-400" />
-                ) : (
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
-                )}
-              </div>
-            </div>
+              <div
+                className="flex cursor-pointer flex-col gap-3 p-3 transition-colors hover:bg-slate-800/70 sm:flex-row sm:items-center sm:justify-between sm:p-4"
+                onClick={() => toggleOpportunity(oppNum)}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-sm font-bold text-blue-300 ring-1 ring-blue-500/30">
+                    {oppNum}
+                  </div>
 
-            {/* Collapsible Content */}
-            {isExpanded && (
-              <div className="space-y-3 p-3 sm:p-4 border-t border-slate-700">
-                {oppRecords.map((record) => (
-                  <RecordCard 
-                    key={record.id}
-                    record={record}
-                    appointments={appointments}
-                    getStatusBadge={getStatusBadge}
-                    sendAppointmentSMS={sendAppointmentSMS}
-                    sendAppointmentEmail={sendAppointmentEmail}
-                    clientId={clientId}
-                    createAppointment={createAppointment}
-                    updateAppointmentStatus={updateAppointmentStatus}
-                    t={t}
-                    isPurple={oppNum > 1}
-                    onOpenAppointmentForm={openAppointmentForm}
-                    currentUserId={user.id}
-                    onEdit={handleEditRecord}
-                    onDelete={handleDeleteRecord}
-                    isEditing={editingRecord === record.id}
-                    editData={editRecordData}
-                    setEditData={setEditRecordData}
-                    onSaveEdit={handleSaveEditRecord}
-                    onCancelEdit={() => { setEditingRecord(null); setEditRecordData(null); }}
-                    configLists={configLists}
-                    salespersons={salespersons}
-                    onMarkRecordStatus={handleMarkRecordStatus}
-                    isAdmin={isAdmin}
-                  />
-                ))}
-                
-                {oppRecords.length === 0 && isFirst && !showAddRecord && (
-                  <p className="text-sm text-slate-400 text-center py-4">No records yet. Click &quot;Add&quot; to create one.</p>
-                )}
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="font-semibold text-slate-100">
+                        Oportunidad #{oppNum}
+                      </h4>
+
+                      <span
+                        className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                          opportunityState === 'Ganada'
+                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                            : opportunityState === 'Perdida'
+                              ? 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+                              : 'border-blue-500/30 bg-blue-500/10 text-blue-300'
+                        }`}
+                      >
+                        {opportunityState}
+                      </span>
+                    </div>
+
+                    <p className="mt-1 text-xs text-slate-400">
+                      {oppRecords.length} registro{oppRecords.length !== 1 ? 's' : ''}
+                      {completedCount > 0 && ` • ${completedCount} completado${completedCount !== 1 ? 's' : ''}`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  {isExpanded && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-slate-600 bg-slate-800/60 text-slate-200 hover:bg-slate-700"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowAddRecord(true);
+                        setShowNewOpportunity(false);
+                        setAddingToOpportunity(oppNum);
+                      }}
+                      data-testid={`add-record-btn-${oppNum}`}
+                    >
+                      <Plus className="mr-1 h-4 w-4" />
+                      Agregar registro
+                    </Button>
+                  )}
+
+                  <div className="rounded-lg border border-slate-700 bg-slate-800/70 p-1.5">
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4 text-slate-300" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-slate-300" />
+                    )}
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-        );
-      })}
+
+              {isExpanded && (
+                <div className="space-y-3 border-t border-slate-700/80 p-3 sm:p-4">
+                  {oppRecords.map((record) => (
+                    <RecordCard
+                      key={record.id}
+                      record={record}
+                      appointments={appointments}
+                      getStatusBadge={getStatusBadge}
+                      sendAppointmentSMS={sendAppointmentSMS}
+                      sendAppointmentEmail={sendAppointmentEmail}
+                      clientId={clientId}
+                      createAppointment={createAppointment}
+                      updateAppointmentStatus={updateAppointmentStatus}
+                      t={t}
+                      isPurple={oppNum > 1}
+                      onOpenAppointmentForm={openAppointmentForm}
+                      currentUserId={user.id}
+                      onEdit={handleEditRecord}
+                      onDelete={handleDeleteRecord}
+                      isEditing={editingRecord === record.id}
+                      editData={editRecordData}
+                      setEditData={setEditRecordData}
+                      onSaveEdit={handleSaveEditRecord}
+                      onCancelEdit={() => {
+                        setEditingRecord(null);
+                        setEditRecordData(null);
+                      }}
+                      configLists={configLists}
+                      salespersons={salespersons}
+                      onMarkRecordStatus={handleMarkRecordStatus}
+                      isAdmin={isAdmin}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
       {/* Button to create New Opportunity (up to 5) */}
-      {canCreateNewOpportunity && !showNewOpportunity && (
-        <div className="mt-4 pt-4 border-t border-dashed border-slate-700">
-          <Button 
-            variant="outline"
-            className="w-full !text-blue-300 hover:!text-white hover:bg-blue-500/10 border-blue-500/40 border-dashed bg-slate-900"
-            onClick={() => { setShowNewOpportunity(true); setAddingToOpportunity(maxOpportunity + 1); }}
-            data-testid="new-opportunity-btn"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Crear Nueva Oportunidad #{maxOpportunity + 1}
-          </Button>
-        </div>
-      )}
+      
 
       {/* Appointment Form Modal - Create or Edit */}
       {showAppointmentForm && (
@@ -4135,40 +5173,159 @@ function CoSignersSection({ clientId, cosigners, onRefresh, configLists }) {
 }
 
 // Client Info Modal Component
-function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRefresh, isAdmin }) {
-  const { t } = useTranslation();
-  const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({
-    first_name: client.first_name,
-    last_name: client.last_name,
-    phone: client.phone,
-    email: client.email || '',
-    date_of_birth: client.date_of_birth || '',
-    address: client.address || '',
-    apartment: client.apartment || '',
-    id_type: client.id_type || '',
-    id_number: client.id_number || '',
-    ssn_type: client.ssn_type || '',
-    ssn: client.ssn || '',
-    time_at_address_years: client.time_at_address_years || '',
-    time_at_address_months: client.time_at_address_months || '',
-    housing_type: client.housing_type || '',
-    rent_amount: client.rent_amount || ''
-  });
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null); // 'id', 'income', or 'residence'
-  const [uploading, setUploading] = useState(null); // 'id', 'income', or 'residence'
-  const [showClientSSN, setShowClientSSN] = useState(false);
-  const [clientDocs, setClientDocs] = useState({
-    id_uploaded: client.id_uploaded || false,
-    income_proof_uploaded: client.income_proof_uploaded || false,
-    residence_proof_uploaded: client.residence_proof_uploaded || false,
-    id_documents: client.id_documents || [],
-    income_documents: client.income_documents || [],
-    residence_documents: client.residence_documents || []
-  });
-  const [expandedDocType, setExpandedDocType] = useState(null);
 
-  // Load documents list
+function ClientInfoModal({ client, onClose, onRefresh }) {
+  const { i18n } = useTranslation();
+  const isSpanish = (i18n?.language || '').toLowerCase().startsWith('es');
+
+  const labels = isSpanish ? {
+    profile: 'Perfil del cliente',
+    contact: 'Información de contacto',
+    firstName: 'Nombre',
+    lastName: 'Apellido',
+    phone: 'Teléfono',
+    email: 'Correo electrónico',
+    address: 'Dirección',
+    apartment: 'Apartamento',
+    stage: 'Estado comercial',
+    source: 'Fuente',
+    edit: 'Editar',
+    close: 'Cerrar',
+    save: 'Guardar cambios',
+    cancel: 'Cancelar',
+    saving: 'Guardando...',
+    personal: 'Información personal',
+    residence: 'Residencia',
+    identification: 'Identificación',
+    dateOfBirth: 'Fecha de nacimiento',
+    timeAtAddress: 'Tiempo en la dirección',
+    years: 'Años',
+    months: 'Meses',
+    housingType: 'Tipo de vivienda',
+    rentAmount: 'Renta mensual',
+    idType: 'Tipo de identificación',
+    idNumber: 'Número de identificación',
+    documents: 'Documentos',
+    idDocuments: 'Identificación',
+    incomeProof: 'Comprobante de ingresos',
+    residenceProof: 'Comprobante de residencia',
+    upload: 'Subir',
+    uploading: 'Subiendo...',
+    download: 'Descargar',
+    delete: 'Eliminar',
+    noDocuments: 'Sin documentos'
+  } : {
+    profile: 'Client Profile',
+    contact: 'Contact Information',
+    firstName: 'First name',
+    lastName: 'Last name',
+    phone: 'Phone',
+    email: 'Email',
+    address: 'Address',
+    apartment: 'Apartment',
+    stage: 'Commercial stage',
+    source: 'Source',
+    edit: 'Edit',
+    close: 'Close',
+    save: 'Save changes',
+    cancel: 'Cancel',
+    saving: 'Saving...',
+    personal: 'Personal Information',
+    residence: 'Residence',
+    identification: 'Identification',
+    dateOfBirth: 'Date of birth',
+    timeAtAddress: 'Time at address',
+    years: 'Years',
+    months: 'Months',
+    housingType: 'Housing type',
+    rentAmount: 'Monthly rent',
+    idType: 'ID type',
+    idNumber: 'ID number',
+    documents: 'Documents',
+    idDocuments: 'ID Documents',
+    incomeProof: 'Income Proof',
+    residenceProof: 'Proof of Residence',
+    upload: 'Upload',
+    uploading: 'Uploading...',
+    download: 'Download',
+    delete: 'Delete',
+    noDocuments: 'No documents'
+  };
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [clientDocs, setClientDocs] = useState({
+    id_uploaded: client?.id_uploaded || false,
+    income_proof_uploaded: client?.income_proof_uploaded || false,
+    residence_proof_uploaded: client?.residence_proof_uploaded || false,
+    id_documents: client?.id_documents || [],
+    income_documents: client?.income_documents || [],
+    residence_documents: client?.residence_documents || []
+  });
+  const [uploading, setUploading] = useState(null);
+  const [expandedDocType, setExpandedDocType] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [editData, setEditData] = useState({
+    first_name: client?.first_name || '',
+    last_name: client?.last_name || '',
+    phone: client?.phone || '',
+    email: client?.email || '',
+    address: client?.address || '',
+    apartment: client?.apartment || '',
+    date_of_birth: client?.date_of_birth || '',
+    time_at_address_years: client?.time_at_address_years ?? '',
+    time_at_address_months: client?.time_at_address_months ?? '',
+    housing_type: client?.housing_type || '',
+    rent_amount: client?.rent_amount ?? '',
+    id_type: client?.id_type || '',
+    id_number: client?.id_number || ''
+  });
+
+  if (!client) return null;
+
+  const fullName = [client.first_name, client.last_name]
+    .filter(Boolean)
+    .join(' ');
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+
+      await axios.put(`${API}/clients/${client.id}`, {
+        first_name: editData.first_name,
+        last_name: editData.last_name,
+        phone: editData.phone,
+        email: editData.email || null,
+        address: editData.address || null,
+        apartment: editData.apartment || null,
+        date_of_birth: editData.date_of_birth || null,
+        time_at_address_years: editData.time_at_address_years === '' ? null : Number(editData.time_at_address_years),
+        time_at_address_months: editData.time_at_address_months === '' ? null : Number(editData.time_at_address_months),
+        housing_type: editData.housing_type || null,
+        rent_amount: editData.rent_amount === '' ? null : Number(editData.rent_amount),
+        id_type: editData.id_type || null,
+        id_number: editData.id_number || null
+      });
+
+      Object.assign(client, editData);
+
+      if (onRefresh) {
+        await onRefresh();
+      }
+
+      setIsEditing(false);
+      toast.success(isSpanish ? 'Cliente actualizado' : 'Client updated');
+    } catch (error) {
+      console.error('Error updating client:', error);
+      toast.error(
+        error?.response?.data?.detail ||
+        (isSpanish ? 'No se pudo actualizar el cliente' : 'Could not update client')
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const loadDocuments = async (docType) => {
     try {
       const response = await axios.get(`${API}/clients/${client.id}/documents/list/${docType}`);
@@ -4176,35 +5333,6 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
       setClientDocs(prev => ({ ...prev, [field]: response.data.documents }));
     } catch (error) {
       console.error('Error loading documents:', error);
-    }
-  };
-
-  const handleSave = async () => {
-    try {
-      // Clean data - remove empty strings and convert time fields to integers
-      const cleanData = { ...editData };
-      
-      // Convert time fields to integers if they exist
-      if (cleanData.time_at_address_years !== '' && cleanData.time_at_address_years !== null) {
-        cleanData.time_at_address_years = parseInt(cleanData.time_at_address_years) || 0;
-      } else {
-        cleanData.time_at_address_years = null;
-      }
-      
-      if (cleanData.time_at_address_months !== '' && cleanData.time_at_address_months !== null) {
-        cleanData.time_at_address_months = parseInt(cleanData.time_at_address_months) || 0;
-      } else {
-        cleanData.time_at_address_months = null;
-      }
-      
-      await axios.put(`${API}/clients/${client.id}`, cleanData);
-      toast.success('Client updated');
-      setIsEditing(false);
-      onRefresh();
-      onClose(); // Close modal to show updated data in list
-    } catch (error) {
-      console.error('Update error:', error);
-      toast.error(error.response?.data?.detail || 'Failed to update');
     }
   };
 
@@ -4239,7 +5367,7 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
       }));
       
       toast.success(`${response.data.files?.length || 1} documento(s) subido(s)`);
-      onRefresh();
+      if (onRefresh) await onRefresh();
     } catch (error) {
       console.error('Upload error:', error);
       toast.error(error.response?.data?.detail || 'Error al subir documento');
@@ -4317,456 +5445,433 @@ function ClientInfoModal({ client, onClose, onSendDocsSMS, onSendDocsEmail, onRe
       }
       
       setShowDeleteConfirm(null);
-      onRefresh();
+      if (onRefresh) await onRefresh();
     } catch (error) {
       toast.error('Error al eliminar documento');
     }
   };
 
+  const field = (label, key, type = 'text') => (
+    <div className={key === 'address' ? 'sm:col-span-2' : ''}>
+      <Label className="text-xs font-medium uppercase tracking-wide text-slate-400">
+        {label}
+      </Label>
+
+      {isEditing ? (
+        <Input
+          type={type}
+          value={editData[key] || ''}
+          onChange={(e) =>
+            setEditData(prev => ({ ...prev, [key]: e.target.value }))
+          }
+          className="mt-1 bg-slate-900 border-slate-700 text-slate-100"
+        />
+      ) : (
+        <p className="mt-1 font-medium text-slate-100 break-words">
+          {client[key] || '-'}
+        </p>
+      )}
+    </div>
+  );
+
   return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle>{t('clients.info')}</DialogTitle>
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border border-slate-700 bg-slate-950 text-slate-100 shadow-2xl">
+        <DialogHeader className="border-b border-slate-800 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pr-7">
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-widest text-slate-400">
+                {labels.profile}
+              </p>
+
+              <DialogTitle className="text-2xl font-semibold text-white truncate">
+                {fullName || labels.profile}
+              </DialogTitle>
+
+              <div className="flex flex-wrap gap-2 mt-2">
+                {client.commercial_stage && (
+                  <span className="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs">
+                    {client.commercial_stage}
+                  </span>
+                )}
+
+                {client.source && (
+                  <span className="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-300">
+                    {client.source}
+                  </span>
+                )}
+              </div>
+            </div>
+
             {!isEditing && (
-              <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
-                <RefreshCw className="w-4 h-4 mr-1" />
-                Edit
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditing(true)}
+                className="shrink-0"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                {labels.edit}
               </Button>
             )}
           </div>
-          <p className="text-sm text-slate-500">View and manage client details</p>
         </DialogHeader>
-        <div className="space-y-4 py-2">
-          {isEditing ? (
-            // Edit Mode
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label className="form-label">{t('clients.firstName')}</Label>
-                  <Input
-                    value={editData.first_name}
-                    onChange={(e) => setEditData({ ...editData, first_name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label className="form-label">{t('clients.lastName')}</Label>
-                  <Input
-                    value={editData.last_name}
-                    onChange={(e) => setEditData({ ...editData, last_name: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label className="form-label">{t('clients.phone')}</Label>
-                  <Input
-                    type="tel"
-                    value={editData.phone}
-                    onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-                    placeholder="(213) 462-9914"
-                  />
-                  <p className="text-xs text-slate-400 mt-1">
-                    Formato: 10 dígitos - Se agregará +1 automáticamente
-                  </p>
-                </div>
-                <div>
-                  <Label className="form-label">{t('clients.email')}</Label>
-                  <Input
-                    type="email"
-                    value={editData.email}
-                    onChange={(e) => setEditData({ ...editData, email: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div>
-                <Label className="form-label">Date of Birth</Label>
+
+        <div className="py-5">
+          <h3 className="font-semibold text-base mb-4 text-slate-200">
+            {labels.contact}
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {field(labels.firstName, 'first_name')}
+            {field(labels.lastName, 'last_name')}
+            {field(labels.phone, 'phone', 'tel')}
+            {field(labels.email, 'email', 'email')}
+            {field(labels.address, 'address')}
+            {field(labels.apartment, 'apartment')}
+
+            <div>
+              <Label className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                {labels.stage}
+              </Label>
+              <p className="mt-1 font-medium">{client.commercial_stage || '-'}</p>
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                {labels.source}
+              </Label>
+              <p className="mt-1 font-medium">{client.source || '-'}</p>
+            </div>
+          </div>
+        </div>
+
+
+        <div className="py-5 border-t border-slate-800">
+          <div className="flex items-center gap-2 mb-4">
+            <IdCard className="w-4 h-4 text-slate-400" />
+            <h3 className="font-semibold text-base text-slate-200">
+              {labels.personal}
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {field(labels.dateOfBirth, 'date_of_birth', 'date')}
+          </div>
+        </div>
+
+        <div className="py-5 border-t border-slate-800">
+          <div className="flex items-center gap-2 mb-4">
+            <House className="w-4 h-4 text-slate-400" />
+            <h3 className="font-semibold text-base text-slate-200">
+              {labels.residence}
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div>
+              <Label className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                {labels.years}
+              </Label>
+              {isEditing ? (
                 <Input
-                  type="date"
-                  value={editData.date_of_birth}
-                  onChange={(e) => setEditData({ ...editData, date_of_birth: e.target.value })}
+                  type="number"
+                  min="0"
+                  value={editData.time_at_address_years}
+                  onChange={(e) => setEditData(prev => ({
+                    ...prev,
+                    time_at_address_years: e.target.value
+                  }))}
+                  className="mt-1 bg-slate-900 border-slate-700 text-slate-100"
                 />
-              </div>
-              {/* ID Fields - Admin Only */}
-              {isAdmin && (
-                <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 space-y-3">
-                  <Label className="form-label text-amber-700 flex items-center gap-1">
-                    🔒 ID Information (Admin Only)
-                  </Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-amber-600">Tipo de ID</Label>
-                      <Select value={editData.id_type} onValueChange={(v) => setEditData({ ...editData, id_type: v })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Licencia de Conducir">Licencia de Conducir</SelectItem>
-                          <SelectItem value="Pasaporte">Pasaporte</SelectItem>
-                          <SelectItem value="Pasaporte USA">Pasaporte USA</SelectItem>
-                          <SelectItem value="Matrícula">Matrícula</SelectItem>
-                          <SelectItem value="Credencial de Elector">Credencial de Elector</SelectItem>
-                          <SelectItem value="ID de Residente">ID de Residente</SelectItem>
-                          <SelectItem value="Otro">Otro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-amber-600">Número de ID</Label>
-                      <Input
-                        value={editData.id_number}
-                        onChange={(e) => setEditData({ ...editData, id_number: e.target.value })}
-                        placeholder="D1234567"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-amber-600">Tipo SSN/ITIN</Label>
-                      <Select value={editData.ssn_type} onValueChange={(v) => setEditData({ ...editData, ssn_type: v })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="SSN">SSN</SelectItem>
-                          <SelectItem value="ITIN">ITIN</SelectItem>
-                          <SelectItem value="Ninguno">Ninguno</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-amber-600">SSN/ITIN (últimos 4)</Label>
-                      <Input
-                        value={editData.ssn}
-                        onChange={(e) => setEditData({ ...editData, ssn: e.target.value })}
-                        placeholder="XXXX"
-                        maxLength={4}
-                      />
-                    </div>
-                  </div>
-                </div>
+              ) : (
+                <p className="mt-1 font-medium text-slate-100">
+                  {client.time_at_address_years ?? '-'}
+                </p>
               )}
-              <div>
-                <Label className="form-label">{t('clients.address')}</Label>
-                <AddressAutocomplete
-                  value={editData.address}
-                  onChange={(value) => setEditData({ ...editData, address: value })}
-                  placeholder="Start typing an address..."
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label className="form-label">{t('clients.apartment')}</Label>
-                  <Input
-                    value={editData.apartment}
-                    onChange={(e) => setEditData({ ...editData, apartment: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label className="form-label">Time at Address</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      placeholder="Years"
-                      value={editData.time_at_address_years}
-                      onChange={(e) => setEditData({ ...editData, time_at_address_years: e.target.value })}
-                      min="0"
-                      className="flex-1"
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Months"
-                      value={editData.time_at_address_months}
-                      onChange={(e) => setEditData({ ...editData, time_at_address_months: e.target.value })}
-                      min="0"
-                      max="11"
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label className="form-label">Housing Type</Label>
-                  <Select value={editData.housing_type} onValueChange={(v) => setEditData({ ...editData, housing_type: v, rent_amount: v !== 'Renta' ? '' : editData.rent_amount })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Dueño">Dueño</SelectItem>
-                      <SelectItem value="Renta">Renta</SelectItem>
-                      <SelectItem value="Vivo con familiares">Vivo con familiares</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {editData.housing_type === 'Renta' && (
-                  <div>
-                    <Label className="form-label">Rent Amount</Label>
-                    <Input
-                      placeholder="$"
-                      value={editData.rent_amount}
-                      onChange={(e) => setEditData({ ...editData, rent_amount: e.target.value })}
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-3 pt-3">
-                <Button variant="outline" onClick={() => setIsEditing(false)} className="flex-1">
-                  {t('common.cancel')}
-                </Button>
-                <Button onClick={handleSave} data-testid="save-client-edit" className="flex-1">
-                  {t('common.save')}
-                </Button>
-              </div>
             </div>
-          ) : (
-            // View Mode
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label className="form-label">{t('clients.firstName')}</Label>
-                  <p className="font-medium">{client.first_name}</p>
-                </div>
-                <div>
-                  <Label className="form-label">{t('clients.lastName')}</Label>
-                  <p className="font-medium">{client.last_name}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label className="form-label">{t('clients.phone')}</Label>
-                  <p className="font-medium">{client.phone}</p>
-                </div>
-                <div>
-                  <Label className="form-label">{t('clients.email')}</Label>
-                  <p className="font-medium">{client.email || '-'}</p>
-                </div>
-              </div>
-              <div>
-                <Label className="form-label">Date of Birth</Label>
-                <p className="font-medium">{client.date_of_birth || '-'}</p>
-              </div>
-              {/* ID Information - Admin Only */}
-              {isAdmin && (client.id_type || client.id_number) && (
-                <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
-                  <Label className="form-label text-amber-700 flex items-center gap-1">
-                    🔒 ID Information (Admin Only)
-                  </Label>
-                  <div className="flex items-center gap-4 mt-2">
-                    <div>
-                      <span className="text-xs text-amber-600">Tipo:</span>
-                      <p className="font-medium">{client.id_type || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-xs text-amber-600">Número:</span>
-                      <p className="font-medium font-mono">{client.id_number || '-'}</p>
-                    </div>
-                  </div>
-                </div>
+
+            <div>
+              <Label className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                {labels.months}
+              </Label>
+              {isEditing ? (
+                <Input
+                  type="number"
+                  min="0"
+                  max="11"
+                  value={editData.time_at_address_months}
+                  onChange={(e) => setEditData(prev => ({
+                    ...prev,
+                    time_at_address_months: e.target.value
+                  }))}
+                  className="mt-1 bg-slate-900 border-slate-700 text-slate-100"
+                />
+              ) : (
+                <p className="mt-1 font-medium text-slate-100">
+                  {client.time_at_address_months ?? '-'}
+                </p>
               )}
-              <div>
-                <Label className="form-label">{t('clients.address')}</Label>
-                <p className="font-medium">{client.address || '-'} {client.apartment && `Apt ${client.apartment}`}</p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label className="form-label">Time at Address</Label>
-                  <p className="font-medium">
-                    {(client.time_at_address_years || client.time_at_address_months) 
-                      ? `${client.time_at_address_years || 0} yrs, ${client.time_at_address_months || 0} mos` 
-                      : '-'}
-                  </p>
-                </div>
-                <div>
-                  <Label className="form-label">Housing Type</Label>
-                  <p className="font-medium">{client.housing_type || '-'}</p>
-                </div>
-              </div>
-              {client.housing_type === 'Renta' && (
-                <div>
-                  <Label className="form-label">Rent Amount</Label>
-                  <p className="font-medium">{client.rent_amount || '-'}</p>
-                </div>
-              )}
-              {/* SSN/ITIN - Admin Only */}
-              {isAdmin && (client.ssn || client.ssn_type) && (
-                <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                  <Label className="form-label text-red-700 flex items-center gap-1">
-                    🔒 Información Confidencial (Solo Admin)
-                  </Label>
-                  <div className="flex items-center gap-4 mt-2">
-                    <div>
-                      <span className="text-xs text-red-500">Tipo:</span>
-                      <p className="font-medium">{client.ssn_type || 'SSN'}</p>
-                    </div>
-                    <div>
-                      <span className="text-xs text-red-500">Número:</span>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium font-mono">
-                          {showClientSSN ? (client.ssn || '-') : '•••-••-••••'}
+            </div>
+
+            {field(labels.housingType, 'housing_type')}
+            {field(labels.rentAmount, 'rent_amount', 'number')}
+          </div>
+        </div>
+
+        <div className="py-5 border-t border-slate-800">
+          <div className="flex items-center gap-2 mb-4">
+            <Landmark className="w-4 h-4 text-slate-400" />
+            <h3 className="font-semibold text-base text-slate-200">
+              {labels.identification}
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {field(labels.idType, 'id_type')}
+            {field(labels.idNumber, 'id_number')}
+          </div>
+        </div>
+
+
+        <div className="py-5 border-t border-slate-800">
+          <div className="flex items-center gap-2 mb-4">
+            <FileText className="w-4 h-4 text-slate-400" />
+            <h3 className="font-semibold text-base text-slate-200">
+              {labels.documents}
+            </h3>
+          </div>
+
+          <div className="space-y-3">
+            {[
+              {
+                type: 'id',
+                label: labels.idDocuments,
+                docsField: 'id_documents',
+                uploadedField: 'id_uploaded'
+              },
+              {
+                type: 'income',
+                label: labels.incomeProof,
+                docsField: 'income_documents',
+                uploadedField: 'income_proof_uploaded'
+              },
+              {
+                type: 'residence',
+                label: labels.residenceProof,
+                docsField: 'residence_documents',
+                uploadedField: 'residence_proof_uploaded'
+              }
+            ].map(({ type, label, docsField, uploadedField }) => {
+              const docs = clientDocs[docsField] || [];
+              const expanded = expandedDocType === type;
+              const hasDocuments =
+                docs.length > 0 || Boolean(clientDocs[uploadedField]);
+
+              return (
+                <div
+                  key={type}
+                  className="rounded-lg border border-slate-800 bg-slate-900/50"
+                >
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between gap-3 p-4 text-left"
+                    onClick={() => {
+                      const next = expanded ? null : type;
+                      setExpandedDocType(next);
+
+                      if (!expanded) {
+                        loadDocuments(type);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="rounded-md bg-slate-800 p-2">
+                        <FileText className="w-4 h-4 text-slate-300" />
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="font-medium text-slate-100">
+                          {label}
                         </p>
-                        <button 
-                          onClick={() => setShowClientSSN(!showClientSSN)}
-                          className="p-1 hover:bg-red-100 rounded"
-                        >
-                          {showClientSSN ? '🙈' : '👁️'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
-          {/* Document Status with Upload/Download/Delete - Multiple Files Support */}
-          <div>
-            <Label className="form-label">{t('clients.documents')}</Label>
-            <div className="space-y-3 mt-2">
-              {/* Document Type Component */}
-              {[
-                { type: 'id', label: t('clients.idUploaded'), field: 'id_uploaded', docsField: 'id_documents', legacyField: 'id_file_url' },
-                { type: 'income', label: t('clients.incomeProof'), field: 'income_proof_uploaded', docsField: 'income_documents', legacyField: 'income_proof_file_url' },
-                { type: 'residence', label: 'Comprobante de Residencia', field: 'residence_proof_uploaded', docsField: 'residence_documents', legacyField: 'residence_proof_file_url', icon: Home }
-              ].map(({ type, label, field, docsField, legacyField, icon: Icon }) => {
-                const docs = clientDocs[docsField] || [];
-                const hasLegacyDoc = clientDocs[legacyField] || client?.[legacyField];
-                const hasAnyDoc = docs.length > 0 || hasLegacyDoc;
-                const isExpanded = expandedDocType === type;
-                
-                return (
-                  <div key={type} className="bg-slate-50 rounded-lg p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {clientDocs[field] ? (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                        ) : (
-                          <XCircle className="w-5 h-5 text-slate-300" />
-                        )}
-                        {Icon && <Icon className="w-4 h-4 text-slate-400" />}
-                        <span className="text-sm">{label}</span>
-                        {docs.length > 0 && (
-                          <Badge variant="secondary" className="text-xs">
-                            {docs.length} archivo{docs.length > 1 ? 's' : ''}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {/* Upload button - always available */}
-                        <label className="cursor-pointer">
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept=".pdf,.jpg,.jpeg,.png,.webp"
-                            multiple
-                            onChange={(e) => handleUploadDocument(type, e.target.files)}
-                            disabled={uploading === type}
-                          />
-                          <Button size="sm" variant="outline" asChild disabled={uploading === type}>
-                            <span>
-                              <Upload className="w-4 h-4 mr-1" />
-                              {uploading === type ? 'Subiendo...' : 'Subir'}
-                            </span>
-                          </Button>
-                        </label>
-                        
-                        {/* Download combined PDF - show if has docs array OR legacy field */}
-                        {hasAnyDoc && (
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            onClick={() => handleDownloadDocument(type)} 
-                            title="Descargar PDF combinado"
-                          >
-                            <Download className="w-4 h-4 text-blue-500" />
-                          </Button>
-                        )}
-                        
-                        {/* Expand/collapse to see individual files */}
-                        {docs.length > 0 && (
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            onClick={() => setExpandedDocType(isExpanded ? null : type)}
-                          >
-                            {isExpanded ? (
-                              <ChevronDown className="w-4 h-4" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4" />
-                            )}
-                          </Button>
-                        )}
+                        <p className="text-xs text-slate-400">
+                          {hasDocuments
+                            ? `${docs.length || 1} ${
+                                isSpanish ? 'documento(s)' : 'document(s)'
+                              }`
+                            : labels.noDocuments}
+                        </p>
                       </div>
                     </div>
-                    
-                    {/* Expanded file list */}
-                    {isExpanded && docs.length > 0 && (
-                      <div className="mt-3 space-y-2 border-t pt-3">
-                        {docs.map((doc, idx) => (
-                          <div key={doc.id || idx} className="flex items-center justify-between bg-white p-2 rounded border">
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                              <span className="text-xs truncate">{doc.filename || `Documento ${idx + 1}`}</span>
-                              <span className="text-xs text-slate-400">
-                                {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString('es-ES') : ''}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                onClick={() => handleDownloadDocument(type, doc.id)}
-                                title="Descargar"
-                              >
-                                <Download className="w-3 h-3 text-blue-500" />
-                              </Button>
-                              {isAdmin && (
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
-                                  onClick={() => handleDeleteDocument(type, doc.id)}
-                                  title="Eliminar"
-                                >
-                                  <Trash2 className="w-3 h-3 text-red-400" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+
+                    {expanded ? (
+                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
                     )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                  </button>
 
-          {/* Send Documents Link - SMS and Email */}
-          <div className="flex gap-2 pt-4 border-t">
-            <Button 
-              variant="outline" 
-              className="flex-1" 
-              onClick={onSendDocsSMS} 
-              data-testid="send-docs-sms-btn"
-              title="Enviar link por SMS (requiere aprobación A2P)"
-            >
-              <Send className="w-4 h-4 mr-2" />
-              SMS
-            </Button>
-            <Button 
-              variant="default" 
-              className="flex-1 bg-green-600 hover:bg-green-700" 
-              onClick={() => onSendDocsEmail(client)}
-              data-testid="send-docs-email-btn"
-              title="Enviar link por Email"
-            >
-              <Mail className="w-4 h-4 mr-2" />
-              Email
-            </Button>
+                  {expanded && (
+                    <div className="border-t border-slate-800 p-4 space-y-3">
+                      <div>
+                        <input
+                          id={`client-document-${type}`}
+                          type="file"
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files?.length) {
+                              handleUploadDocument(type, e.target.files);
+                            }
+                            e.target.value = '';
+                          }}
+                        />
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={uploading === type}
+                          onClick={() =>
+                            document
+                              .getElementById(`client-document-${type}`)
+                              ?.click()
+                          }
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          {uploading === type
+                            ? labels.uploading
+                            : labels.upload}
+                        </Button>
+                      </div>
+
+                      {docs.length > 0 ? (
+                        <div className="space-y-2">
+                          {docs.map((doc, index) => (
+                            <div
+                              key={doc.id || `${type}-${index}`}
+                              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-md border border-slate-800 bg-slate-950 p-3"
+                            >
+                              <div className="min-w-0">
+                                <p className="text-sm text-slate-200 truncate">
+                                  {doc.filename ||
+                                   doc.original_name ||
+                                   doc.name ||
+                                   `${label} ${index + 1}`}
+                                </p>
+
+                                {doc.uploaded_at && (
+                                  <p className="text-xs text-slate-500">
+                                    {new Date(doc.uploaded_at).toLocaleDateString()}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="flex gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleDownloadDocument(type, doc.id)
+                                  }
+                                >
+                                  <Download className="w-4 h-4" />
+                                </Button>
+
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleDeleteDocument(type, doc.id)
+                                  }
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : hasDocuments ? (
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDownloadDocument(type)}
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            {labels.download}
+                          </Button>
+
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteDocument(type)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            {labels.delete}
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-500">
+                          {labels.noDocuments}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
+        </div>
+
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t border-slate-800">
+          {isEditing ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditData({
+                    first_name: client.first_name || '',
+                    last_name: client.last_name || '',
+                    phone: client.phone || '',
+                    email: client.email || '',
+                    address: client.address || '',
+                    apartment: client.apartment || '',
+                    date_of_birth: client.date_of_birth || '',
+                    time_at_address_years: client.time_at_address_years ?? '',
+                    time_at_address_months: client.time_at_address_months ?? '',
+                    housing_type: client.housing_type || '',
+                    rent_amount: client.rent_amount ?? '',
+                    id_type: client.id_type || '',
+                    id_number: client.id_number || ''
+                  });
+                  setIsEditing(false);
+                }}
+                disabled={saving}
+              >
+                {labels.cancel}
+              </Button>
+
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                data-testid="save-client-edit"
+              >
+                {saving ? labels.saving : labels.save}
+              </Button>
+            </>
+          ) : (
+            <Button variant="outline" onClick={onClose}>
+              {labels.close}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
