@@ -79,7 +79,8 @@ function CountBadge({ count }) {
 export default function DocumentsPage() {
   const { t } = useTranslation();
   const { user, isAdmin, isBDCManager } = useAuth();
-  const [clients, setClients] = useState([]);\n  const [documentIndex, setDocumentIndex] = useState({});
+  const [clients, setClients] = useState([]);
+  const [documentIndex, setDocumentIndex] = useState({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -132,7 +133,9 @@ export default function DocumentsPage() {
       (statusFilter === 'all' || realStatus(client) === statusFilter);
   }), [clients, search, statusFilter, realStatus]);
 
-  const withDocumentMeta = (clientId, type, list) => list.map((doc) => ({ ...doc, client_id: clientId, doc_type: type }));\n\n  const openClient = async (client) => {
+  const withDocumentMeta = (clientId, type, list) => list.map((doc) => ({ ...doc, client_id: clientId, doc_type: type }));
+
+  const openClient = async (client) => {
     setSelectedClient(client);
     setDetailLoading(true);
     try {
