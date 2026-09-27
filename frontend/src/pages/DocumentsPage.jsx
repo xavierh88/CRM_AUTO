@@ -152,6 +152,7 @@ export default function DocumentsPage() {
   }), [clients, search, statusFilter, realStatus]);
 
   const withDocumentMeta = (clientId, type, list) => list.map((doc) => ({ ...doc, client_id: clientId, doc_type: type }));
+  const clientDisplayName = (client) => `${client?.first_name || ''} ${client?.last_name || ''}`.trim() || 'Unnamed client';
 
   const openClient = async (client) => {
     setSelectedClient(client);
@@ -263,7 +264,7 @@ export default function DocumentsPage() {
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <button type="button" onClick={() => navigate('/clients', { state: { openClientId: selectedClient.id, openClientTab: 'summary' } })} className="truncate text-left text-xl font-semibold text-white transition hover:text-cyan-300 hover:underline">{selectedClient.first_name} {selectedClient.last_name}</button>
+                  <button type="button" onClick={() => navigate('/clients', { state: { openClientId: selectedClient.id, openClientTab: 'summary' } })} className="block max-w-full truncate text-left text-xl font-semibold text-white transition hover:text-cyan-300 hover:underline"><span className="block truncate" title={clientDisplayName(selectedClient)}>{clientDisplayName(selectedClient)}</span></button>
                   <StatusPill status={CATEGORIES.every((category) => docs[category.id].length) ? 'complete' : total ? 'pending' : 'missing'} />
                 </div>
                 <p className="mt-1 text-sm text-slate-400">{selectedClient.phone || 'No phone'}{selectedClient.email ? ` • ${selectedClient.email}` : ''}</p>
@@ -387,7 +388,7 @@ export default function DocumentsPage() {
                   const counts = CATEGORIES.map((category) => realCount(client, category.id));
                   return (
                     <tr key={client.id} className="hover:bg-slate-900/60">
-                      <td className="px-4 py-4"><button type="button" onClick={() => navigate('/clients', { state: { openClientId: client.id, openClientTab: 'summary' } })} className="font-medium text-slate-100 transition hover:text-cyan-300 hover:underline">{client.first_name} {client.last_name}</button><p className="text-xs text-slate-500">{client.phone || 'No phone'}</p></td>
+                      <td className="px-4 py-4"><button type="button" onClick={() => navigate('/clients', { state: { openClientId: client.id, openClientTab: 'summary' } })} className="block max-w-[220px] truncate font-medium text-slate-100 transition hover:text-cyan-300 hover:underline" title={clientDisplayName(client)}>{clientDisplayName(client)}</button><p className="text-xs text-slate-500">{client.phone || 'No phone'}</p></td>
                       {counts.map((count, index) => <td key={CATEGORIES[index].id} className="px-4 py-4"><FormatSummary documents={documentIndex[client.id]?.[CATEGORIES[index].id] || []} /></td>)}
                       <td className="px-4 py-4 text-sm font-semibold text-slate-200">{counts.reduce((a,b) => a+b, 0)}</td>
                       <td className="px-4 py-4"><StatusPill status={realStatus(client)} /></td>
@@ -408,7 +409,7 @@ export default function DocumentsPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 gap-3">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-500/10 font-semibold text-cyan-300">{client.first_name?.[0]}{client.last_name?.[0]}</div>
-                      <div className="min-w-0"><p className="truncate font-semibold text-slate-100">{client.first_name} {client.last_name}</p><p className="text-xs text-slate-500">{counts.reduce((a,b) => a+b, 0)} total files</p></div>
+                      <div className="min-w-0"><p className="truncate font-semibold text-slate-100" title={clientDisplayName(client)}>{clientDisplayName(client)}</p><p className="text-xs text-slate-500">{counts.reduce((a,b) => a+b, 0)} total files</p></div>
                     </div>
                     <StatusPill status={realStatus(client)} />
                   </div>
