@@ -1,0 +1,53 @@
+DEALER AI OS V2 — DOCUMENTS SYSTEM
+
+Objetivo:
+Terminar completamente el módulo Documents.
+
+Debe funcionar en:
+1. Client Profile → Documents
+2. Main Menu → Documents
+
+Reglas:
+- Mantener diseño actual oscuro Dealer AI OS V2.
+- No tocar producción.
+- No tocar Carplus.
+- No romper Clients recuperado.
+- No romper Deals recuperado.
+- Reutilizar backend, modelos y endpoints existentes.
+
+Debe auditar primero:
+- DocumentsPage.jsx
+- DocumentViewer.jsx
+- DocumentCategoryDialog.jsx
+- Clientes y documentos backend.
+
+Implementar:
+- documentos reales por cliente
+- categorías Identification, Income Proof, Residence Proof
+- estados Complete, Pending, Missing
+- conteo real de archivos
+- lista de archivos con nombre, tipo, tamaño y fecha
+- preview PDF e imágenes
+- descarga individual
+- descarga ZIP
+- upload funcional
+- permisos existentes
+- responsive móvil con tarjetas
+
+Main Documents:
+- tabla de clientes
+- conteo por categoría
+- total archivos
+- estado
+- búsqueda
+- filtros
+
+Antes de cambios:
+backup.
+
+Después de cada cambio:
+build frontend.
+Validar funcionamiento real.
+
+No marcar terminado solo por compilar.
+Debe quedar listo para prueba.
