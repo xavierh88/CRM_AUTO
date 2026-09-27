@@ -1698,10 +1698,11 @@ async def download_client_document(
         }
         content_type = content_types.get(file_ext, 'application/octet-stream')
         
+        download_name = str(doc.get('filename') or 'document').replace('"', '').replace('\r', '').replace('\n', '')
         return Response(
             content=content,
             media_type=content_type,
-            headers={"Content-Disposition": f"attachment; filename={doc.get('filename', 'document')}"}
+            headers={"Content-Disposition": f'attachment; filename="{download_name}"'}
         )
     
     # If multiple documents exist, combine them into one PDF
