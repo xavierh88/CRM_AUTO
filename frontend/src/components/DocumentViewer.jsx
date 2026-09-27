@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = '/api';
 
 const VIEWABLE_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const VIEWABLE_PDF_TYPE = 'application/pdf';
@@ -291,8 +291,7 @@ export default function DocumentViewer({
                 src={docData.url}
                 className="w-full h-full border-0 bg-white"
                 title={docData.name}
-                sandbox="allow-scripts allow-same-origin"
-              />
+                              />
             </div>
           )}
 
