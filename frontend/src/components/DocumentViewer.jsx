@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, Download, ChevronLeft, ChevronRight, RotateCw, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -41,9 +41,7 @@ export default function DocumentViewer({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [docData, setDocData] = useState(null);
-  const imgRef = useRef(null);
-  const pdfRef = useRef(null);
-  const objectUrlRef = useRef(null);
+  const [rawBlob, setRawBlob] = useState(null);
 
   const currentDoc = documents[currentIndex];
 
@@ -56,6 +54,7 @@ export default function DocumentViewer({
   useEffect(() => {
     if (!currentDoc) {
       setDocData(null);
+      setRawBlob(null);
       setLoading(false);
       return;
     }
@@ -66,6 +65,7 @@ export default function DocumentViewer({
       setLoading(true);
       setError(null);
       setDocData(null);
+      setRawBlob(null);
 
       try {
         let url = `${API}/clients/${currentDoc.client_id}/documents/download/${currentDoc.doc_type}`;
@@ -89,20 +89,15 @@ export default function DocumentViewer({
 
         const blob = await response.blob();
         const resolvedType = getFileType(currentDoc.filename || currentDoc.original_name, blob.type);
-        let viewUrl;
-        if (resolvedType === 'image') {
-          viewUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
-            reader.readAsDataURL(blob);
-          });
-        } else {
-          viewUrl = URL.createObjectURL(blob);
-          objectUrlRef.current = viewUrl;
-        }
+        const viewUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+          reader.readAsDataURL(blob);
+        });
 
         if (!cancelled) {
+          setRawBlob(blob);
           setDocData({
             url: viewUrl,
             type: resolvedType,
@@ -110,8 +105,6 @@ export default function DocumentViewer({
             size: blob.size,
             name: currentDoc.original_name || currentDoc.filename || 'documento'
           });
-        } else if (resolvedType !== 'image') {
-          URL.revokeObjectURL(viewUrl);
         }
       } catch (err) {
         if (!cancelled) {
@@ -129,48 +122,34 @@ export default function DocumentViewer({
 
     return () => {
       cancelled = true;
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-        objectUrlRef.current = null;
-      }
     };
   }, [currentDoc]);
 
   const handleDownload = async () => {
     if (!currentDoc) return;
-    
     try {
-      let url = `${API}/clients/${currentDoc.client_id}/documents/download/${currentDoc.doc_type}`;
-      if (currentDoc.id && currentDoc.id !== 'legacy') {
-        url += `?doc_id=${currentDoc.id}`;
+      let blob = rawBlob;
+      if (!blob) {
+        let url = `${API}/clients/${currentDoc.client_id}/documents/download/${currentDoc.doc_type}`;
+        if (currentDoc.id && currentDoc.id !== 'legacy') url += `?doc_id=${currentDoc.id}`;
+        const token = localStorage.getItem('token');
+        const response = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        if (!response.ok) throw new Error('Download failed');
+        blob = await response.blob();
       }
-
-      const token = localStorage.getItem('token');
-      const response = await fetch(url, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-
-      if (!response.ok) {
-        let detail = 'Download failed';
-        try {
-          const body = await response.json();
-          if (typeof body?.detail === 'string') detail = body.detail;
-        } catch (_) {}
-        throw new Error(detail);
-      }
-
-      const blob = await response.blob();
-      const downloadUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = currentDoc.original_name || currentDoc.filename || `documento_${currentDoc.doc_type}`;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(downloadUrl), 3000);
-      
-      toast.success('Descarga iniciada');
+      const reader = new FileReader();
+      reader.onload = () => {
+        const link = document.createElement('a');
+        link.href = reader.result;
+        link.download = currentDoc.original_name || currentDoc.filename || `documento_${currentDoc.doc_type}`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast.success('Descarga iniciada');
+      };
+      reader.onerror = () => toast.error('Error al preparar la descarga');
+      reader.readAsDataURL(blob);
     } catch (err) {
       console.error('Document download error:', err);
       toast.error(err.message || 'Error al descargar');
@@ -292,7 +271,6 @@ export default function DocumentViewer({
 
           {docData && docData.type === 'image' && (
             <img
-              ref={imgRef}
               src={docData.url}
               alt={docData.name}
               style={{
@@ -310,7 +288,6 @@ export default function DocumentViewer({
           {docData && docData.type === 'pdf' && (
             <div className="w-full h-full flex items-center justify-center p-4">
               <iframe
-                ref={pdfRef}
                 src={docData.url}
                 className="w-full h-full border-0 bg-white"
                 title={docData.name}
