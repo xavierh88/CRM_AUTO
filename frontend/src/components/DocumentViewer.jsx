@@ -73,14 +73,18 @@ export default function DocumentViewer({
           url += `?doc_id=${currentDoc.id}`;
         }
 
+        const token = localStorage.getItem('token');
         const response = await fetch(url, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
 
         if (!response.ok) {
-          throw new Error('Failed to load document');
+          let detail = 'Failed to load document';
+          try {
+            const body = await response.json();
+            if (typeof body?.detail === 'string') detail = body.detail;
+          } catch (_) {}
+          throw new Error(detail);
         }
 
         const blob = await response.blob();
@@ -101,7 +105,7 @@ export default function DocumentViewer({
       } catch (err) {
         if (!cancelled) {
           console.error('Document load error:', err);
-          setError('No se pudo cargar el documento');
+          setError(err.message || 'No se pudo cargar el documento');
         }
       } finally {
         if (!cancelled) {
@@ -130,13 +134,19 @@ export default function DocumentViewer({
         url += `?doc_id=${currentDoc.id}`;
       }
 
+      const token = localStorage.getItem('token');
       const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
 
-      if (!response.ok) throw new Error('Download failed');
+      if (!response.ok) {
+        let detail = 'Download failed';
+        try {
+          const body = await response.json();
+          if (typeof body?.detail === 'string') detail = body.detail;
+        } catch (_) {}
+        throw new Error(detail);
+      }
 
       const blob = await response.blob();
       const downloadUrl = URL.createObjectURL(blob);
@@ -150,7 +160,8 @@ export default function DocumentViewer({
       
       toast.success('Descarga iniciada');
     } catch (err) {
-      toast.error('Error al descargar');
+      console.error('Document download error:', err);
+      toast.error(err.message || 'Error al descargar');
     }
   };
 
@@ -202,7 +213,7 @@ export default function DocumentViewer({
       <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-slate-950 border-slate-800">
         <DialogHeader className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/95">
           <DialogTitle className="text-white font-semibold truncate max-w-[60%]">
-            {docCategory ? `${docCategory} / ` : ''}{currentDoc?.name || 'Documento'}
+            {docCategory ? `${docCategory} / ` : ''}{currentDoc?.original_name || currentDoc?.filename || currentDoc?.name || 'Documento'}
           </DialogTitle>
           <div className="flex items-center gap-2">
             {documents.length > 1 && (
