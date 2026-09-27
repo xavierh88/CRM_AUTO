@@ -88,19 +88,30 @@ export default function DocumentViewer({
         }
 
         const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        objectUrlRef.current = objectUrl;
-        
+        const resolvedType = getFileType(currentDoc.filename || currentDoc.original_name, blob.type);
+        let viewUrl;
+        if (resolvedType === 'image') {
+          viewUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
+            reader.readAsDataURL(blob);
+          });
+        } else {
+          viewUrl = URL.createObjectURL(blob);
+          objectUrlRef.current = viewUrl;
+        }
+
         if (!cancelled) {
           setDocData({
-            url: objectUrl,
-            type: getFileType(currentDoc.filename || currentDoc.original_name, blob.type),
+            url: viewUrl,
+            type: resolvedType,
             mimeType: blob.type,
             size: blob.size,
             name: currentDoc.original_name || currentDoc.filename || 'documento'
           });
-        } else {
-          URL.revokeObjectURL(objectUrl);
+        } else if (resolvedType !== 'image') {
+          URL.revokeObjectURL(viewUrl);
         }
       } catch (err) {
         if (!cancelled) {
@@ -153,10 +164,11 @@ export default function DocumentViewer({
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = currentDoc.original_name || currentDoc.filename || `documento_${currentDoc.doc_type}`;
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
       link.remove();
-      URL.revokeObjectURL(downloadUrl);
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 3000);
       
       toast.success('Descarga iniciada');
     } catch (err) {
