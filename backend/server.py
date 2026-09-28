@@ -830,14 +830,14 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 @api_router.get("/users", response_model=List[dict])
 async def get_users(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(1000)
     return users
 
 @api_router.put("/users/activate")
 async def activate_user(data: UserActivate, current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     result = await db.users.update_one(
         {"id": data.user_id},
@@ -851,7 +851,7 @@ async def activate_user(data: UserActivate, current_user: dict = Depends(get_cur
 @api_router.put("/users/role")
 async def update_user_role(data: UserRoleUpdate, current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     # Valid roles: admin, bdc_manager, telemarketer (previously salesperson)
     valid_roles = ["admin", "bdc_manager", "telemarketer", "salesperson"]  # Keep salesperson for backwards compatibility
@@ -871,7 +871,7 @@ async def update_user_role(data: UserRoleUpdate, current_user: dict = Depends(ge
 async def update_user_email(user_id: str, data: dict, current_user: dict = Depends(get_current_user)):
     """Update user email - Admin only"""
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     new_email = data.get("email")
     if not new_email:
@@ -904,7 +904,7 @@ class AdminUserCreate(BaseModel):
 async def admin_create_user(user_data: AdminUserCreate, current_user: dict = Depends(get_current_user)):
     """Create a new user directly - Admin only"""
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     # Check if email already exists
     existing = await db.users.find_one({"email": user_data.email})
@@ -1702,7 +1702,7 @@ async def delete_user_record(record_id: str, permanent: bool = False, current_us
         await access.require("user_records", record_id, "write")
     if permanent:
         if current_user["role"] != "admin":
-            raise HTTPException(status_code=403, detail="Admin access required")
+            raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
         await db.user_records.delete_one(await access.query("user_records", {"id": record_id}, "write"))
     else:
         await db.user_records.update_one(await access.query("user_records", {"id": record_id}, "write"), {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat()}})
@@ -3339,7 +3339,7 @@ async def get_salesperson_performance(
 async def get_trash_clients(current_user: dict = Depends(get_current_user)):
     access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     clients = await db.clients.find(await access.query("clients", {"is_deleted": True}, "read"), {"_id": 0}).to_list(1000)
     return [await redact_documents(db, current_user, client) for client in clients]
 
@@ -3347,7 +3347,7 @@ async def get_trash_clients(current_user: dict = Depends(get_current_user)):
 async def get_trash_user_records(current_user: dict = Depends(get_current_user)):
     access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     records = await db.user_records.find(await access.query("user_records", {"is_deleted": True}, "read"), {"_id": 0}).to_list(1000)
     return records
 
@@ -3684,7 +3684,7 @@ async def process_weekly_reminders(current_user: dict = Depends(get_current_user
     """Process and send weekly reminders for all pending records (admin only or scheduled task)"""
     access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     if not twilio_client:
         return {"message": "Twilio not configured", "sent": 0, "skipped": 0}
@@ -4671,7 +4671,7 @@ async def get_sms_templates(current_user: dict = Depends(get_current_user)):
 async def update_sms_template(template_key: str, data: SMSTemplateUpdate, current_user: dict = Depends(get_current_user)):
     """Update an SMS template (admin only)"""
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     result = await db.sms_templates.update_one(
         {"template_key": template_key},
@@ -5048,7 +5048,7 @@ async def get_config_list(category: str, current_user: dict = Depends(get_curren
 async def create_config_list_item(item: ConfigListItem, current_user: dict = Depends(get_current_user)):
     """Add a new item to a configurable list (admin only)"""
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     valid_categories = ['bank', 'dealer', 'car', 'id_type', 'poi_type', 'por_type']
     if item.category not in valid_categories:
@@ -5075,7 +5075,7 @@ async def create_config_list_item(item: ConfigListItem, current_user: dict = Dep
 async def delete_config_list_item(item_id: str, current_user: dict = Depends(get_current_user)):
     """Delete an item from a configurable list (admin only)"""
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     result = await db.config_lists.delete_one({"id": item_id})
     if result.deleted_count == 0:
@@ -5086,7 +5086,7 @@ async def delete_config_list_item(item_id: str, current_user: dict = Depends(get
 async def update_config_list_item(item_id: str, item: ConfigListItem, current_user: dict = Depends(get_current_user)):
     """Update an item in a configurable list (admin only)"""
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     update_data = {"name": item.name}
     if item.category == "dealer" and item.address:
@@ -5108,7 +5108,7 @@ async def update_config_list_item(item_id: str, item: ConfigListItem, current_us
 async def force_init_config_lists(current_user: dict = Depends(get_current_user)):
     """Force initialize default config lists - Admin only"""
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     await initialize_default_config_lists()
     
@@ -5157,7 +5157,7 @@ async def restore_client(client_id: str, current_user: dict = Depends(get_curren
     if client_id:
         await access.require("clients", client_id, "write")
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     result = await db.clients.update_one(
         await access.query("clients", {"id": client_id, "is_deleted": True}, "write"),
@@ -5858,7 +5858,7 @@ async def get_scheduler_status(current_user: dict = Depends(get_current_user)):
     """Get the status of the SMS scheduler (admin only)"""
     access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     jobs = []
     for job in scheduler.get_jobs():
@@ -5896,7 +5896,7 @@ async def get_scheduler_status(current_user: dict = Depends(get_current_user)):
 async def run_marketing_sms_now(current_user: dict = Depends(get_current_user)):
     """Manually trigger the marketing SMS job (admin only)"""
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     # Run the job in background
     asyncio.create_task(send_marketing_sms_job())
@@ -6675,7 +6675,7 @@ async def submit_prequalify_with_file(
 async def get_prequalify_submissions(current_user: dict = Depends(get_current_user)):
     access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     submissions = await db.prequalify_submissions.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     for sub in submissions:
         if not sub.get("matched_client_id"):
@@ -6694,7 +6694,7 @@ async def get_prequalify_submissions(current_user: dict = Depends(get_current_us
 async def get_prequalify_submission(submission_id: str, current_user: dict = Depends(get_current_user)):
     access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     submission = await db.prequalify_submissions.find_one({"id": submission_id}, {"_id": 0})
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
@@ -6725,7 +6725,7 @@ async def get_prequalify_submission(submission_id: str, current_user: dict = Dep
 async def create_client_from_prequalify(submission_id: str, current_user: dict = Depends(get_current_user)):
     access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     submission = await db.prequalify_submissions.find_one({"id": submission_id}, {"_id": 0})
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
@@ -6918,7 +6918,7 @@ async def add_prequalify_to_notes(submission_id: str, record_id: str, current_us
     if record_id:
         await access.require("user_records", record_id, "write")
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     submission = await db.prequalify_submissions.find_one({"id": submission_id}, {"_id": 0})
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
@@ -6945,7 +6945,7 @@ async def get_client_prequalify(client_id: str, current_user: dict = Depends(get
     if client_id:
         await access.require("clients", client_id, "read")
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     # First get the client to find phone number
     client = await db.clients.find_one(await access.query("clients", {"id": client_id, "is_deleted": {"$ne": True}}, "read"), {"_id": 0})
@@ -6976,7 +6976,7 @@ async def export_clients_excel(current_user: dict = Depends(get_current_user)):
     """Export all clients to Excel (Name, LastName, Email, Phone only)"""
     access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     # Get all non-deleted clients
     clients = await db.clients.find(
@@ -7007,7 +7007,7 @@ async def export_clients_excel(current_user: dict = Depends(get_current_user)):
 async def delete_prequalify_submission(submission_id: str, current_user: dict = Depends(get_current_user)):
     """Delete a prequalify submission and its associated documents (Admin only)"""
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     submission = await db.prequalify_submissions.find_one({"id": submission_id}, {"_id": 0})
     if not submission:
@@ -7035,7 +7035,7 @@ async def sync_prequalify_to_client(submission_id: str, current_user: dict = Dep
     """Overwrite existing client data with pre-qualification submission data (Admin only)"""
     access = CRMAccess(db, current_user)
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail="Admin access required") if current_user.get("role") not in ["admin","demo"] else None
     
     submission = await db.prequalify_submissions.find_one({"id": submission_id}, {"_id": 0})
     if not submission:

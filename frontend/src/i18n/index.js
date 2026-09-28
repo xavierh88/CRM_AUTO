@@ -21,7 +21,7 @@ const resources = {
       "auth.password": "Password",
       "auth.name": "Full Name",
       "auth.phone": "Phone",
-      "auth.welcome": "Welcome to CARPLUS AUTOSALE",
+      "auth.welcome": "Welcome to DEALER AI OS V2 TEST",
       "auth.subtitle": "Manage your clients and appointments efficiently",
       
       // Dashboard
