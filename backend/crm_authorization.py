@@ -20,8 +20,6 @@ class CRMAccess:
         self._scopes = {}
 
     def _identity(self):
-        if is_demo_identity(self.user):
-            raise HTTPException(403, 'Demo identities cannot access CRM resources')
         role, uid = self.user.get('role'), self.user.get('id')
         if not isinstance(role, str) or role not in ROLES or not isinstance(uid, str) or not uid:
             raise HTTPException(403, 'CRM access denied')
